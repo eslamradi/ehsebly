@@ -1,0 +1,7 @@
+ANTHROPIC_API_KEY=sk-ant-your-key-here
+# Optional in dev — leave unset and sms.ts logs the OTP to the console
+# instead of sending it, so the whole auth flow works before a real
+# Twilio account exists.
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_FROM_NUMBER=

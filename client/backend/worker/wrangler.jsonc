@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ehsebly-extraction-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-01",
+  "observability": {
+    "enabled": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ehsebly-db",
+      "database_id": "cd382a2a-0965-4899-9db1-46d03d6bb7fa",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

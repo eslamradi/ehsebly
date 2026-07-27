@@ -1,0 +1,466 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  AppState,
+  Image,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  type AppStateStatus,
+} from 'react-native';
+import {
+  CameraView,
+  useCameraPermissions,
+  type CameraCapturedPicture,
+  type PermissionResponse,
+} from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
+import { useFocusEffect } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { extractReceipt } from '../api/extractReceipt';
+import { useSplitSession } from '../domain/session';
+import { fonts, radii, spacing, useTheme } from '../theme';
+import type { RootStackParamList } from '../navigation/types';
+
+type Props = NativeStackScreenProps<RootStackParamList, 'Capture'>;
+
+const GALLERY_PHOTO_MAX_WIDTH = 2000;
+// Mirrors the Worker's own MAX_IMAGES cap (index.ts) — stopping here means
+// the fronter sees a clear "up to 8" limit instead of tapping past it and
+// only finding out from a 400 after the whole batch uploads.
+const MAX_PHOTOS = 8;
+
+/**
+ * Reached from HomeScreen — either "Take Photo" (opens straight to the live
+ * camera) or "Choose from Gallery" (auto-launches the picker on mount via
+ * `route.params.openGalleryOnMount`, so the gallery-pick entry point lives
+ * on the home screen without duplicating the picker/HEIC-normalization
+ * logic there).
+ *
+ * Supports a multi-photo receipt (a long paper receipt shot in pieces, or
+ * several scrolled screenshots of one delivery-app order): each camera shot
+ * or gallery pick adds to a pending batch reviewed as a thumbnail strip —
+ * "Add Another (Camera)" and "Add from Gallery" both loop back for more (and
+ * can be mixed freely), "Use These Photos" commits the whole batch to the
+ * session and sends all of them to extraction together.
+ */
+export default function CaptureScreen({ navigation, route }: Props) {
+  const { colors, insets, buttonStyles, screenStyles } = useTheme();
+
+  // useCameraPermissions returns a 3-tuple: [status, requestPermission, getPermission].
+  // `getPermission` re-checks status without prompting the OS dialog — use it on
+  // foreground transitions since `permission` does not reliably auto-refresh when
+  // the user grants/revokes camera access from device Settings while backgrounded.
+  const [permission, requestPermission, getPermission] = useCameraPermissions();
+  const [freshPermission, setFreshPermission] = useState<PermissionResponse | null>(permission);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [capturing, setCapturing] = useState(false);
+  const [pickingFromGallery, setPickingFromGallery] = useState(false);
+  // Shared between the capture and gallery-pick paths — only one of them can
+  // be in flight at a time (both live behind the same live-camera view), so a
+  // single error avoids two banners ever needing to stack.
+  const [error, setError] = useState<{ message: string; showSettingsLink: boolean } | null>(null);
+  // Photos taken/picked so far, not yet committed to the session. Reviewed
+  // as a thumbnail strip once at least one exists.
+  const [pendingUris, setPendingUris] = useState<string[]>([]);
+  // Whether the live camera should render right now — true initially and
+  // after "Add Another"; false once a photo lands in pendingUris, so the
+  // fronter sees the review strip instead of the camera reopening itself.
+  const [showingCamera, setShowingCamera] = useState(true);
+  const [confirmedUris, setConfirmedUris] = useState<string[]>([]);
+  const [extracting, setExtracting] = useState(false);
+  const cameraRef = useRef<CameraView>(null);
+  // Synchronous re-entry guard for handleUseThesePhotos. React state
+  // (`extracting`) updates asynchronously, so a rapid double-tap on "Use
+  // These Photos" can invoke it twice before a re-render ever removes the
+  // button — a ref mutates immediately and closes that window regardless of
+  // render timing (code review finding, Story 1.2).
+  const confirmingRef = useRef(false);
+  const { session, setPhotos, clearPhoto, setExtractionResult } = useSplitSession();
+
+  useEffect(() => {
+    setFreshPermission(permission);
+  }, [permission]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextState: AppStateStatus) => {
+      if (nextState === 'active') {
+        try {
+          const current = await getPermission();
+          setFreshPermission(current);
+        } catch {
+          // Keep the previously-known permission state rather than crash on
+          // a transient OS-level check failure.
+        }
+      }
+    });
+    return () => subscription.remove();
+  }, [getPermission]);
+
+  // This screen stays mounted underneath ExtractedItems/ExtractionFailed/
+  // ManualEntry (native-stack doesn't unmount screens below the top of the
+  // stack). Those screens clear session.photoUris before navigating back
+  // here (e.g. ExtractionFailedScreen's "Retry"), but that doesn't touch
+  // this screen's own local pendingUris/confirmedUris — without this, the
+  // fronter would land back on a stale "photos captured" view instead of
+  // the live camera. Reset local capture state whenever this screen
+  // regains focus with no photos committed to the session.
+  useFocusEffect(
+    useCallback(() => {
+      if (session.photoUris.length === 0) {
+        setPendingUris([]);
+        setConfirmedUris([]);
+        setShowingCamera(true);
+      }
+    }, [session.photoUris]),
+  );
+
+  const handleCapture = useCallback(async () => {
+    const camera = cameraRef.current;
+    // expo-camera's own docs require waiting for onCameraReady before calling
+    // takePictureAsync; also guard against rapid double-taps firing concurrent
+    // capture calls.
+    if (!camera || !cameraReady || capturing) {
+      return;
+    }
+    if (pendingUris.length >= MAX_PHOTOS) {
+      setError({ message: `Up to ${MAX_PHOTOS} photos per receipt.`, showSettingsLink: false });
+      return;
+    }
+    setCapturing(true);
+    setError(null);
+    try {
+      const photo: CameraCapturedPicture | undefined = await camera.takePictureAsync({ quality: 0.8 });
+      if (photo?.uri) {
+        setPendingUris((previous) => [...previous, photo.uri]);
+        setShowingCamera(false);
+      } else {
+        setError({ message: "Couldn't capture that photo — try again.", showSettingsLink: false });
+      }
+    } catch {
+      setError({ message: "Couldn't capture that photo — try again.", showSettingsLink: false });
+    } finally {
+      setCapturing(false);
+    }
+  }, [cameraReady, capturing, pendingUris.length]);
+
+  const handlePickFromGallery = useCallback(async () => {
+    if (pickingFromGallery) {
+      return;
+    }
+    // Reachable both from an empty batch (HomeScreen's "Choose from
+    // Gallery") and from the review screen's "Add from Gallery" once some
+    // photos already exist — cap against what's already pending, not just
+    // this one picker visit, so combining camera + gallery photos can't
+    // exceed the Worker's own per-request limit.
+    if (pendingUris.length >= MAX_PHOTOS) {
+      setError({ message: `Up to ${MAX_PHOTOS} photos per receipt.`, showSettingsLink: false });
+      return;
+    }
+    setPickingFromGallery(true);
+    setError(null);
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        setError(
+          permission.canAskAgain
+            ? { message: 'ehsebly needs access to your photos to pick a receipt.', showSettingsLink: false }
+            : {
+                message: 'Photo access is off. Turn it on in Settings to pick a receipt from your gallery.',
+                showSettingsLink: true,
+              },
+        );
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.8,
+        allowsMultipleSelection: true,
+        selectionLimit: MAX_PHOTOS - pendingUris.length,
+      });
+      if (result.canceled || result.assets.length === 0) {
+        return;
+      }
+      // The gallery can hand back HEIC (Apple's native photo format, unlike
+      // expo-camera's capture which is always JPEG) — the vision-LLM API
+      // only accepts JPEG/PNG/GIF/WEBP and rejects HEIC outright, so always
+      // re-encode to JPEG regardless of the source format. Also cap the
+      // width so a full-resolution gallery photo doesn't blow the
+      // extraction timeout on a slow connection.
+      const normalized = await Promise.all(
+        result.assets.map((asset) =>
+          ImageManipulator.manipulateAsync(
+            asset.uri,
+            asset.width > GALLERY_PHOTO_MAX_WIDTH ? [{ resize: { width: GALLERY_PHOTO_MAX_WIDTH } }] : [],
+            { format: ImageManipulator.SaveFormat.JPEG, compress: 0.8 },
+          ),
+        ),
+      );
+      setPendingUris((previous) => [...previous, ...normalized.map((image) => image.uri)]);
+      setShowingCamera(false);
+    } catch {
+      setError({ message: "Couldn't open your photos — try again.", showSettingsLink: false });
+    } finally {
+      setPickingFromGallery(false);
+    }
+  }, [pickingFromGallery, pendingUris.length]);
+
+  // HomeScreen's "Choose from Gallery" navigates here with this flag rather
+  // than duplicating the picker logic itself — fires once per navigation
+  // into this screen with the flag set, not on every re-render.
+  const openedGalleryOnMountRef = useRef(false);
+  useEffect(() => {
+    if (route.params?.openGalleryOnMount && !openedGalleryOnMountRef.current) {
+      openedGalleryOnMountRef.current = true;
+      handlePickFromGallery();
+    }
+  }, [route.params?.openGalleryOnMount, handlePickFromGallery]);
+
+  const handleAddAnother = useCallback(() => {
+    setError(null);
+    setShowingCamera(true);
+  }, []);
+
+  const handleRetakeAll = useCallback(() => {
+    setPendingUris([]);
+    setConfirmedUris([]);
+    setShowingCamera(true);
+    // Confirming photos commits them to the shared session (setPhotos);
+    // retaking must undo that commitment too, or the session keeps pointing
+    // at photos the fronter just rejected.
+    clearPhoto();
+  }, [clearPhoto]);
+
+  const handleUseThesePhotos = useCallback(async () => {
+    if (pendingUris.length === 0 || confirmingRef.current) {
+      return;
+    }
+    confirmingRef.current = true;
+    try {
+      // Mutate session state only through the domain-layer action — never
+      // set state directly here beyond this screen's own local UI state.
+      setPhotos(pendingUris);
+      setConfirmedUris(pendingUris);
+
+      // Confirming the photos is the handoff point to extraction (Story 1.1
+      // AC #2) — hand off immediately rather than waiting for a separate
+      // user action.
+      setExtracting(true);
+      const result = await extractReceipt(pendingUris);
+      setExtractionResult(result);
+      setExtracting(false);
+
+      if (result.status === 'ok') {
+        navigation.navigate('ExtractedItems');
+      } else {
+        navigation.navigate('ExtractionFailed');
+      }
+    } finally {
+      confirmingRef.current = false;
+    }
+  }, [pendingUris, navigation, setExtractionResult, setPhotos]);
+
+  if (!freshPermission) {
+    // Permission status still loading — render nothing rather than a
+    // flash of the wrong state.
+    return <View style={screenStyles.center} />;
+  }
+
+  if (!freshPermission.granted) {
+    if (freshPermission.canAskAgain) {
+      return (
+        <View style={screenStyles.center}>
+          <Text style={screenStyles.message}>ehsebly needs your camera to photograph a receipt.</Text>
+          <Pressable accessibilityLabel="Grant camera access" style={buttonStyles.primary} onPress={requestPermission}>
+            <Text style={buttonStyles.primaryText}>Grant camera access</Text>
+          </Pressable>
+        </View>
+      );
+    }
+    return (
+      <View style={screenStyles.center}>
+        <Text style={screenStyles.message}>
+          Camera access is off, so ehsebly can&apos;t photograph a receipt. Turn it on in
+          Settings to continue.
+        </Text>
+        <Pressable accessibilityLabel="Open Settings" style={buttonStyles.primary} onPress={() => Linking.openSettings()}>
+          <Text style={buttonStyles.primaryText}>Open Settings</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (confirmedUris.length > 0) {
+    return (
+      <View style={screenStyles.center}>
+        <PhotoPreview uris={confirmedUris} styles={styles} />
+        {extracting ? (
+          <>
+            <ActivityIndicator accessibilityLabel="Reading receipt" color={colors.accent} />
+            <Text style={screenStyles.message}>
+              {confirmedUris.length > 1 ? 'Reading your photos…' : 'Reading your receipt…'}
+            </Text>
+          </>
+        ) : (
+          <Text style={screenStyles.message}>
+            {confirmedUris.length > 1 ? `${confirmedUris.length} photos captured.` : 'Photo captured.'}
+          </Text>
+        )}
+        <Pressable
+          accessibilityLabel="Retake photos"
+          style={[buttonStyles.secondary, extracting && buttonStyles.disabled]}
+          disabled={extracting}
+          onPress={handleRetakeAll}
+        >
+          <Text style={buttonStyles.secondaryText}>Retake</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (pendingUris.length > 0 && !showingCamera) {
+    return (
+      <View style={screenStyles.center}>
+        <PhotoPreview uris={pendingUris} styles={styles} />
+        <Text style={screenStyles.message}>
+          {pendingUris.length} {pendingUris.length === 1 ? 'photo' : 'photos'}
+        </Text>
+        {error && <Text style={[screenStyles.message, { color: colors.critical }]}>{error.message}</Text>}
+        <View style={styles.column}>
+          <Pressable accessibilityLabel="Use these photos" style={buttonStyles.primary} onPress={handleUseThesePhotos}>
+            <Text style={buttonStyles.primaryText}>Use These Photos ({pendingUris.length})</Text>
+          </Pressable>
+          <Pressable accessibilityLabel="Add another photo with the camera" style={buttonStyles.secondary} onPress={handleAddAnother}>
+            <Text style={buttonStyles.secondaryText}>Add Another (Camera)</Text>
+          </Pressable>
+          <Pressable
+            accessibilityLabel="Add another photo from your gallery"
+            style={[buttonStyles.secondary, pickingFromGallery && buttonStyles.disabled]}
+            disabled={pickingFromGallery}
+            onPress={handlePickFromGallery}
+          >
+            <Text style={buttonStyles.secondaryText}>Add from Gallery</Text>
+          </Pressable>
+          <Pressable accessibilityLabel="Retake all photos" style={buttonStyles.secondary} onPress={handleRetakeAll}>
+            <Text style={buttonStyles.secondaryText}>Retake All</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <CameraView
+        ref={cameraRef}
+        style={styles.camera}
+        facing="back"
+        onCameraReady={() => setCameraReady(true)}
+      />
+      {error && (
+        <View style={[styles.errorBanner, { top: insets.top + 16 }]}>
+          <Text style={styles.errorText}>{error.message}</Text>
+          {error.showSettingsLink && (
+            <Pressable accessibilityLabel="Open Settings" onPress={() => Linking.openSettings()}>
+              <Text style={styles.errorSettingsLink}>Open Settings</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
+      <View style={[styles.controls, { bottom: 44 + insets.bottom }]}>
+        <Pressable
+          accessibilityLabel="Capture receipt photo"
+          style={[styles.captureButton, (!cameraReady || capturing) && styles.captureButtonDisabled]}
+          disabled={!cameraReady || capturing}
+          onPress={handleCapture}
+        >
+          <View style={styles.captureButtonInner} />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+/** One big preview for the common single-photo case, a horizontal thumbnail strip once there's more than one. */
+function PhotoPreview({ uris, styles: photoStyles }: { uris: string[]; styles: typeof styles }) {
+  if (uris.length === 1) {
+    return <Image accessibilityLabel="Captured receipt photo" source={{ uri: uris[0] }} style={photoStyles.preview} />;
+  }
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={photoStyles.thumbStripContent}>
+      {uris.map((uri, index) => (
+        <Image
+          key={uri}
+          accessibilityLabel={`Captured receipt photo ${index + 1} of ${uris.length}`}
+          source={{ uri }}
+          style={photoStyles.thumb}
+        />
+      ))}
+    </ScrollView>
+  );
+}
+
+// Fixed (not theme-dependent) neutrals — this is chrome overlaid on a live
+// camera feed, not app reading content, so it stays the same white
+// shutter/dark banner regardless of light/dark mode (same convention as the
+// OS Camera app).
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  camera: { flex: 1 },
+  column: { width: '100%', gap: spacing.md },
+  controls: {
+    // `bottom` is set inline per-render (needs the device's safe-area inset).
+    position: 'absolute',
+    width: '100%',
+    alignItems: 'center',
+  },
+  captureButton: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: 'rgba(255,255,255,0.24)',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  captureButtonInner: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FFFFFF',
+  },
+  captureButtonDisabled: { opacity: 0.5 },
+  errorBanner: {
+    // `top` is set inline per-render (needs the device's safe-area inset).
+    position: 'absolute',
+    width: '100%',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  errorText: {
+    fontFamily: fonts.sansRegular,
+    backgroundColor: 'rgba(28,27,25,0.85)',
+    color: '#FFFFFF',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.sm,
+    overflow: 'hidden',
+  },
+  errorSettingsLink: {
+    fontFamily: fonts.sansSemiBold,
+    backgroundColor: '#FFFFFF',
+    color: '#1C1B19',
+    paddingVertical: 6,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.sm,
+    overflow: 'hidden',
+  },
+  preview: { width: 280, height: 373, borderRadius: radii.lg, marginBottom: spacing.lg },
+  thumbStripContent: { gap: spacing.sm, marginBottom: spacing.lg },
+  thumb: { width: 140, height: 187, borderRadius: radii.lg, resizeMode: 'cover' },
+});

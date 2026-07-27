@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "ehsebly",
+    "slug": "ehsebly",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.eslamradii.ehsebly",
+      "adaptiveIcon": {
+        "backgroundColor": "#FAF6EE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "versionCode": 2
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "ehsebly needs camera access so you can photograph a receipt to split it."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "ehsebly needs access to your photos so you can pick a receipt to split."
+        }
+      ],
+      "expo-font",
+      "expo-secure-store"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "27da340e-c2ba-4af2-b0b7-b26b3fce856c"
+      }
+    },
+    "owner": "eslamradii"
+  }
+}
