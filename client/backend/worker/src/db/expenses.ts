@@ -12,25 +12,36 @@ export type SubmitExpenseInput = {
   other_service_piastres: number;
   total_piastres: number;
   printed_total_piastres: number | null;
+  // Rate fields exist on the wire only to let submitExpenseRoute recompute
+  // and verify tax_piastres/service_piastres/other_service_piastres/
+  // total_piastres server-side (Story 2.4 code review, 2026-07-30) — not
+  // persisted to the DB, since the already-computed *_piastres columns are
+  // what the ledger reads.
+  tax_enabled: boolean;
+  tax_rate_percent: number;
+  service_enabled: boolean;
+  service_rate_percent: number;
+  other_service_enabled: boolean;
+  other_service_rate_percent: number;
   items: ExpenseItemInput[];
-  // itemIndex -> household_member_id -> weight
+  // itemIndex -> group_member_id -> weight
   item_assignments: Record<number, Record<string, number>>;
 };
 
 export async function insertExpense(
   env: Env,
-  householdId: string,
+  groupId: string,
   createdByUserId: string,
   input: SubmitExpenseInput,
 ): Promise<string> {
   const expenseId = generateId();
   const statements = [
     env.DB.prepare(
-      `INSERT INTO expenses (id, household_id, created_by_user_id, paid_by_member_id, description, subtotal_piastres, tax_piastres, service_piastres, other_service_piastres, total_piastres, printed_total_piastres)
+      `INSERT INTO expenses (id, group_id, created_by_user_id, paid_by_member_id, description, subtotal_piastres, tax_piastres, service_piastres, other_service_piastres, total_piastres, printed_total_piastres)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).bind(
       expenseId,
-      householdId,
+      groupId,
       createdByUserId,
       input.paid_by_member_id,
       input.description,
@@ -58,7 +69,7 @@ export async function insertExpense(
       }
       statements.push(
         env.DB.prepare(
-          `INSERT INTO expense_item_assignments (id, expense_item_id, household_member_id, weight) VALUES (?, ?, ?, ?)`,
+          `INSERT INTO expense_item_assignments (id, expense_item_id, group_member_id, weight) VALUES (?, ?, ?, ?)`,
         ).bind(generateId(), itemId, memberId, weight),
       );
     }
@@ -83,16 +94,16 @@ export type ExpenseWithDetails = {
   printed_total_piastres: number | null;
   created_at: string;
   items: Array<{ id: string; name: string; price_piastres: number; quantity: number; is_shared: boolean }>;
-  // expense_item_id -> household_member_id -> weight
+  // expense_item_id -> group_member_id -> weight
   assignments: Record<string, Record<string, number>>;
 };
 
-export async function listHouseholdExpenses(env: Env, householdId: string): Promise<ExpenseWithDetails[]> {
+export async function listGroupExpenses(env: Env, groupId: string): Promise<ExpenseWithDetails[]> {
   const { results: expenseRows } = await env.DB.prepare(
     `SELECT id, paid_by_member_id, description, subtotal_piastres, tax_piastres, service_piastres, other_service_piastres, total_piastres, printed_total_piastres, created_at
-     FROM expenses WHERE household_id = ? ORDER BY created_at ASC`,
+     FROM expenses WHERE group_id = ? ORDER BY created_at ASC`,
   )
-    .bind(householdId)
+    .bind(groupId)
     .all<Omit<ExpenseWithDetails, 'items' | 'assignments'>>();
 
   if (expenseRows.length === 0) {
@@ -113,12 +124,12 @@ export async function listHouseholdExpenses(env: Env, householdId: string): Prom
       ? []
       : (
           await env.DB.prepare(
-            `SELECT expense_item_id, household_member_id, weight FROM expense_item_assignments WHERE expense_item_id IN (${itemIds
+            `SELECT expense_item_id, group_member_id, weight FROM expense_item_assignments WHERE expense_item_id IN (${itemIds
               .map(() => '?')
               .join(',')})`,
           )
             .bind(...itemIds)
-            .all<{ expense_item_id: string; household_member_id: string; weight: number }>()
+            .all<{ expense_item_id: string; group_member_id: string; weight: number }>()
         ).results;
 
   return expenseRows.map((expense) => {
@@ -137,7 +148,7 @@ export async function listHouseholdExpenses(env: Env, householdId: string): Prom
     }
     for (const assignment of assignmentRows) {
       if (assignment.expense_item_id in assignments) {
-        assignments[assignment.expense_item_id][assignment.household_member_id] = assignment.weight;
+        assignments[assignment.expense_item_id][assignment.group_member_id] = assignment.weight;
       }
     }
     return { ...expense, items, assignments };

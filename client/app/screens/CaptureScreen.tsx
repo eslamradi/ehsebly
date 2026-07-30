@@ -70,10 +70,21 @@ export default function CaptureScreen({ navigation, route }: Props) {
   // Whether the live camera should render right now — true initially and
   // after "Add Another"; false once a photo lands in pendingUris, so the
   // fronter sees the review strip instead of the camera reopening itself.
-  const [showingCamera, setShowingCamera] = useState(true);
+  // Starts false for a gallery-only entry (route.params.openGalleryOnMount)
+  // so the camera never mounts underneath the gallery picker — previously
+  // it always started true, so the live camera preview ran behind the
+  // picker modal even when the fronter only wanted to pick from their
+  // gallery (found via real-device testing).
+  const [showingCamera, setShowingCamera] = useState(!route.params?.openGalleryOnMount);
   const [confirmedUris, setConfirmedUris] = useState<string[]>([]);
   const [extracting, setExtracting] = useState(false);
   const cameraRef = useRef<CameraView>(null);
+  // Guards the gallery-auto-open effect below so it only fires once per
+  // navigation into this screen — also doubles as "has the gallery-only
+  // entry already had its one shot", so a later refocus (e.g. retrying
+  // after a failed extraction) falls back to showing the camera instead of
+  // silently re-suppressing it with no picker re-triggering.
+  const openedGalleryOnMountRef = useRef(false);
   // Synchronous re-entry guard for handleUseThesePhotos. React state
   // (`extracting`) updates asynchronously, so a rapid double-tap on "Use
   // These Photos" can invoke it twice before a re-render ever removes the
@@ -108,15 +119,19 @@ export default function CaptureScreen({ navigation, route }: Props) {
   // this screen's own local pendingUris/confirmedUris — without this, the
   // fronter would land back on a stale "photos captured" view instead of
   // the live camera. Reset local capture state whenever this screen
-  // regains focus with no photos committed to the session.
+  // regains focus with no photos committed to the session. Defaults to the
+  // camera even on a gallery-only entry once the gallery's one auto-open
+  // shot has already fired (openedGalleryOnMountRef) — otherwise a retry
+  // would land on a dead screen with neither the camera nor a re-triggered
+  // picker.
   useFocusEffect(
     useCallback(() => {
       if (session.photoUris.length === 0) {
         setPendingUris([]);
         setConfirmedUris([]);
-        setShowingCamera(true);
+        setShowingCamera(openedGalleryOnMountRef.current || !route.params?.openGalleryOnMount);
       }
-    }, [session.photoUris]),
+    }, [session.photoUris, route.params?.openGalleryOnMount]),
   );
 
   const handleCapture = useCallback(async () => {
@@ -166,6 +181,14 @@ export default function CaptureScreen({ navigation, route }: Props) {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
+        // A gallery-only entry (openGalleryOnMount) never mounted the
+        // camera — with nothing pending yet, just leave rather than
+        // dropping into the camera the fronter never asked for.
+        if (pendingUris.length === 0) {
+          clearPhoto();
+          navigation.goBack();
+          return;
+        }
         setError(
           permission.canAskAgain
             ? { message: 'ehsebly needs access to your photos to pick a receipt.', showSettingsLink: false }
@@ -183,6 +206,12 @@ export default function CaptureScreen({ navigation, route }: Props) {
         selectionLimit: MAX_PHOTOS - pendingUris.length,
       });
       if (result.canceled || result.assets.length === 0) {
+        // Same as above — backing out of a gallery-only entry with nothing
+        // picked yet just leaves, no camera fallback.
+        if (pendingUris.length === 0) {
+          clearPhoto();
+          navigation.goBack();
+        }
         return;
       }
       // The gallery can hand back HEIC (Apple's native photo format, unlike
@@ -203,16 +232,21 @@ export default function CaptureScreen({ navigation, route }: Props) {
       setPendingUris((previous) => [...previous, ...normalized.map((image) => image.uri)]);
       setShowingCamera(false);
     } catch {
-      setError({ message: "Couldn't open your photos — try again.", showSettingsLink: false });
+      if (pendingUris.length === 0) {
+        clearPhoto();
+        navigation.goBack();
+      } else {
+        setError({ message: "Couldn't open your photos — try again.", showSettingsLink: false });
+      }
     } finally {
       setPickingFromGallery(false);
     }
-  }, [pickingFromGallery, pendingUris.length]);
+  }, [pickingFromGallery, pendingUris.length, clearPhoto, navigation]);
 
-  // HomeScreen's "Choose from Gallery" navigates here with this flag rather
-  // than duplicating the picker logic itself — fires once per navigation
-  // into this screen with the flag set, not on every re-render.
-  const openedGalleryOnMountRef = useRef(false);
+  // HomeScreen's "Choose from Gallery" (and GroupDetailScreen's "Log Expense
+  // from Gallery") navigate here with this flag rather than duplicating the
+  // picker logic itself — fires once per navigation into this screen with
+  // the flag set, not on every re-render.
   useEffect(() => {
     if (route.params?.openGalleryOnMount && !openedGalleryOnMountRef.current) {
       openedGalleryOnMountRef.current = true;
@@ -264,13 +298,16 @@ export default function CaptureScreen({ navigation, route }: Props) {
     }
   }, [pendingUris, navigation, setExtractionResult, setPhotos]);
 
-  if (!freshPermission) {
+  // Camera permission is only required when we actually intend to show the
+  // camera — a gallery-only entry (openGalleryOnMount) must never be
+  // blocked by an irrelevant "grant camera access" gate.
+  if (showingCamera && !freshPermission) {
     // Permission status still loading — render nothing rather than a
     // flash of the wrong state.
     return <View style={screenStyles.center} />;
   }
 
-  if (!freshPermission.granted) {
+  if (showingCamera && freshPermission && !freshPermission.granted) {
     if (freshPermission.canAskAgain) {
       return (
         <View style={screenStyles.center}>
@@ -318,6 +355,19 @@ export default function CaptureScreen({ navigation, route }: Props) {
         >
           <Text style={buttonStyles.secondaryText}>Retake</Text>
         </Pressable>
+      </View>
+    );
+  }
+
+  if (!showingCamera && pendingUris.length === 0) {
+    // Gallery-only entry, picker still in flight — a transient neutral
+    // state so the live camera never renders underneath the gallery
+    // picker. Every exit from the picker with nothing picked (cancelled,
+    // denied, or errored) navigates back rather than landing here, so this
+    // is only ever visible for the brief moment the picker is opening.
+    return (
+      <View style={screenStyles.center}>
+        {pickingFromGallery && <ActivityIndicator accessibilityLabel="Opening your photos" color={colors.accent} />}
       </View>
     );
   }

@@ -1,9 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ShareableSplit, type ShareableSplitHandle } from '../components/ShareableSplit';
+import { submitGroupExpense } from '../api/groupApi';
+import { useAccount } from '../domain/account';
 import { saveSplitToHistory } from '../domain/history';
 import { useSplitSession } from '../domain/session';
+import { calculateSplitTotals, calculateSubtotalPiastres } from '../domain/splitCalculation';
 import { spacing, useTheme } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -19,6 +22,7 @@ export default function FinalSplitScreen({ navigation }: Props) {
   const { buttonStyles, pillStyle, pillTextStyle, screenStyles } = useTheme();
   const { session, clearPhoto } = useSplitSession();
   const { extractionResult, taxService, people, itemAssignments } = session;
+  const { token } = useAccount();
 
   // Guards against saving more than once for the same completed session —
   // native-stack keeps this screen instance mounted if the fronter navigates
@@ -28,6 +32,7 @@ export default function FinalSplitScreen({ navigation }: Props) {
   // confirmingRef, Story 1.2 code review finding).
   const savedToHistoryRef = useRef(false);
   const shareRef = useRef<ShareableSplitHandle>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   useEffect(() => {
     if (savedToHistoryRef.current) {
       return;
@@ -36,6 +41,67 @@ export default function FinalSplitScreen({ navigation }: Props) {
       return;
     }
     savedToHistoryRef.current = true;
+
+    if (session.group && session.group.paidByMemberId) {
+      if (!token) {
+        // Explicit error over silent loss (Story 2.4 code review, 2026-07-30):
+        // this was meant to go to the group ledger — falling through to a
+        // local-only save instead would look identical to success while the
+        // group never sees it. Nothing is saved anywhere; the fronter must
+        // sign in again and re-enter this expense.
+        setSubmitError('Your session expired before this could be saved to the group — sign in again, then re-enter this expense.');
+        return;
+      }
+      // Logging a group expense (household/trip) instead of a solo split —
+      // submit to the group's server-side ledger rather than saving to
+      // local History. This is the only place that decision is made; every
+      // screen upstream (Capture through Review) is unchanged either way.
+      const subtotalPiastres = calculateSubtotalPiastres(extractionResult.items);
+      const totals = calculateSplitTotals({ subtotalPiastres, ...taxService });
+      const itemAssignmentsByMemberId: Record<number, Record<string, number>> = {};
+      for (const [itemIndexText, weightsByPersonIndex] of Object.entries(itemAssignments)) {
+        const weightsByMemberId: Record<string, number> = {};
+        for (const [personIndexText, weight] of Object.entries(weightsByPersonIndex)) {
+          const memberId = session.group.memberIdByPersonIndex[Number(personIndexText)];
+          if (memberId) {
+            weightsByMemberId[memberId] = weight;
+          }
+        }
+        itemAssignmentsByMemberId[Number(itemIndexText)] = weightsByMemberId;
+      }
+      submitGroupExpense(token, session.group.groupId, {
+        description: 'Split expense',
+        paid_by_member_id: session.group.paidByMemberId,
+        subtotal_piastres: totals.subtotalPiastres,
+        tax_piastres: totals.taxPiastres,
+        service_piastres: totals.servicePiastres,
+        other_service_piastres: totals.otherServicePiastres,
+        total_piastres: totals.totalPiastres,
+        printed_total_piastres: extractionResult.printedTotalPiastres ?? null,
+        // Sent so the Worker can independently recompute and verify these
+        // totals rather than trusting client arithmetic (Story 2.4 code
+        // review, 2026-07-30).
+        tax_enabled: taxService.taxEnabled,
+        tax_rate_percent: taxService.taxRatePercent,
+        service_enabled: taxService.serviceEnabled,
+        service_rate_percent: taxService.serviceRatePercent,
+        other_service_enabled: taxService.otherServiceEnabled,
+        other_service_rate_percent: taxService.otherServiceRatePercent,
+        items: extractionResult.items.map((item) => ({
+          name: item.name,
+          price_piastres: item.pricePiastres,
+          quantity: item.quantity,
+          is_shared: item.shared ?? false,
+        })),
+        item_assignments: itemAssignmentsByMemberId,
+      }).catch(() => {
+        // Best-effort — a failed submission must never block the fronter
+        // from seeing the split they just finished, same as the local
+        // History save below.
+      });
+      return;
+    }
+
     saveSplitToHistory({
       photoUris: session.photoUris,
       items: extractionResult.items,
@@ -46,7 +112,7 @@ export default function FinalSplitScreen({ navigation }: Props) {
       // Best-effort — a failed history save must never block the fronter
       // from seeing the split they just finished.
     });
-  }, [extractionResult, taxService, people, itemAssignments, session.photoUris]);
+  }, [extractionResult, taxService, people, itemAssignments, session.photoUris, session.group, token]);
 
   const handleBack = () => {
     navigation.navigate('Review');
@@ -88,6 +154,8 @@ export default function FinalSplitScreen({ navigation }: Props) {
           <Text style={pillTextStyle('positive')}>Complete</Text>
         </View>
       </View>
+
+      {submitError && <Text style={pillTextStyle('critical')}>{submitError}</Text>}
 
       <ShareableSplit
         ref={shareRef}

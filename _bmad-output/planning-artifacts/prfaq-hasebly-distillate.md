@@ -67,14 +67,24 @@ purpose: "Token-efficient context for downstream PRD creation"
 - Egypt data protection law (151/2020) becomes relevant once optional account-linking (email/phone) ships — needs a basic privacy notice at that point, not before.
 - CBE is formalizing payment-operator licensing (mid-2025 rules, transition through June 2026) — not a v1 concern since hasebly doesn't move money; watch-item only if payment integration is ever added to the roadmap.
 
+## OCR De-Risking Spike — Completed (post-PRFAQ, pre-PRD)
+- **Method:** 22 real receipt photos from the founder's camera roll, read directly by a vision-capable LLM as a legibility proxy (not yet a production OCR API integration — cost/latency/engineering feasibility of the actual OCR service is still untested).
+- **Legibility result — better than feared:** 8 of 9 genuine dine-in restaurant receipts read with high confidence, including faded thermal paper and mixed Arabic/English. Only failure case: a fully handwritten tab with no printed structure — expect manual-entry fallback for this category. ~1-in-9 failure rate, well under the 1-in-3 stop-and-rethink threshold.
+- **Critical finding — tax/service rates are venue-specific, NOT the fixed 14%/12% assumed throughout the PRFAQ:** one restaurant (3 separate real orders, confirmed consistent) charged exactly 10% service and zero tax. Other receipts showed VAT-only, service-only, both, or neither. The split engine must support configurable/confirmable rates per receipt, not hardcoded national constants.
+- **Critical finding — tax compounds on service on at least some receipts, confirmed on 2 independent receipts by reconciling to printed totals:** tax is calculated on (subtotal + service), not on the raw subtotal independently. Example: 184.00 subtotal → 12% service = 22.08 → 14% tax on 206.08 = 28.85 (not 14% of 184.00). Getting this compounding order wrong produces a total that silently doesn't match the printed receipt — a correctness bug, not a nice-to-have.
+- **Finding — some receipts are internally inconsistent (source data, not OCR error):** one "Pro forma receipt" had a tax line referencing a mismatched base amount with tax printing as 0.00. Recommendation: anchor to printed Subtotal/Total as ground truth rather than deriving/validating a "correct" formula.
+- **Finding — real photo galleries contain significant non-receipt noise:** ~27% of the sample (6/22) were non-restaurant documents (payment slip, health/fitness printouts, utility bill). Scan flow needs a graceful "this doesn't look like a receipt" path.
+- **Not yet tested:** end-to-end timing ("under a minute" claim), the actual production OCR API's accuracy/cost/latency (this spike used a general vision LLM, not the shipped OCR service), Arabic handwriting beyond one example.
+- **PRD implication (important):** scope the split-calculation engine around configurable/confirmable tax and service rates with correct compounding order from day one — this is now a confirmed requirement, not a hypothetical edge case, and should not be deferred to v2.
+
 ## Open Questions / Unknowns Carried Forward
-- OCR accuracy on real Egyptian receipts — unproven, spike planned but not yet executed.
 - Ad revenue viability at scale — unproven, cost-per-scan vs. revenue-per-user not yet modeled with real numbers.
 - Growth beyond the initial friend graph — no validated channel yet beyond word-of-mouth.
 - Whether single-tapper item assignment holds up for larger tables (6+) — deferred tension, not resolved.
-- "Under a minute" end-to-end timing claim in the press release — aspirational, unverified, pending real timing data from the 10-dinner test.
+- "Under a minute" end-to-end timing claim in the press release — aspirational, unverified, pending real timing data from the 10-dinner test (OCR legibility is no longer the open part of this; end-to-end flow timing is).
+- Production OCR API selection and its real-world cost/latency/accuracy — the spike validated legibility conceptually via an LLM, not the specific service that will ship.
 
 ## Verdict
-- Overall: solid, MVP-ready concept with one clearly identified, unproven load-bearing risk (OCR reliability) — not yet "forged in steel," but forged pending an already-scoped test.
-- Recommended before/alongside PRD work: run the OCR spike (15-20 receipts) early, since the PRD's technical approach and scope should reflect real OCR feasibility data rather than the current unproven assumption.
+- Overall: solid, MVP-ready concept. The top named risk from the Internal FAQ (OCR legibility) has been spike-tested and cleared. It's been replaced by a more concrete, more important risk: the tax/service calculation logic needs a real fix (configurable rates, correct compounding) before the 10-dinner test.
 - PRD should encode the stripped-down MVP scope (one platform, manual tap-assign, no accounts/history/ads) as the actual v1 — not the full press-release vision, which is the intended destination after the 10-dinner validation passes.
+- PRD must treat configurable tax/service rates and compounding math as core v1 requirements, not deferred polish — this is the single biggest scope correction to come out of the spike.

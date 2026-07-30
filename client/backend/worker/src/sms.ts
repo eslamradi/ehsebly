@@ -6,10 +6,18 @@ import type { Env } from './env';
  * aren't configured (no account created yet), logs the code instead of
  * sending it — this is what makes the whole auth flow buildable and
  * testable via `wrangler dev` + curl before that real external account
- * exists.
+ * exists. That console-log fallback is only allowed when `ENVIRONMENT`
+ * isn't "production" (set via wrangler.jsonc's `vars`) — a production
+ * deploy missing Twilio secrets fails loudly instead of leaking real OTP
+ * codes into Cloudflare's live request logs (code review, Story 2.1,
+ * 2026-07-30).
  */
 export async function sendOtpSms(env: Env, phoneE164: string, code: string): Promise<{ ok: boolean }> {
   if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_FROM_NUMBER) {
+    if (env.ENVIRONMENT === 'production') {
+      console.error('sendOtpSms: ENVIRONMENT=production but Twilio secrets are not configured — refusing to log the OTP code.');
+      return { ok: false };
+    }
     console.log(`[dev] OTP for ${phoneE164}: ${code}`);
     return { ok: true };
   }

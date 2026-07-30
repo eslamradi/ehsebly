@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useAccount } from '../domain/account';
 import { fonts, spacing, useTheme } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -14,6 +15,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
  */
 export default function HomeScreen({ navigation }: Props) {
   const { colors, insets, buttonStyles } = useTheme();
+  const { account } = useAccount();
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -65,6 +67,13 @@ export default function HomeScreen({ navigation }: Props) {
           onPress={() => navigation.navigate('History')}
         >
           <Text style={styles.ghostButtonText}>History</Text>
+        </Pressable>
+        <Pressable
+          accessibilityLabel="Households and trips"
+          style={styles.ghostButton}
+          onPress={() => navigation.navigate(account ? 'GroupList' : 'PhoneEntry')}
+        >
+          <Text style={styles.ghostButtonText}>Groups</Text>
         </Pressable>
       </View>
     </View>

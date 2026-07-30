@@ -16,12 +16,26 @@ export type Person = {
 // many units each person actually had — see splitItemAmongWeights.
 export type ItemAssignments = Record<number, Record<number, number>>;
 
+// Set only when this split is being logged against a Group (household/trip
+// splitting) rather than saved as a one-off local History entry — see
+// beginGroupExpense. `memberIdByPersonIndex` seeds `people` from the
+// group's roster so ItemAssignmentScreen/ReviewScreen/FinalSplitScreen all
+// keep operating on plain people/index-keyed itemAssignments, unaware
+// anything group-related is happening; only FinalSplitScreen's save/submit
+// branch reads `household` to decide where the finished split goes.
+export type GroupExpenseContext = {
+  groupId: string;
+  memberIdByPersonIndex: Record<number, string>;
+  paidByMemberId: string | null;
+};
+
 export type SplitSession = {
   photoUris: string[];
   extractionResult: ExtractionResult | null;
   taxService: TaxServiceSettings | null;
   people: Person[];
   itemAssignments: ItemAssignments;
+  group: GroupExpenseContext | null;
 };
 
 type SplitSessionContextValue = {
@@ -36,6 +50,12 @@ type SplitSessionContextValue = {
   setTaxService: (settings: TaxServiceSettings | ((previous: TaxServiceSettings) => TaxServiceSettings)) => void;
   addPerson: (name: string) => void;
   setItemAllocations: (itemIndex: number, allocations: Record<number, number>) => void;
+  // Seeds `people` from a group's member roster and marks this session as
+  // logging a group expense rather than a solo split — the existing
+  // Capture -> ExtractedItems -> TaxService -> ItemAssignment -> Review flow
+  // is reused verbatim; only FinalSplitScreen branches on `session.group`.
+  beginGroupExpense: (groupId: string, members: Array<{ id: string; displayName: string }>) => void;
+  setPaidByMemberId: (memberId: string) => void;
 };
 
 const SplitSessionContext = createContext<SplitSessionContextValue | undefined>(undefined);
@@ -52,6 +72,7 @@ export function SplitSessionProvider({ children }: { children: ReactNode }) {
     taxService: null,
     people: [],
     itemAssignments: {},
+    group: null,
   });
 
   const setPhotos = (uris: string[]) => {
@@ -72,6 +93,7 @@ export function SplitSessionProvider({ children }: { children: ReactNode }) {
       taxService: null,
       people: [],
       itemAssignments: {},
+      group: null,
     }));
   };
 
@@ -104,6 +126,25 @@ export function SplitSessionProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const beginGroupExpense = (groupId: string, members: Array<{ id: string; displayName: string }>) => {
+    const memberIdByPersonIndex: Record<number, string> = {};
+    members.forEach((member, index) => {
+      memberIdByPersonIndex[index] = member.id;
+    });
+    setSession((previous) => ({
+      ...previous,
+      people: members.map((member) => ({ name: member.displayName })),
+      group: { groupId, memberIdByPersonIndex, paidByMemberId: null },
+    }));
+  };
+
+  const setPaidByMemberId = (memberId: string) => {
+    setSession((previous) => ({
+      ...previous,
+      group: previous.group ? { ...previous.group, paidByMemberId: memberId } : previous.group,
+    }));
+  };
+
   const value = useMemo(
     () => ({
       session,
@@ -113,6 +154,8 @@ export function SplitSessionProvider({ children }: { children: ReactNode }) {
       setTaxService,
       addPerson,
       setItemAllocations,
+      beginGroupExpense,
+      setPaidByMemberId,
     }),
     [session],
   );

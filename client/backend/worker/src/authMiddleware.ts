@@ -24,12 +24,12 @@ export async function requireAuth(request: Request, env: Env): Promise<AuthConte
   return { userId };
 }
 
-export async function requireHouseholdMember(env: Env, householdId: string, userId: string): Promise<{ memberId: string } | Response> {
-  const row = await env.DB.prepare(`SELECT id FROM household_members WHERE household_id = ? AND user_id = ? AND status = 'active'`)
-    .bind(householdId, userId)
+export async function requireGroupMember(env: Env, groupId: string, userId: string): Promise<{ memberId: string } | Response> {
+  const row = await env.DB.prepare(`SELECT id FROM group_members WHERE group_id = ? AND user_id = ? AND status = 'active'`)
+    .bind(groupId, userId)
     .first<{ id: string }>();
   if (!row) {
-    return jsonResponse({ status: 'error', message: 'Not a member of this household.' }, 403);
+    return jsonResponse({ status: 'error', message: 'Not a member of this group.' }, 403);
   }
   return { memberId: row.id };
 }

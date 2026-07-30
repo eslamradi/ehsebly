@@ -10,4 +10,11 @@ export type RootStackParamList = {
   FinalSplit: undefined;
   History: undefined;
   HistoryDetail: { entryId: string };
+  PhoneEntry: undefined;
+  OtpVerify: { phoneE164: string };
+  GroupList: undefined;
+  CreateGroup: undefined;
+  GroupDetail: { groupId: string };
+  InviteMember: { groupId: string };
+  SettleUp: { groupId: string };
 };

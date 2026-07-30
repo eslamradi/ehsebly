@@ -6,6 +6,9 @@
   "observability": {
     "enabled": true
   },
+  "vars": {
+    "ENVIRONMENT": "production"
+  },
   "d1_databases": [
     {
       "binding": "DB",
@@ -13,5 +16,24 @@
       "database_id": "cd382a2a-0965-4899-9db1-46d03d6bb7fa",
       "migrations_dir": "migrations"
     }
-  ]
+  ],
+  "env": {
+    "staging": {
+      "name": "ehsebly-extraction-worker-staging",
+      "observability": {
+        "enabled": true
+      },
+      "vars": {
+        "ENVIRONMENT": "staging"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "ehsebly-db-staging",
+          "database_id": "1807c23a-f383-4d51-96fd-6b878708e5f6",
+          "migrations_dir": "migrations"
+        }
+      ]
+    }
+  }
 }

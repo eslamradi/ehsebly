@@ -5,13 +5,14 @@ import { jsonResponse as genericJsonResponse } from './http';
 import { createRouter } from './router';
 import { requestOtp, verifyOtp } from './routes/auth';
 import {
-  createHouseholdRoute,
-  getHouseholdRoute,
+  acceptGroupInviteRoute,
+  createGroupRoute,
+  getGroupRoute,
   inviteMemberRoute,
   listExpensesRoute,
-  listHouseholdsRoute,
+  listGroupsRoute,
   submitExpenseRoute,
-} from './routes/households';
+} from './routes/groups';
 import { recordSettlementRoute } from './routes/settlements';
 
 export type { Env };
@@ -69,33 +70,60 @@ async function handleExtraction(request: Request, env: Env): Promise<Response> {
   return jsonResponse(result);
 }
 
-// Household API routes (accounts, groups, ledger) — entirely additive
-// alongside the extraction route above, which every existing client build
-// keeps hitting at POST / exactly as before.
+// Group API routes (accounts, groups, ledger) — entirely additive alongside
+// the extraction route above, which every existing client build keeps
+// hitting at POST / exactly as before. A "group" covers both household
+// splitting and group-trip splitting — same mechanics, distinguished only
+// by the group's `kind` field for UI copy.
 const router = createRouter<Env>();
 router.add('POST', '/auth/otp/request', requestOtp);
 router.add('POST', '/auth/otp/verify', verifyOtp);
-router.add('POST', '/households', createHouseholdRoute);
-router.add('GET', '/households', listHouseholdsRoute);
-router.add('GET', '/households/:householdId', getHouseholdRoute);
-router.add('POST', '/households/:householdId/members', inviteMemberRoute);
-router.add('GET', '/households/:householdId/expenses', listExpensesRoute);
-router.add('POST', '/households/:householdId/expenses', submitExpenseRoute);
-router.add('POST', '/households/:householdId/settlements', recordSettlementRoute);
+router.add('POST', '/groups', createGroupRoute);
+router.add('GET', '/groups', listGroupsRoute);
+router.add('GET', '/groups/:groupId', getGroupRoute);
+router.add('POST', '/groups/:groupId/members', inviteMemberRoute);
+router.add('POST', '/groups/:groupId/accept', acceptGroupInviteRoute);
+router.add('GET', '/groups/:groupId/expenses', listExpensesRoute);
+router.add('POST', '/groups/:groupId/expenses', submitExpenseRoute);
+router.add('POST', '/groups/:groupId/settlements', recordSettlementRoute);
+
+// The mobile client's own requests (native fetch on iOS/Android) never
+// enforce CORS, so this went unnoticed until browser-based testing hit it —
+// a browser blocks the response outright without these headers on a
+// cross-origin request. Wide open (`*`) rather than an allowlist: this API
+// takes a bearer token for anything sensitive, not cookies, so there's no
+// CSRF-via-credentialed-CORS risk a stricter origin list would guard against.
+const CORS_HEADERS: Record<string, string> = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-methods': 'GET, POST, OPTIONS',
+  'access-control-allow-headers': 'content-type, authorization',
+};
+
+function withCors(response: Response): Response {
+  const headers = new Headers(response.headers);
+  for (const [key, value] of Object.entries(CORS_HEADERS)) {
+    headers.set(key, value);
+  }
+  return new Response(response.body, { status: response.status, headers });
+}
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: CORS_HEADERS });
+    }
+
     const url = new URL(request.url);
 
     if (request.method === 'POST' && url.pathname === '/') {
-      return handleExtraction(request, env);
+      return withCors(await handleExtraction(request, env));
     }
 
     const routed = await router.handle(request, env);
     if (routed) {
-      return routed;
+      return withCors(routed);
     }
 
-    return genericJsonResponse({ status: 'error', message: 'Not found.' }, 404);
+    return withCors(genericJsonResponse({ status: 'error', message: 'Not found.' }, 404));
   },
 } satisfies ExportedHandler<Env>;

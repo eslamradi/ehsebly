@@ -3,7 +3,7 @@ title: "PRFAQ: hasebly"
 status: "complete"
 created: "2026-07-16"
 updated: "2026-07-16"
-stage: "5"
+stage: "5-post-spike"
 inputs: []
 ---
 
@@ -23,7 +23,7 @@ Now the fronter just points their phone at the receipt. Hasebly reads every item
 
 1. **The bill lands.** The fronter opens hasebly and taps the camera icon — no sign-up screen first.
 2. **Snap the receipt.** Hasebly reads the items and prices straight off the paper.
-3. **Confirm what applies.** Hasebly shows what it read, and the fronter taps twice — is the 14% tax applicable here? Is the 12% service applicable? Some places charge both, some bake one or both into the price already, some charge neither. Two taps, and the split accounts for exactly what's real on this bill.
+3. **Confirm what applies — and at what rate.** Hasebly shows what it read, and the fronter confirms: is tax applicable, and at what rate? Is service applicable, and at what rate? Real receipts vary — some charge 14% tax and 12% service, some charge only a 10% service with no tax at all, some bake everything into the price already. Hasebly defaults to the common 14%/12% but the fronter can adjust either, and the split accounts for exactly what's real on this bill — including calculating tax correctly on top of service when that's how the venue actually charges it, not just summing both flat.
 4. **Tap who had what.** The fronter goes down the list once — this drink's Sara's, this platter's split three ways.
 5. **Review, then confirm.** Hasebly shows each person's exact total: their food and drinks, plus their proportional share of whatever tax and service actually apply. Anything OCR misread — tap it, fix it, same glance you'd give the real bill before paying anyway.
 6. **Pay and go.** The fronter covers the bill, everyone else sends their share however they already do — InstaPay, Vodafone Cash, cash — and the table gets up.
@@ -50,7 +50,7 @@ A: You never see a sign-up screen, never enter an email or password to use haseb
 
 ### Q: My receipts are often faded thermal paper, mixed Arabic and English, sometimes handwritten additions — does the OCR actually work on that, or am I typing it in by hand anyway?
 
-A: Honestly, this is the single biggest thing we haven't proven yet. OCR on clean, English, printed receipts is a solved problem elsewhere — Egyptian receipts are a harder case we're building and testing specifically for, not assuming will just work because it works in the US. What we can promise: the review step (see above) means a bad scan costs you a few taps to correct, not a full manual do-over. It's not all-or-nothing between "perfect OCR" and "back to a calculator."
+A: We tested this before writing this answer — 22 real receipts from actual Egyptian dinners, thermal paper, faded ink, mixed Arabic/English, one fully handwritten tab. Printed receipts read reliably, even bilingual or faded ones. The one real failure case was a fully handwritten tab with no printed structure at all — for that, expect to fall back to manual entry. What we can promise: the review step (see above) means a bad scan costs you a few taps to correct, not a full manual do-over. It's not all-or-nothing between "perfect OCR" and "back to a calculator."
 
 ### Q: Splitwise already scans receipts. Why would I switch to hasebly instead?
 
@@ -82,7 +82,7 @@ A: Free to download, free to use — no subscription, no fee taken out of your s
 
 ### Q: The whole product rests on OCR reading messy, real Egyptian receipts. Has this actually been tested, or is this an unproven bet the entire concept is built on?
 
-A: Unproven bet, honestly. De-risking plan: before building anything beyond the core loop, run a spike using an existing OCR service (Google Cloud Vision, Azure Document Intelligence, or a vision-capable LLM API) against real, deliberately varied receipts collected across the first friends-dinner tests — printed, thermal, faded, mixed Arabic/English, at least one with handwriting. If more than roughly 1 in 3 come back needing heavy correction even with the review-and-fix step as a safety net, that's the signal to narrow scope or rethink the OCR-first approach before investing further.
+A: Spike completed before PRD work started. Tested against 22 real photos (16 unique documents) from the founder's own camera roll — thermal paper, mixed Arabic/English, one fully handwritten tab, plus real-world noise (a card payment slip, gym/pharmacy body-composition printouts, a utility bill mixed into the same folder). Result: raw legibility is better than feared — only the fully handwritten tab was a genuine failure case, well under the 1-in-3 threshold that would have triggered a rethink. But the spike surfaced a bigger, more important risk than legibility: tax and service rates vary by venue (one restaurant charged 10% service and zero tax across three separate visits, not the assumed 14%/12%), and tax sometimes compounds on top of service rather than applying flatly to the subtotal — confirmed on two independent receipts by reconciling the math to the printed total. Verdict: the OCR bet is validated enough to proceed. The calculation logic needs a real fix (see PRD) before the 10-dinner test, or hasebly will confidently produce totals that don't match the printed receipt.
 
 ### Q: Would you actually pull this out mid-dinner, in front of your friends, and trust it enough to hold up the table while it works?
 
@@ -116,21 +116,23 @@ A: Low at this stage — no in-app payments, no PII required, no account layer a
 
 ## The Verdict
 
-**Concept Strength:** Solid, MVP-ready concept with one clearly identified, unproven load-bearing risk — not yet "forged in steel," but forged pending one specific, already-scoped test.
+**Concept Strength:** Solid, MVP-ready concept. The single biggest unproven risk identified at Stage 4 — OCR legibility — has since been spike-tested against 22 real receipts and cleared. In its place, the spike surfaced a more important, more concrete risk: the tax/service calculation logic itself needs a real correction before the 10-dinner test. This is now a stronger position than "forged pending a test" — it's forged, with one named engineering fix required before validation begins.
 
 **Forged in steel:**
-- The customer and problem are sharp and specific — the bill-fronter, the Coke Zero fairness scene, Egypt's 14% tax + 12% service math. Passes the mom test cleanly; no jargon, no abstraction.
+- The customer and problem are sharp and specific — the bill-fronter, the Coke Zero fairness scene, Egypt's tax + service math. Passes the mom test cleanly; no jargon, no abstraction.
 - Differentiation is real, not manufactured. When research revealed Splitwise Pro already has receipt OCR, the positioning correctly shifted to "no sign-up, one-off use, Egypt-specific handling" instead of quietly ignoring the conflict — a concept that bends under scrutiny instead of breaking under it is a strong signal.
-- Two load-bearing correctness decisions emerged directly from hard questions, not from polish: the tax/service applicability toggle (prevents double- or under-charging when receipts vary in what they itemize) and the review-before-pay step (prevents a silent OCR misread from becoming a real money mistake between friends). The concept would have shipped without both if the process had moved faster.
-- The validation plan is concrete and self-funded: a 10-dinner go/no-go threshold and a deliberately stripped-down first build (one platform, manual tap-assign, no accounts/history/ads), not a vague "we'll figure it out."
+- Two load-bearing correctness decisions emerged directly from hard questions, not from polish: the tax/service applicability toggle and the review-before-pay step. The concept would have shipped without both if the process had moved faster.
+- The validation plan is concrete and self-funded: a 10-dinner go/no-go threshold and a deliberately stripped-down first build, not a vague "we'll figure it out." The plan was actually executed (the OCR spike ran before the PRD), not just written down — a real signal of follow-through.
+- OCR legibility, the top named technical risk, is now empirically validated rather than assumed: 22 real receipts, only one genuine failure case (a fully handwritten tab), well under the failure threshold set in advance.
 
 **Needs more heat:**
 - Ad economics are directional, not proven. Cloud OCR cost-per-scan could exceed ad revenue at low volume; there's no answer yet for when that flips positive. Acceptable for a friends-only MVP; needs real numbers before scaling past that.
 - The growth loop beyond the founder's immediate friend group is unproven — "word of mouth at the table" is plausible but untested with people who don't already trust the founder personally.
 
 **Cracks in the foundation:**
+- **New, spike-confirmed correctness gap:** the tax/service confirmation step (How It Works step 3) assumed a fixed 14% tax / 12% service and flat, independent math. Real receipts vary by venue (10% service with zero tax observed, consistently, across three separate visits to one restaurant) and tax sometimes compounds on top of a service-inclusive subtotal rather than applying flatly — confirmed on two independent receipts. This is now fixed in the press release copy (step 3 updated to capture actual rates, not just applicability) but the underlying calculation engine needs to implement rate-capture and compounding correctly before the 10-dinner test, or hasebly will confidently produce totals that don't match the printed receipt — undermining the exact trust the product is built on.
 - Competitive moat is thin, and that's acknowledged rather than resolved. If the 10-dinner test validates the concept, "what's actually defensible against a fast-follower" needs a real second answer before any launch wider than friends-of-friends.
-- The "under a minute" end-to-end claim in the press release is still aspirational. It was deliberately kept in to force scrutiny during the Internal FAQ, and that scrutiny is still pending on the not-yet-executed OCR spike — this number may need to be walked back once real timing data exists.
+- The "under a minute" end-to-end claim in the press release is still aspirational — the OCR spike validated legibility but didn't measure end-to-end timing (scan + confirm-rate + tap-assign + review) across a real multi-person table. Still pending real timing data from the 10-dinner test.
 - Legal/privacy work for the account-linking feature (Egypt's Law 151/2020) is correctly deferred past MVP, but deferred items are the ones that get skipped when things move fast — needs an explicit checklist entry before that feature ships, not a mental note.
 
 <!-- coaching-notes-stage-1 -->
@@ -188,3 +190,15 @@ A: Low at this stage — no in-app payments, no PII required, no account layer a
 - **Named strategic risk, accepted:** competitive moat is thin (OCR + local tax math is a copyable pattern) — defensibility rests on speed-to-real-users and depth of local execution (Arabic/thermal receipt handling), not a durable technical secret. Accepted as reasonable for MVP stage; would need revisiting if/when raising the stakes beyond a friends-and-friends-of-friends test.
 - **Legal exposure:** low now (no payments, no required PII, no account layer in v1 test build); Egypt's data protection law (151/2020) becomes relevant only once optional account-linking ships later — flagged as a pre-launch (not pre-MVP) checklist item.
 - **Growth-loop dependency named explicitly:** the "first 100 users via word-of-mouth at the table" plan and the OCR-reliability risk are the same risk wearing two hats — a bad scan in front of friends breaks both the trust threshold and the growth loop simultaneously. This is the single point of failure the whole concept currently hinges on.
+
+<!-- coaching-notes-ocr-spike -->
+**Post-PRFAQ: OCR De-Risking Spike (executed, results merged into document above)**
+- **Method:** 22 real photos from the founder's own camera roll, converted from HEIC and read directly by a vision-capable LLM (Claude) as a proxy for a production OCR pipeline — no dedicated OCR API integration built yet, this was a reasoning/legibility spike, not a latency/cost/engineering spike.
+- **Sample composition:** 16 unique documents (some photographed more than once). Roughly 9 were genuine dine-in-shaped restaurant/cafe/bar bills; the rest were real-world noise found mixed into the same camera roll — a card payment terminal slip, three gym/pharmacy body-composition printouts (two different businesses/visits), a utility bill payment receipt, and a food-delivery (Talabat) order.
+- **Legibility result:** 8 of 9 dine-in-shaped receipts were read with high confidence, including faded thermal paper and mixed Arabic/English text. The one clear failure: a fully handwritten club/cabana tab ("club sk") — no printed structure, cursive Arabic, mostly-blank template — a genuine case where OCR should be expected to fail and fall back to manual entry. This is roughly 1-in-9, well under the 1-in-3 stop-and-rethink threshold set in Stage 4.
+- **Finding 1 — tax/service rates are venue-specific, not fixed:** three separate real orders from the same restaurant (SEA SOUL Restaurant & Cafe) all charged exactly 10% service and zero tax — not the assumed 14% tax / 12% service used throughout the press release as the "standard." Other receipts showed VAT-only (14%), service-only (12%), both, or neither. **Product implication:** the tax/service confirmation step cannot assume fixed rates; it must let the fronter confirm or adjust the actual rate per receipt. Press release How It Works step 3 has been updated to reflect this.
+- **Finding 2 — tax compounds on service, not on the raw subtotal, on at least some receipts:** confirmed independently on two receipts (a Greek Club Cairo receipt: 184.00 subtotal → 12% service = 22.08 → 14% tax on the service-inclusive 206.08 = 28.85, not 14% of 184.00; and a second, unnamed French-menu restaurant receipt that only reconciled once the same compounding order was applied). **Product implication:** the split calculation engine must support tax-on-top-of-service-inclusive-subtotal as a real, non-rare case — not just two independent flat percentages summed onto the base subtotal. Getting this wrong silently produces a total that doesn't match the receipt, which is the single worst trust failure the product could have.
+- **Finding 3 — some receipts are internally inconsistent, not just hard to read:** a "Pro forma receipt" from Boxmeal Dahab had a tax line referencing a different base amount (1,070) than its own printed subtotal (1,300), with the tax itself printing as 0.00. This is a source-data inconsistency, not an OCR error — even perfect reading would produce a receipt that doesn't self-reconcile. **Product implication:** hasebly should anchor to the printed Subtotal/Total as ground truth for the review step rather than trying to derive or validate an internally "correct" tax formula.
+- **Finding 4 — real camera rolls contain significant non-receipt noise:** roughly a quarter of the sample (6 of 22 photos) were not restaurant receipts at all. **Product implication:** the scan flow needs a graceful "this doesn't look like a receipt" path rather than assuming every photo will contain parseable line items.
+- **Not tested by this spike:** end-to-end timing (the "under a minute" claim), a dedicated OCR API's real-world accuracy/cost/latency (this spike used a general-purpose vision LLM reading images directly, not the production OCR service that would actually ship), and Arabic handwriting beyond the one club-tab example encountered.
+- **Recommendation carried into PRD:** scope the split-calculation engine around configurable/confirmable tax and service rates with correct compounding order from day one — this is now a known, not hypothetical, requirement — rather than treating it as a v2 refinement.

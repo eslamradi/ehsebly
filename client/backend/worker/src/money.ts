@@ -22,3 +22,14 @@ export function parsePrintedPriceToPiastres(raw: string): number | null {
   const centsText = fractionalPart.padEnd(2, '0');
   return Number.parseInt(wholePart, 10) * 100 + Number.parseInt(centsText, 10);
 }
+
+/**
+ * Rounds a fractional piastre amount to the nearest whole piastre, half-up
+ * — mirrors client/app/domain/money.ts's `roundHalfUp` (Architecture AD-3's
+ * documented rounding rule). Duplicated rather than shared since the client
+ * and Worker are independent projects with no shared package in this v1
+ * layout (same rationale as `parsePrintedPriceToPiastres` above).
+ */
+export function roundHalfUp(piastres: number): number {
+  return Math.floor(piastres + 0.5);
+}

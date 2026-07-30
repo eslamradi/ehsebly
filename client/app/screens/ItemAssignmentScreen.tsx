@@ -100,8 +100,8 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
     [theme],
   );
 
-  const { session, addPerson, setItemAllocations } = useSplitSession();
-  const { extractionResult, taxService, people, itemAssignments } = session;
+  const { session, addPerson, setItemAllocations, setPaidByMemberId } = useSplitSession();
+  const { extractionResult, taxService, people, itemAssignments, group } = session;
 
   const [newPersonName, setNewPersonName] = useState('');
   const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
@@ -170,6 +170,10 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
       setBlockedMessage('Assign every item to at least one person before continuing — unassigned items are flagged below.');
       return;
     }
+    if (group && !group.paidByMemberId) {
+      setBlockedMessage('Choose who paid before continuing.');
+      return;
+    }
     setBlockedMessage(null);
     navigation.navigate('Review');
   };
@@ -183,24 +187,60 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
     <ScrollView style={screenStyles.container} contentContainerStyle={screenStyles.content}>
       <Text style={screenStyles.heading}>Who had what?</Text>
 
-      <View style={styles.addPersonRow}>
-        <TextInput
-          accessibilityLabel="New person's name"
-          style={styles.nameInput}
-          placeholder="Add a person"
-          placeholderTextColor={colors.inkFaint}
-          value={newPersonName}
-          onChangeText={(text) => {
-            setNewPersonName(text);
-            setAddPersonError(null);
-          }}
-          onSubmitEditing={handleAddPerson}
-        />
-        <Pressable accessibilityLabel="Add person" style={styles.addButton} onPress={handleAddPerson}>
-          <Text style={buttonStyles.primaryText}>Add</Text>
-        </Pressable>
-      </View>
-      {addPersonError && <Text style={styles.errorText}>{addPersonError}</Text>}
+      {group ? (
+        // Group expenses assign items among the group's actual members only —
+        // an ad-hoc "Add a person" here would have no corresponding
+        // group_member_id, so their assigned items would silently vanish from
+        // the submitted ledger (Story 2.4 code-review finding, 2026-07-29).
+        // Membership changes go through Invite Member (Story 2.3), not here.
+        <Text style={styles.note}>
+          Assigning items among this group's members. To include someone new, invite them from the group screen, then start
+          this expense again.
+        </Text>
+      ) : (
+        <>
+          <View style={styles.addPersonRow}>
+            <TextInput
+              accessibilityLabel="New person's name"
+              style={styles.nameInput}
+              placeholder="Add a person"
+              placeholderTextColor={colors.inkFaint}
+              value={newPersonName}
+              onChangeText={(text) => {
+                setNewPersonName(text);
+                setAddPersonError(null);
+              }}
+              onSubmitEditing={handleAddPerson}
+            />
+            <Pressable accessibilityLabel="Add person" style={styles.addButton} onPress={handleAddPerson}>
+              <Text style={buttonStyles.primaryText}>Add</Text>
+            </Pressable>
+          </View>
+          {addPersonError && <Text style={styles.errorText}>{addPersonError}</Text>}
+        </>
+      )}
+
+      {group && (
+        <View>
+          <Text style={styles.note}>Who paid?</Text>
+          <View style={styles.chipRow}>
+            {people.map((person, personIndex) => {
+              const memberId = group.memberIdByPersonIndex[personIndex];
+              const active = memberId !== undefined && group.paidByMemberId === memberId;
+              return (
+                <Pressable
+                  key={personIndex}
+                  accessibilityLabel={`${person.name} paid`}
+                  style={[styles.chip, active && styles.chipActive]}
+                  onPress={() => memberId && setPaidByMemberId(memberId)}
+                >
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{person.name}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      )}
 
       {items.map((item, itemIndex) => {
         const weights = itemAssignments[itemIndex] ?? {};

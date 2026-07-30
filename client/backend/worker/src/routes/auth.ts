@@ -4,7 +4,7 @@ import { isValidEgyptianPhoneE164 } from '../phone';
 import { createOtpCode, isRateLimited, verifyAndConsumeOtpCode, type VerifyOtpResult } from '../db/otp';
 import { getOrCreateUserByPhone, getUserByPhone } from '../db/users';
 import { createAuthSession } from '../db/authSessions';
-import { activatePendingMembershipsForPhone } from '../db/households';
+import { activatePendingMembershipsForPhone } from '../db/groups';
 import { sendOtpSms } from '../sms';
 import type { RouteHandler } from '../router';
 

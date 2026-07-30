@@ -15,19 +15,27 @@ import {
 } from '@expo-google-fonts/ibm-plex-mono';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AccountProvider } from './app/domain/account';
 import { SplitSessionProvider } from './app/domain/session';
 import { useTheme } from './app/theme';
 import type { RootStackParamList } from './app/navigation/types';
 import CaptureScreen from './app/screens/CaptureScreen';
+import CreateGroupScreen from './app/screens/CreateGroupScreen';
 import ExtractedItemsScreen from './app/screens/ExtractedItemsScreen';
 import ExtractionFailedScreen from './app/screens/ExtractionFailedScreen';
 import FinalSplitScreen from './app/screens/FinalSplitScreen';
+import GroupDetailScreen from './app/screens/GroupDetailScreen';
+import GroupListScreen from './app/screens/GroupListScreen';
 import HistoryDetailScreen from './app/screens/HistoryDetailScreen';
 import HistoryScreen from './app/screens/HistoryScreen';
 import HomeScreen from './app/screens/HomeScreen';
+import InviteMemberScreen from './app/screens/InviteMemberScreen';
 import ItemAssignmentScreen from './app/screens/ItemAssignmentScreen';
 import ManualEntryScreen from './app/screens/ManualEntryScreen';
+import OtpVerifyScreen from './app/screens/OtpVerifyScreen';
+import PhoneEntryScreen from './app/screens/PhoneEntryScreen';
 import ReviewScreen from './app/screens/ReviewScreen';
+import SettleUpScreen from './app/screens/SettleUpScreen';
 import TaxServiceScreen from './app/screens/TaxServiceScreen';
 
 export type { RootStackParamList };
@@ -85,26 +93,35 @@ function AppContent() {
   };
 
   return (
-    <SplitSessionProvider>
-      <NavigationContainer theme={navigationTheme}>
-        <Stack.Navigator
-          initialRouteName="Home"
-          screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.paper } }}
-        >
-          <Stack.Screen name="Home" component={HomeScreen} />
-          <Stack.Screen name="Capture" component={CaptureScreen} />
-          <Stack.Screen name="ExtractedItems" component={ExtractedItemsScreen} />
-          <Stack.Screen name="ExtractionFailed" component={ExtractionFailedScreen} />
-          <Stack.Screen name="ManualEntry" component={ManualEntryScreen} />
-          <Stack.Screen name="TaxService" component={TaxServiceScreen} />
-          <Stack.Screen name="ItemAssignment" component={ItemAssignmentScreen} />
-          <Stack.Screen name="Review" component={ReviewScreen} />
-          <Stack.Screen name="FinalSplit" component={FinalSplitScreen} />
-          <Stack.Screen name="History" component={HistoryScreen} />
-          <Stack.Screen name="HistoryDetail" component={HistoryDetailScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
-      <StatusBar style="auto" />
-    </SplitSessionProvider>
+    <AccountProvider>
+      <SplitSessionProvider>
+        <NavigationContainer theme={navigationTheme}>
+          <Stack.Navigator
+            initialRouteName="Home"
+            screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.paper } }}
+          >
+            <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="Capture" component={CaptureScreen} />
+            <Stack.Screen name="ExtractedItems" component={ExtractedItemsScreen} />
+            <Stack.Screen name="ExtractionFailed" component={ExtractionFailedScreen} />
+            <Stack.Screen name="ManualEntry" component={ManualEntryScreen} />
+            <Stack.Screen name="TaxService" component={TaxServiceScreen} />
+            <Stack.Screen name="ItemAssignment" component={ItemAssignmentScreen} />
+            <Stack.Screen name="Review" component={ReviewScreen} />
+            <Stack.Screen name="FinalSplit" component={FinalSplitScreen} />
+            <Stack.Screen name="History" component={HistoryScreen} />
+            <Stack.Screen name="HistoryDetail" component={HistoryDetailScreen} />
+            <Stack.Screen name="PhoneEntry" component={PhoneEntryScreen} />
+            <Stack.Screen name="OtpVerify" component={OtpVerifyScreen} />
+            <Stack.Screen name="GroupList" component={GroupListScreen} />
+            <Stack.Screen name="CreateGroup" component={CreateGroupScreen} />
+            <Stack.Screen name="GroupDetail" component={GroupDetailScreen} />
+            <Stack.Screen name="InviteMember" component={InviteMemberScreen} />
+            <Stack.Screen name="SettleUp" component={SettleUpScreen} />
+          </Stack.Navigator>
+        </NavigationContainer>
+        <StatusBar style="auto" />
+      </SplitSessionProvider>
+    </AccountProvider>
   );
 }

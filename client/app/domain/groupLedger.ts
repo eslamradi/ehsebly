@@ -1,12 +1,16 @@
 import { calculatePersonSubtotals, calculatePersonTotals } from './assignment';
 import type { SplitCalculationResult } from './splitCalculation';
-import type { HouseholdMember } from './household';
+import type { GroupMember } from './group';
 
-export type HouseholdExpense = {
+export type GroupExpense = {
   id: string;
   paidByMemberId: string;
+  // Display-only metadata — not read by any ledger-math function below, so
+  // synthetic fixtures (verifyGroupBalances.ts) can omit them.
+  description?: string;
+  createdAt?: string;
   items: Array<{ pricePiastres: number }>;
-  // itemIndex -> household_member_id -> weight, the same shape as
+  // itemIndex -> group_member_id -> weight, the same shape as
   // session.tsx's ItemAssignments but keyed by memberId instead of a
   // person array index.
   itemAssignments: Record<number, Record<string, number>>;
@@ -20,21 +24,64 @@ export type HouseholdExpense = {
   totalPiastres: number;
 };
 
-export type HouseholdSettlement = {
+export type GroupSettlement = {
   fromMemberId: string;
   toMemberId: string;
   amountPiastres: number;
 };
 
 /**
+ * `members` (from listGroupMembers) excludes anyone with status 'removed' —
+ * correct for "who can be assigned to a NEW expense" UI, but wrong for
+ * historical ledger math: a removed member's past expense share or paid-by
+ * credit must still count, or their cost/credit silently vanishes and
+ * redistributes onto whoever's left (code review finding, Story 2.6,
+ * 2026-07-30). This backfills a placeholder entry for any member id
+ * referenced by past expenses/settlements but missing from `members`, so
+ * ledger math always sees every member who was ever party to the group's
+ * money — removal only ever affects future assignability, never past math.
+ */
+function resolveMembersForLedger(
+  members: GroupMember[],
+  expenses: GroupExpense[],
+  settlements: GroupSettlement[],
+): GroupMember[] {
+  const known = new Map(members.map((member) => [member.id, member]));
+  const addIfMissing = (memberId: string) => {
+    if (!known.has(memberId)) {
+      known.set(memberId, {
+        id: memberId,
+        phoneE164: '',
+        displayName: 'Removed member',
+        status: 'removed',
+        userId: null,
+      });
+    }
+  };
+  for (const expense of expenses) {
+    addIfMissing(expense.paidByMemberId);
+    for (const weights of Object.values(expense.itemAssignments)) {
+      for (const memberId of Object.keys(weights)) {
+        addIfMissing(memberId);
+      }
+    }
+  }
+  for (const settlement of settlements) {
+    addIfMissing(settlement.fromMemberId);
+    addIfMissing(settlement.toMemberId);
+  }
+  return Array.from(known.values());
+}
+
+/**
  * Maps memberId-keyed weights onto assignment.ts's index-keyed shape (order
  * fixed by `members`), runs the already-verified weighted-split math
  * (calculatePersonSubtotals/calculatePersonTotals — the exact same functions
  * ItemAssignmentScreen already uses), then maps the per-index shares back to
- * memberId. A household expense costs exactly what the existing solo-split
+ * memberId. A group expense costs exactly what the existing solo-split
  * math already proved correct, with no second implementation.
  */
-export function calculateMemberSharesForExpense(expense: HouseholdExpense, members: HouseholdMember[]): Record<string, number> {
+export function calculateMemberSharesForExpense(expense: GroupExpense, members: GroupMember[]): Record<string, number> {
   const memberIdByIndex = members.map((member) => member.id);
   const indexByMemberId = new Map(memberIdByIndex.map((id, index) => [id, index]));
 
@@ -70,25 +117,26 @@ export function calculateMemberSharesForExpense(expense: HouseholdExpense, membe
 
 /**
  * Running net balance per member across every expense + settlement in a
- * household (positive = owed to them, negative = they owe). For each
+ * group (positive = owed to them, negative = they owe). For each
  * expense, every member's share debits them and credits the payer — except
  * the payer's own share, which nets to zero (you can't owe yourself).
  * Settlements then move balance directly from payer to recipient.
  * Conservation always holds: the sum of every member's net balance is
  * exactly 0.
  */
-export function computeHouseholdNetBalances(
-  expenses: HouseholdExpense[],
-  settlements: HouseholdSettlement[],
-  members: HouseholdMember[],
+export function computeGroupNetBalances(
+  expenses: GroupExpense[],
+  settlements: GroupSettlement[],
+  members: GroupMember[],
 ): Record<string, number> {
+  const allMembers = resolveMembersForLedger(members, expenses, settlements);
   const net: Record<string, number> = {};
-  for (const member of members) {
+  for (const member of allMembers) {
     net[member.id] = 0;
   }
 
   for (const expense of expenses) {
-    const shares = calculateMemberSharesForExpense(expense, members);
+    const shares = calculateMemberSharesForExpense(expense, allMembers);
     for (const [memberId, share] of Object.entries(shares)) {
       if (memberId === expense.paidByMemberId) {
         continue;
@@ -108,18 +156,19 @@ export function computeHouseholdNetBalances(
 
 /**
  * Per directed-pair breakdown ("you owe Bob X") for SettleUpScreen — same
- * accumulation as computeHouseholdNetBalances but kept per ordered pair
+ * accumulation as computeGroupNetBalances but kept per ordered pair
  * instead of collapsed to one net number per member. `debts[a][b]` is what
  * `a` owes `b`. Deliberately not simplified/netted across the two
  * directions of a pair or across three-way cycles (Stage 1 scope) — a
  * smarter "minimum transactions to settle" reduction can be added later as
  * one more pure function here without touching this one.
  */
-export function computeHouseholdPairwiseDebts(
-  expenses: HouseholdExpense[],
-  settlements: HouseholdSettlement[],
-  members: HouseholdMember[],
+export function computeGroupPairwiseDebts(
+  expenses: GroupExpense[],
+  settlements: GroupSettlement[],
+  members: GroupMember[],
 ): Record<string, Record<string, number>> {
+  const allMembers = resolveMembersForLedger(members, expenses, settlements);
   const debts: Record<string, Record<string, number>> = {};
   const add = (fromMemberId: string, toMemberId: string, amount: number) => {
     if (fromMemberId === toMemberId || amount === 0) {
@@ -132,7 +181,7 @@ export function computeHouseholdPairwiseDebts(
   };
 
   for (const expense of expenses) {
-    const shares = calculateMemberSharesForExpense(expense, members);
+    const shares = calculateMemberSharesForExpense(expense, allMembers);
     for (const [memberId, share] of Object.entries(shares)) {
       if (memberId !== expense.paidByMemberId) {
         add(memberId, expense.paidByMemberId, share);
