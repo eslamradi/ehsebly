@@ -9,6 +9,18 @@ export type TaxOrServiceLine = {
 };
 
 /**
+ * A whole-order discount line (e.g. a delivery-app "Discount" line) — as
+ * opposed to a per-item discount, which is folded directly into that
+ * item's own `price_piastres` and never leaves the Worker as its own
+ * field. Exactly one of the two fields is ever set, mirroring whichever
+ * form (flat amount vs percentage) was actually printed.
+ */
+export type DiscountLine = {
+  amount_piastres?: number;
+  rate_percent?: number;
+};
+
+/**
  * A named flat (non-percentage) charge printed on its own line — the
  * "Delivery fee" / "Service fee" / "Preparation fee" lines common on
  * delivery-app order screenshots, as opposed to `TaxOrServiceLine`'s
@@ -30,8 +42,14 @@ export type ExtractionResponse =
       items: ExtractedItem[];
       tax_line?: TaxOrServiceLine;
       service_line?: TaxOrServiceLine;
+      discount_line?: DiscountLine;
       flat_fees?: FlatFeeLine[];
       printed_total_piastres?: number;
+      // Present only when at least one item had a printed per-item discount
+      // (flat or percentage) applied — items[].price_piastres already
+      // reflects the discounted amount; this is purely a display note so
+      // the fronter isn't confused by a price lower than the menu price.
+      discount_note?: string;
       // Present only when multiple photos were submitted as one order but
       // don't actually look like the same order — items/totals above still
       // come from whichever single image was judged coherent; this is a

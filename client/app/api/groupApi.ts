@@ -4,7 +4,9 @@ import type { GroupExpense, GroupSettlement } from '../domain/groupLedger';
 import type {
   AcceptGroupInviteResponse,
   CreateGroupResponse,
+  DeleteExpenseResponse,
   ExpenseWire,
+  GetAccountResponse,
   GetGroupResponse,
   GroupMemberWire,
   GroupWire,
@@ -15,6 +17,8 @@ import type {
   RequestOtpResponse,
   SubmitExpenseBody,
   SubmitExpenseResponse,
+  UpdateAccountResponse,
+  UpdateExpenseResponse,
   VerifyOtpResponse,
 } from './groupTypes';
 
@@ -52,29 +56,45 @@ async function callJson<TResponseBody extends { status: string }>(
 }
 
 function mapMember(wire: GroupMemberWire): GroupMember {
-  return { id: wire.id, phoneE164: wire.phone_e164, displayName: wire.display_name, status: wire.status, userId: wire.user_id };
+  return { id: wire.id, email: wire.email, displayName: wire.display_name, status: wire.status, userId: wire.user_id };
 }
 
 function mapGroup(wire: GroupWire, memberCount: number): Group {
-  return { id: wire.id, name: wire.name, kind: wire.kind, memberCount, createdAt: wire.created_at };
+  return { id: wire.id, name: wire.name, kind: wire.kind, memberCount, createdAt: wire.created_at, createdByUserId: wire.created_by_user_id };
 }
 
-export async function requestOtp(phoneE164: string): Promise<{ ok: true } | { ok: false; message: string }> {
-  const result = await callJson<RequestOtpResponse>('/auth/otp/request', { method: 'POST', body: { phone_e164: phoneE164 } });
+export async function requestOtp(email: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  const result = await callJson<RequestOtpResponse>('/auth/otp/request', { method: 'POST', body: { email } });
   return result.status === 'sent' ? { ok: true } : { ok: false, message: result.message };
 }
 
-export type VerifiedAccount = { userId: string; phoneE164: string; displayName: string | null; token: string };
+export type VerifiedAccount = { userId: string; email: string; displayName: string | null; token: string };
 
-export async function verifyOtp(phoneE164: string, code: string): Promise<{ ok: true; account: VerifiedAccount } | { ok: false; message: string }> {
-  const result = await callJson<VerifyOtpResponse>('/auth/otp/verify', { method: 'POST', body: { phone_e164: phoneE164, code } });
+export async function verifyOtp(email: string, code: string): Promise<{ ok: true; account: VerifiedAccount } | { ok: false; message: string }> {
+  const result = await callJson<VerifyOtpResponse>('/auth/otp/verify', { method: 'POST', body: { email, code } });
   if (result.status === 'ok') {
     return {
       ok: true,
-      account: { userId: result.user.id, phoneE164: result.user.phone_e164, displayName: result.user.display_name, token: result.token },
+      account: { userId: result.user.id, email: result.user.email, displayName: result.user.display_name, token: result.token },
     };
   }
   return { ok: false, message: result.message };
+}
+
+export type AccountProfile = { userId: string; email: string; displayName: string | null };
+
+export async function getAccount(token: string): Promise<ApiResult<AccountProfile>> {
+  const result = await callJson<GetAccountResponse>('/me', { method: 'GET', token });
+  return result.status === 'ok'
+    ? { status: 'ok', data: { userId: result.user.id, email: result.user.email, displayName: result.user.display_name } }
+    : { status: 'error', message: result.message };
+}
+
+export async function updateAccountName(token: string, displayName: string): Promise<ApiResult<AccountProfile>> {
+  const result = await callJson<UpdateAccountResponse>('/me', { method: 'POST', token, body: { display_name: displayName } });
+  return result.status === 'ok'
+    ? { status: 'ok', data: { userId: result.user.id, email: result.user.email, displayName: result.user.display_name } }
+    : { status: 'error', message: result.message };
 }
 
 export async function createGroup(token: string, name: string, kind: GroupKind): Promise<ApiResult<Group>> {
@@ -96,9 +116,9 @@ export async function listGroups(token: string): Promise<ApiResult<{ groups: Gro
   return { status: 'error', message: result.message };
 }
 
-// Explicit accept step for an invite sent to an already-registered phone
-// number (2026-07-30 fix — see inviteMember's Dev Notes in
-// db/groups.ts / Story 2.3). A brand-new phone's invite still
+// Explicit accept step for an invite sent to an already-registered email
+// address (2026-07-30 fix — see inviteMember's Dev Notes in
+// db/groups.ts / Story 2.3). A brand-new email's invite still
 // auto-activates on first OTP verify; this covers the other branch.
 export async function acceptGroupInvite(token: string, groupId: string): Promise<ApiResult<GroupMember>> {
   const result = await callJson<AcceptGroupInviteResponse>(`/groups/${groupId}/accept`, { method: 'POST', token });
@@ -114,11 +134,11 @@ export async function getGroup(token: string, groupId: string): Promise<ApiResul
   return { status: 'error', message: result.message };
 }
 
-export async function inviteMember(token: string, groupId: string, phoneE164: string, displayName: string): Promise<ApiResult<GroupMember>> {
+export async function inviteMember(token: string, groupId: string, email: string, displayName: string): Promise<ApiResult<GroupMember>> {
   const result = await callJson<InviteMemberResponse>(`/groups/${groupId}/members`, {
     method: 'POST',
     token,
-    body: { phone_e164: phoneE164, display_name: displayName },
+    body: { email, display_name: displayName },
   });
   return result.status === 'ok' ? { status: 'ok', data: mapMember(result.member) } : { status: 'error', message: result.message };
 }
@@ -133,13 +153,26 @@ function mapExpense(wire: ExpenseWire): GroupExpense {
     paidByMemberId: wire.paid_by_member_id,
     description: wire.description,
     createdAt: wire.created_at,
-    items: wire.items.map((item) => ({ pricePiastres: item.price_piastres })),
+    printedTotalPiastres: wire.printed_total_piastres,
+    items: wire.items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      pricePiastres: item.price_piastres,
+      quantity: item.quantity,
+      isShared: item.is_shared,
+    })),
     itemAssignments,
     subtotalPiastres: wire.subtotal_piastres,
     taxPiastres: wire.tax_piastres,
     servicePiastres: wire.service_piastres,
     otherServicePiastres: wire.other_service_piastres,
     totalPiastres: wire.total_piastres,
+    taxEnabled: wire.tax_enabled,
+    taxRatePercent: wire.tax_rate_percent,
+    serviceEnabled: wire.service_enabled,
+    serviceRatePercent: wire.service_rate_percent,
+    otherServiceEnabled: wire.other_service_enabled,
+    otherServiceRatePercent: wire.other_service_rate_percent,
   };
 }
 
@@ -164,6 +197,23 @@ export async function listGroupExpenses(
 export async function submitGroupExpense(token: string, groupId: string, body: SubmitExpenseBody): Promise<ApiResult<{ expenseId: string }>> {
   const result = await callJson<SubmitExpenseResponse>(`/groups/${groupId}/expenses`, { method: 'POST', token, body });
   return result.status === 'ok' ? { status: 'ok', data: { expenseId: result.expense_id } } : { status: 'error', message: result.message };
+}
+
+// Admin-only (group creator — 2026-07-30); server independently enforces
+// this via requireGroupAdmin regardless of what the client shows/hides.
+export async function updateGroupExpense(
+  token: string,
+  groupId: string,
+  expenseId: string,
+  body: SubmitExpenseBody,
+): Promise<ApiResult<void>> {
+  const result = await callJson<UpdateExpenseResponse>(`/groups/${groupId}/expenses/${expenseId}`, { method: 'POST', token, body });
+  return result.status === 'ok' ? { status: 'ok', data: undefined } : { status: 'error', message: result.message };
+}
+
+export async function deleteGroupExpense(token: string, groupId: string, expenseId: string): Promise<ApiResult<void>> {
+  const result = await callJson<DeleteExpenseResponse>(`/groups/${groupId}/expenses/${expenseId}/delete`, { method: 'POST', token });
+  return result.status === 'ok' ? { status: 'ok', data: undefined } : { status: 'error', message: result.message };
 }
 
 export async function recordSettlement(

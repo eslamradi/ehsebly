@@ -1,19 +1,23 @@
-import { extractReceiptViaVisionLLM } from './extract';
+import { extractReceipt } from './extract';
 import type { ExtractionResponse } from './types';
 import type { Env } from './env';
 import { jsonResponse as genericJsonResponse } from './http';
 import { createRouter } from './router';
 import { requestOtp, verifyOtp } from './routes/auth';
+import { getAccountRoute, updateAccountRoute } from './routes/account';
 import {
   acceptGroupInviteRoute,
   createGroupRoute,
+  deleteExpenseRoute,
   getGroupRoute,
   inviteMemberRoute,
   listExpensesRoute,
   listGroupsRoute,
   submitExpenseRoute,
+  updateExpenseRoute,
 } from './routes/groups';
 import { recordSettlementRoute } from './routes/settlements';
+import { getAdminStatsRoute } from './routes/admin';
 
 export type { Env };
 
@@ -66,7 +70,7 @@ async function handleExtraction(request: Request, env: Env): Promise<Response> {
     return jsonResponse({ status: 'error', message: `Too many photos — up to ${MAX_IMAGES} at once.` }, 400);
   }
 
-  const result = await extractReceiptViaVisionLLM(imagesBytes, env.ANTHROPIC_API_KEY);
+  const result = await extractReceipt(imagesBytes, env);
   return jsonResponse(result);
 }
 
@@ -78,6 +82,8 @@ async function handleExtraction(request: Request, env: Env): Promise<Response> {
 const router = createRouter<Env>();
 router.add('POST', '/auth/otp/request', requestOtp);
 router.add('POST', '/auth/otp/verify', verifyOtp);
+router.add('GET', '/me', getAccountRoute);
+router.add('POST', '/me', updateAccountRoute);
 router.add('POST', '/groups', createGroupRoute);
 router.add('GET', '/groups', listGroupsRoute);
 router.add('GET', '/groups/:groupId', getGroupRoute);
@@ -85,7 +91,10 @@ router.add('POST', '/groups/:groupId/members', inviteMemberRoute);
 router.add('POST', '/groups/:groupId/accept', acceptGroupInviteRoute);
 router.add('GET', '/groups/:groupId/expenses', listExpensesRoute);
 router.add('POST', '/groups/:groupId/expenses', submitExpenseRoute);
+router.add('POST', '/groups/:groupId/expenses/:expenseId', updateExpenseRoute);
+router.add('POST', '/groups/:groupId/expenses/:expenseId/delete', deleteExpenseRoute);
 router.add('POST', '/groups/:groupId/settlements', recordSettlementRoute);
+router.add('GET', '/admin/stats', getAdminStatsRoute);
 
 // The mobile client's own requests (native fetch on iOS/Android) never
 // enforce CORS, so this went unnoticed until browser-based testing hit it —

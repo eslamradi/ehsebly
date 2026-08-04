@@ -29,6 +29,13 @@ const OTHER_SERVICE_DISABLED = {
   otherServiceRatePercent: 0,
 };
 
+const DISCOUNT_DISABLED = {
+  discountEnabled: false,
+  discountMode: 'flat' as const,
+  discountRatePercent: 0,
+  discountFlatPiastres: 0,
+};
+
 function assertEqual(label: string, actual: number, expected: number): void {
   checks++;
   if (actual !== expected) {
@@ -141,6 +148,7 @@ function checkPersonTotals(): void {
     serviceEnabled: true,
     serviceRatePercent: 12,
     ...OTHER_SERVICE_DISABLED,
+    ...DISCOUNT_DISABLED,
   });
   const personSubtotals = [9200, 9200];
   const personTotals = calculatePersonTotals(personSubtotals, totals);
@@ -176,6 +184,7 @@ function checkPersonTotals(): void {
     serviceEnabled: true,
     serviceRatePercent: 12,
     ...OTHER_SERVICE_DISABLED,
+    ...DISCOUNT_DISABLED,
   });
   assertArrayEqual('zero-subtotal person totals', calculatePersonTotals([0, 0], zeroTotals), [0, 0]);
 }
@@ -190,6 +199,7 @@ function checkPersonTotalsOtherServiceSplitsProportionally(): void {
   // checkPersonSubtotals' shared-item cases above.)
   const totals = calculateSplitTotals({
     subtotalPiastres: 1000,
+    ...DISCOUNT_DISABLED,
     taxEnabled: false,
     taxRatePercent: 0,
     serviceEnabled: false,

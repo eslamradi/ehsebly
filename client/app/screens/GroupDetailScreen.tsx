@@ -149,16 +149,21 @@ export default function GroupDetailScreen({ navigation, route }: Props) {
             const payerLabel = payer ? payer.displayName : 'Unknown';
             const dateLabel = expense.createdAt ? new Date(expense.createdAt).toLocaleDateString() : '';
             return (
-              <View key={expense.id} style={styles.expenseRow}>
+              <Pressable
+                key={expense.id}
+                accessibilityLabel={`View ${expense.description || 'expense breakdown'}`}
+                style={styles.expenseRow}
+                onPress={() => navigation.navigate('ExpenseDetail', { groupId, expenseId: expense.id })}
+              >
                 <View style={styles.expenseHeaderRow}>
-                  <Text style={styles.expenseDescription}>{expense.description || 'Split expense'}</Text>
+                  <Text style={styles.expenseDescription}>{expense.description || 'Expense breakdown'}</Text>
                   <Text style={styles.expenseAmount}>{formatPiastresAsEGP(expense.totalPiastres)} EGP</Text>
                 </View>
                 <Text style={styles.expenseMeta}>
                   Paid by {payerLabel}
                   {dateLabel ? ` · ${dateLabel}` : ''}
                 </Text>
-              </View>
+              </Pressable>
             );
           })
       )}

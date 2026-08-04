@@ -69,7 +69,7 @@ export default function HistoryScreen({ navigation }: Props) {
     <ScrollView style={screenStyles.container} contentContainerStyle={screenStyles.content}>
       <View style={styles.headerRow}>
         <Text style={screenStyles.heading}>History</Text>
-        <Pressable accessibilityLabel="Back to home" style={styles.backButton} onPress={() => navigation.navigate('Home')}>
+        <Pressable accessibilityLabel="Back to Casual Breakdown" style={styles.backButton} onPress={() => navigation.navigate('CasualSplit')}>
           <Text style={theme.buttonStyles.secondaryText}>Back</Text>
         </Pressable>
       </View>
@@ -77,13 +77,13 @@ export default function HistoryScreen({ navigation }: Props) {
       {entries === null && <Text style={screenStyles.subheading}>Loading…</Text>}
 
       {entries !== null && entries.length === 0 && (
-        <Text style={screenStyles.subheading}>No past splits yet — finish one and it'll show up here.</Text>
+        <Text style={screenStyles.subheading}>No past breakdowns yet — finish one and it'll show up here.</Text>
       )}
 
       {entries?.map((entry) => (
         <Pressable
           key={entry.id}
-          accessibilityLabel={`Open split from ${formatEntryDate(entry.completedAt)}`}
+          accessibilityLabel={`Open breakdown from ${formatEntryDate(entry.completedAt)}`}
           style={styles.entryRow}
           onPress={() => navigation.navigate('HistoryDetail', { entryId: entry.id })}
         >

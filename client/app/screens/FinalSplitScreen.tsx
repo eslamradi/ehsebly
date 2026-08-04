@@ -70,7 +70,7 @@ export default function FinalSplitScreen({ navigation }: Props) {
         itemAssignmentsByMemberId[Number(itemIndexText)] = weightsByMemberId;
       }
       submitGroupExpense(token, session.group.groupId, {
-        description: 'Split expense',
+        description: 'Expense breakdown',
         paid_by_member_id: session.group.paidByMemberId,
         subtotal_piastres: totals.subtotalPiastres,
         tax_piastres: totals.taxPiastres,
@@ -119,13 +119,21 @@ export default function FinalSplitScreen({ navigation }: Props) {
   };
 
   const handleStartNewSplit = () => {
+    // Read before clearPhoto() wipes session.group — a group expense lands
+    // back on that group's detail screen (its own section, per the
+    // Casual Splitting/Groups split, 2026-07-30), a solo split lands back
+    // on Casual Splitting's own home rather than the top-level chooser.
+    const groupId = session.group?.groupId;
     clearPhoto();
     // navigation.reset (not navigate) so the whole in-progress stack —
     // Capture/ExtractedItems/TaxService/ItemAssignment/Review/FinalSplit — is
     // discarded rather than left behind for Back to return into with a
-    // freshly-cleared session underneath it. Resets to Home (not Capture)
-    // now that Home is the app's actual landing page.
-    navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+    // freshly-cleared session underneath it.
+    if (groupId) {
+      navigation.reset({ index: 0, routes: [{ name: 'GroupDetail', params: { groupId } }] });
+    } else {
+      navigation.reset({ index: 0, routes: [{ name: 'CasualSplit' }] });
+    }
   };
 
   if (!extractionResult || extractionResult.status !== 'ok' || !taxService) {
@@ -149,7 +157,7 @@ export default function FinalSplitScreen({ navigation }: Props) {
   return (
     <ScrollView style={screenStyles.container} contentContainerStyle={screenStyles.content}>
       <View style={styles.headerRow}>
-        <Text style={screenStyles.heading}>Split</Text>
+        <Text style={screenStyles.heading}>Breakdown</Text>
         <View style={pillStyle('positive')}>
           <Text style={pillTextStyle('positive')}>Complete</Text>
         </View>
@@ -167,11 +175,11 @@ export default function FinalSplitScreen({ navigation }: Props) {
       />
 
       <View style={styles.actions}>
-        <Pressable accessibilityLabel="Share split" style={buttonStyles.primary} onPress={handleShare}>
-          <Text style={buttonStyles.primaryText}>Share Split</Text>
+        <Pressable accessibilityLabel="Share breakdown" style={buttonStyles.primary} onPress={handleShare}>
+          <Text style={buttonStyles.primaryText}>Share Breakdown</Text>
         </Pressable>
-        <Pressable accessibilityLabel="Start new split" style={buttonStyles.secondary} onPress={handleStartNewSplit}>
-          <Text style={buttonStyles.secondaryText}>Start New Split</Text>
+        <Pressable accessibilityLabel="Start new breakdown" style={buttonStyles.secondary} onPress={handleStartNewSplit}>
+          <Text style={buttonStyles.secondaryText}>Start New Breakdown</Text>
         </Pressable>
         <Pressable accessibilityLabel="Back to review" style={buttonStyles.secondary} onPress={handleBack}>
           <Text style={buttonStyles.secondaryText}>Back</Text>

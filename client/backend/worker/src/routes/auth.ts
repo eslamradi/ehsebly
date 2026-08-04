@@ -1,26 +1,26 @@
 import type { Env } from '../env';
 import { jsonResponse, readJsonBody } from '../http';
-import { isValidEgyptianPhoneE164 } from '../phone';
+import { isValidEmail, normalizeEmail } from '../email';
 import { createOtpCode, isRateLimited, verifyAndConsumeOtpCode, type VerifyOtpResult } from '../db/otp';
-import { getOrCreateUserByPhone, getUserByPhone } from '../db/users';
+import { getOrCreateUserByEmail, getUserByEmail } from '../db/users';
 import { createAuthSession } from '../db/authSessions';
-import { activatePendingMembershipsForPhone } from '../db/groups';
-import { sendOtpSms } from '../sms';
+import { activatePendingMembershipsForEmail } from '../db/groups';
+import { sendOtpEmail } from '../brevo';
 import type { RouteHandler } from '../router';
 
 export const requestOtp: RouteHandler<Env> = async (request, env) => {
-  const body = await readJsonBody<{ phone_e164?: unknown }>(request);
-  if (!body || typeof body.phone_e164 !== 'string' || !isValidEgyptianPhoneE164(body.phone_e164)) {
-    return jsonResponse({ status: 'error', message: 'A valid Egyptian phone number is required.' }, 400);
+  const body = await readJsonBody<{ email?: unknown }>(request);
+  if (!body || typeof body.email !== 'string' || !isValidEmail(body.email)) {
+    return jsonResponse({ status: 'error', message: 'A valid email address is required.' }, 400);
   }
-  const phoneE164 = body.phone_e164;
+  const email = normalizeEmail(body.email);
 
-  if (await isRateLimited(env, phoneE164)) {
+  if (await isRateLimited(env, email)) {
     return jsonResponse({ status: 'error', message: 'Too many codes requested — try again later.' }, 429);
   }
 
-  const code = await createOtpCode(env, phoneE164);
-  const sendResult = await sendOtpSms(env, phoneE164, code);
+  const code = await createOtpCode(env, email);
+  const sendResult = await sendOtpEmail(env, email, code);
   if (!sendResult.ok) {
     return jsonResponse({ status: 'error', message: 'Could not send the verification code.' }, 502);
   }
@@ -35,29 +35,29 @@ const VERIFY_ERROR_MESSAGES: Record<Exclude<VerifyOtpResult, 'ok'>, string> = {
 };
 
 export const verifyOtp: RouteHandler<Env> = async (request, env) => {
-  const body = await readJsonBody<{ phone_e164?: unknown; code?: unknown }>(request);
-  if (!body || typeof body.phone_e164 !== 'string' || typeof body.code !== 'string') {
-    return jsonResponse({ status: 'error', message: 'Phone number and code are required.' }, 400);
+  const body = await readJsonBody<{ email?: unknown; code?: unknown }>(request);
+  if (!body || typeof body.email !== 'string' || typeof body.code !== 'string') {
+    return jsonResponse({ status: 'error', message: 'Email and code are required.' }, 400);
   }
-  const phoneE164 = body.phone_e164;
+  const email = normalizeEmail(body.email);
 
-  const result = await verifyAndConsumeOtpCode(env, phoneE164, body.code);
+  const result = await verifyAndConsumeOtpCode(env, email, body.code);
   if (result !== 'ok') {
     return jsonResponse({ status: 'error', message: VERIFY_ERROR_MESSAGES[result] }, 400);
   }
 
   // A brand-new account (no existing row before this) may have pending
-  // household invites sent to this phone before it ever signed up.
-  const existingUser = await getUserByPhone(env, phoneE164);
-  const user = existingUser ?? (await getOrCreateUserByPhone(env, phoneE164));
+  // group invites sent to this email before it ever signed up.
+  const existingUser = await getUserByEmail(env, email);
+  const user = existingUser ?? (await getOrCreateUserByEmail(env, email));
   if (!existingUser) {
-    await activatePendingMembershipsForPhone(env, phoneE164, user.id);
+    await activatePendingMembershipsForEmail(env, email, user.id);
   }
 
   const token = await createAuthSession(env, user.id);
   return jsonResponse({
     status: 'ok',
     token,
-    user: { id: user.id, phone_e164: user.phone_e164, display_name: user.display_name },
+    user: { id: user.id, email: user.email, display_name: user.display_name },
   });
 };

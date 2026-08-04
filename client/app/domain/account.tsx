@@ -4,7 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 
 export type Account = {
   userId: string;
-  phoneE164: string;
+  email: string;
   displayName: string | null;
 };
 
@@ -14,6 +14,10 @@ type AccountContextValue = {
   isLoading: boolean;
   signIn: (account: Account, token: string) => Promise<void>;
   signOut: () => Promise<void>;
+  // Updates the cached displayName after a successful server-side save
+  // (AccountScreen) — mirrors signIn's write-through-to-storage pattern so
+  // the new name survives an app restart without a re-fetch.
+  updateDisplayName: (displayName: string) => Promise<void>;
 };
 
 const ACCOUNT_STORAGE_KEY = 'ehsebly:account';
@@ -80,7 +84,26 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     await Promise.all([AsyncStorage.removeItem(ACCOUNT_STORAGE_KEY), SecureStore.deleteItemAsync(TOKEN_SECURE_STORE_KEY)]);
   };
 
-  const value = useMemo(() => ({ account, token, isLoading, signIn, signOut }), [account, token, isLoading]);
+  const updateDisplayName = async (displayName: string) => {
+    setAccount((previous) => {
+      if (!previous) {
+        return previous;
+      }
+      const next = { ...previous, displayName };
+      AsyncStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(next)).catch(() => {
+        // Best-effort cache write — the server-side save already succeeded
+        // by the time this is called (AccountScreen awaits updateAccountName
+        // first); a failed local cache write just means a stale name shows
+        // again until the next successful sign-in, not a lost update.
+      });
+      return next;
+    });
+  };
+
+  const value = useMemo(
+    () => ({ account, token, isLoading, signIn, signOut, updateDisplayName }),
+    [account, token, isLoading],
+  );
 
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;
 }

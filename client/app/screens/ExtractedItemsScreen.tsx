@@ -273,9 +273,10 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
         </Pressable>
       </View>
       {addItemError && <Text style={styles.errorText}>{addItemError}</Text>}
-      <Text style={styles.note}>Added items (like a delivery fee) are split equally among everyone.</Text>
+      <Text style={styles.note}>Added items (like a delivery fee) are divided equally among everyone.</Text>
 
       {rateNote && <Text style={styles.note}>{rateNote}</Text>}
+      {result.discountNote && <Text style={styles.note}>{result.discountNote}</Text>}
       <View style={styles.actions}>
         <Pressable accessibilityLabel="Continue to tax and service" style={buttonStyles.primary} onPress={handleContinue}>
           <Text style={buttonStyles.primaryText}>Continue</Text>

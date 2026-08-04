@@ -1,7 +1,7 @@
 import type { Env } from '../env';
 import { jsonResponse, readJsonBody } from '../http';
-import { requireAuth, requireGroupMember } from '../authMiddleware';
-import { isValidEgyptianPhoneE164 } from '../phone';
+import { requireAuth, requireGroupAdmin, requireGroupMember } from '../authMiddleware';
+import { isValidEmail, normalizeEmail } from '../email';
 import {
   acceptGroupInvite,
   createGroup,
@@ -11,8 +11,16 @@ import {
   listGroupsForUser,
   listPendingGroupsForUser,
   type GroupKind,
+  type GroupMemberRow,
 } from '../db/groups';
-import { insertExpense, listGroupExpenses, type SubmitExpenseInput } from '../db/expenses';
+import {
+  deleteExpense,
+  getExpenseGroupId,
+  insertExpense,
+  listGroupExpenses,
+  updateExpense,
+  type SubmitExpenseInput,
+} from '../db/expenses';
 import { listGroupSettlements } from '../db/settlements';
 import { calculateExpenseTotals, EXPENSE_TOTALS_TOLERANCE_PIASTRES } from '../expenseCalc';
 import type { RouteHandler } from '../router';
@@ -101,22 +109,22 @@ export const inviteMemberRoute: RouteHandler<Env> = async (request, env, params)
     return membership;
   }
 
-  const body = await readJsonBody<{ phone_e164?: unknown; display_name?: unknown }>(request);
-  const phoneE164 = typeof body?.phone_e164 === 'string' ? body.phone_e164 : '';
+  const body = await readJsonBody<{ email?: unknown; display_name?: unknown }>(request);
+  const email = typeof body?.email === 'string' ? normalizeEmail(body.email) : '';
   const displayName = typeof body?.display_name === 'string' ? body.display_name.trim() : '';
-  if (!isValidEgyptianPhoneE164(phoneE164) || displayName.length === 0) {
-    return jsonResponse({ status: 'error', message: 'A valid phone number and display name are required.' }, 400);
+  if (!isValidEmail(email) || displayName.length === 0) {
+    return jsonResponse({ status: 'error', message: 'A valid email address and display name are required.' }, 400);
   }
   if (displayName.length > MAX_DISPLAY_NAME_LENGTH) {
     return jsonResponse({ status: 'error', message: `Name must be ${MAX_DISPLAY_NAME_LENGTH} characters or fewer.` }, 400);
   }
 
-  const result = await inviteMember(env, params.groupId, phoneE164, displayName, auth.userId);
+  const result = await inviteMember(env, params.groupId, email, displayName, auth.userId);
   if (result === 'already_active') {
-    return jsonResponse({ status: 'error', message: 'That phone number is already a member.' }, 409);
+    return jsonResponse({ status: 'error', message: 'That email address is already a member.' }, 409);
   }
   if (result === 'already_pending') {
-    return jsonResponse({ status: 'error', message: "That phone number has already been invited and hasn't joined yet." }, 409);
+    return jsonResponse({ status: 'error', message: "That email address has already been invited and hasn't joined yet." }, 409);
   }
   return jsonResponse({ status: 'ok', member: result });
 };
@@ -164,35 +172,24 @@ function isValidSubmitExpenseInput(body: unknown): body is SubmitExpenseInput {
   );
 }
 
-export const submitExpenseRoute: RouteHandler<Env> = async (request, env, params) => {
-  const auth = await requireAuth(request, env);
-  if (auth instanceof Response) {
-    return auth;
-  }
-  const membership = await requireGroupMember(env, params.groupId, auth.userId);
-  if (membership instanceof Response) {
-    return membership;
-  }
-
-  const body = await readJsonBody<SubmitExpenseInput>(request);
-  if (!isValidSubmitExpenseInput(body)) {
-    return jsonResponse({ status: 'error', message: 'Malformed expense payload.' }, 400);
-  }
-
+// Shared by submitExpenseRoute (create) and updateExpenseRoute (admin edit,
+// 2026-07-30) — both need identical member-id and arithmetic validation
+// against the same SubmitExpenseInput shape. Returns an error message, or
+// null if the input is valid.
+function validateExpenseAgainstGroup(body: SubmitExpenseInput, members: GroupMemberRow[]): string | null {
   // Every member ID the client references must actually belong to this
-  // group — requireGroupMember above only checks the *caller* is a member;
+  // group — requireGroupMember only checks the *caller* is a member;
   // without this, a member of one group could attribute costs/payment to a
   // member ID from a different group entirely (Story 2.4 code review,
   // 2026-07-30).
-  const members = await listGroupMembers(env, params.groupId);
   const memberIds = new Set(members.map((member) => member.id));
   if (!memberIds.has(body.paid_by_member_id)) {
-    return jsonResponse({ status: 'error', message: 'paid_by_member_id does not belong to this group.' }, 400);
+    return 'paid_by_member_id does not belong to this group.';
   }
   for (const weightsByMemberId of Object.values(body.item_assignments)) {
     for (const memberId of Object.keys(weightsByMemberId)) {
       if (!memberIds.has(memberId)) {
-        return jsonResponse({ status: 'error', message: 'item_assignments references a member outside this group.' }, 400);
+        return 'item_assignments references a member outside this group.';
       }
     }
   }
@@ -202,7 +199,7 @@ export const submitExpenseRoute: RouteHandler<Env> = async (request, env, params
   // 2026-07-30).
   const itemsSumPiastres = body.items.reduce((sum, item) => sum + item.price_piastres, 0);
   if (itemsSumPiastres !== body.subtotal_piastres) {
-    return jsonResponse({ status: 'error', message: 'subtotal_piastres does not match the sum of item prices.' }, 400);
+    return 'subtotal_piastres does not match the sum of item prices.';
   }
 
   // Recompute service/tax/total server-side from the submitted subtotal and
@@ -226,9 +223,94 @@ export const submitExpenseRoute: RouteHandler<Env> = async (request, env, params
     !withinTolerance(recomputed.taxPiastres, body.tax_piastres) ||
     !withinTolerance(recomputed.totalPiastres, body.total_piastres)
   ) {
-    return jsonResponse({ status: 'error', message: 'Submitted totals do not match the submitted subtotal and rates.' }, 400);
+    return 'Submitted totals do not match the submitted subtotal and rates.';
+  }
+  return null;
+}
+
+export const submitExpenseRoute: RouteHandler<Env> = async (request, env, params) => {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) {
+    return auth;
+  }
+  const membership = await requireGroupMember(env, params.groupId, auth.userId);
+  if (membership instanceof Response) {
+    return membership;
+  }
+
+  const body = await readJsonBody<SubmitExpenseInput>(request);
+  if (!isValidSubmitExpenseInput(body)) {
+    return jsonResponse({ status: 'error', message: 'Malformed expense payload.' }, 400);
+  }
+
+  const members = await listGroupMembers(env, params.groupId);
+  const validationError = validateExpenseAgainstGroup(body, members);
+  if (validationError) {
+    return jsonResponse({ status: 'error', message: validationError }, 400);
   }
 
   const expenseId = await insertExpense(env, params.groupId, auth.userId, body);
   return jsonResponse({ status: 'ok', expense_id: expenseId });
+};
+
+// Admin-only (2026-07-30) — "admin" means the group's creator, the only
+// role this app has (requireGroupAdmin). Reuses submitExpenseRoute's exact
+// validation so an edit can't sneak past checks a fresh submission can't.
+export const updateExpenseRoute: RouteHandler<Env> = async (request, env, params) => {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) {
+    return auth;
+  }
+  const membership = await requireGroupMember(env, params.groupId, auth.userId);
+  if (membership instanceof Response) {
+    return membership;
+  }
+  const adminCheck = await requireGroupAdmin(env, params.groupId, auth.userId);
+  if (adminCheck instanceof Response) {
+    return adminCheck;
+  }
+
+  const existingGroupId = await getExpenseGroupId(env, params.expenseId);
+  if (existingGroupId !== params.groupId) {
+    return jsonResponse({ status: 'error', message: 'Expense not found in this group.' }, 404);
+  }
+
+  const body = await readJsonBody<SubmitExpenseInput>(request);
+  if (!isValidSubmitExpenseInput(body)) {
+    return jsonResponse({ status: 'error', message: 'Malformed expense payload.' }, 400);
+  }
+
+  const members = await listGroupMembers(env, params.groupId);
+  const validationError = validateExpenseAgainstGroup(body, members);
+  if (validationError) {
+    return jsonResponse({ status: 'error', message: validationError }, 400);
+  }
+
+  await updateExpense(env, params.expenseId, body);
+  return jsonResponse({ status: 'ok' });
+};
+
+// Admin-only (2026-07-30). Settlements are untouched by design — they
+// record actual payments made, independent of any one expense.
+export const deleteExpenseRoute: RouteHandler<Env> = async (request, env, params) => {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) {
+    return auth;
+  }
+  const membership = await requireGroupMember(env, params.groupId, auth.userId);
+  if (membership instanceof Response) {
+    return membership;
+  }
+  const adminCheck = await requireGroupAdmin(env, params.groupId, auth.userId);
+  if (adminCheck instanceof Response) {
+    return adminCheck;
+  }
+
+  const existingGroupId = await getExpenseGroupId(env, params.expenseId);
+  if (existingGroupId !== params.groupId) {
+    return jsonResponse({ status: 'error', message: 'Expense not found in this group.' }, 404);
+  }
+
+  await deleteExpense(env, params.expenseId);
+  return jsonResponse({ status: 'ok' });
 };

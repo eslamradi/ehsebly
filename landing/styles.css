@@ -1,0 +1,479 @@
+/* ehsebly landing site — visual identity mirrors the app's own theme.ts
+   (client/app/theme.ts) so the marketing site and the product don't feel
+   like two different brands. Light values match lightColors, dark values
+   match darkColors; defaults to dark since that's the app's primary look
+   in testing so far, but respects the visitor's OS preference either way. */
+
+:root {
+  --paper: #faf6ee;
+  --paper-raised: #ffffff;
+  --ink: #1c1b19;
+  --ink-soft: #6b6558;
+  --ink-faint: #a49c8a;
+  --accent: #0e6b5c;
+  --accent-soft: #dceee9;
+  --accent-ink: #ffffff;
+  --line: #e4dcc8;
+  --positive: #3f8f5f;
+
+  --font-heading: 'Fraunces', Georgia, serif;
+  --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #17181a;
+    --paper-raised: #201f1c;
+    --ink: #f3efe4;
+    --ink-soft: #9c9686;
+    --ink-faint: #6b6558;
+    --accent: #4fbfa6;
+    --accent-soft: #1e3330;
+    --accent-ink: #0d201c;
+    --line: #34322c;
+    --positive: #5fc98a;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+a {
+  color: var(--accent);
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+.wrap {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ---------- Header ---------- */
+
+header.site {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+header.site .wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.brand img {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.brand span {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 20px;
+}
+
+nav.site-nav {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@media (max-width: 480px) {
+  header.site .wrap {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  nav.site-nav {
+    gap: 14px;
+    justify-content: flex-start;
+  }
+}
+
+nav.site-nav a {
+  color: var(--ink-soft);
+  text-decoration: none;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+nav.site-nav a:hover {
+  color: var(--ink);
+}
+
+/* ---------- Hero ---------- */
+
+.hero {
+  padding: 72px 0 48px;
+}
+
+.hero .wrap {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 48px;
+  align-items: center;
+}
+
+@media (max-width: 800px) {
+  .hero .wrap {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hero h1 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 44px;
+  line-height: 1.12;
+  letter-spacing: -0.5px;
+  margin: 0 0 18px;
+}
+
+.hero .accent-text {
+  color: var(--accent);
+}
+
+.hero p.lede {
+  font-size: 17px;
+  color: var(--ink-soft);
+  max-width: 46ch;
+  margin: 0 0 28px;
+}
+
+.cta-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 24px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 15px;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.btn-secondary {
+  background: var(--paper-raised);
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+.status-note {
+  margin-top: 18px;
+  font-size: 13px;
+  color: var(--ink-faint);
+}
+
+/* ---------- Phone mockup ---------- */
+
+.phone-stack {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  position: relative;
+}
+
+.phone {
+  width: 220px;
+  border-radius: 32px;
+  border: 6px solid var(--paper-raised);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  background: var(--paper-raised);
+}
+
+.phone img {
+  width: 100%;
+  display: block;
+}
+
+.phone.offset {
+  margin-top: 56px;
+}
+
+@media (max-width: 560px) {
+  .phone-stack {
+    gap: 12px;
+  }
+  .phone {
+    width: 46vw;
+  }
+  .phone.offset {
+    margin-top: 32px;
+  }
+}
+
+/* ---------- Sections ---------- */
+
+section {
+  padding: 56px 0;
+}
+
+.section-label {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 0 0 12px;
+}
+
+h2 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 30px;
+  margin: 0 0 8px;
+}
+
+.points-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+  margin-top: 32px;
+}
+
+@media (max-width: 800px) {
+  .points-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.point h3 {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  margin: 0 0 6px;
+}
+
+.point p {
+  color: var(--ink-soft);
+  font-size: 14.5px;
+  margin: 0;
+}
+
+/* ---------- How it works (real screenshots) ---------- */
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  margin-top: 32px;
+}
+
+@media (max-width: 900px) {
+  .steps-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .steps-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.step-phone {
+  border-radius: 20px;
+  border: 5px solid var(--paper-raised);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+  background: var(--paper-raised);
+}
+
+.step-phone img {
+  width: 100%;
+  display: block;
+}
+
+.step-label {
+  margin: 12px 0 0;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.proof-line {
+  margin-top: 36px;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 14.5px;
+}
+
+.proof-line .money {
+  font-family: var(--font-mono);
+  color: var(--ink);
+}
+
+/* ---------- Two-up (Casual / Groups) ---------- */
+
+.two-up {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 32px;
+}
+
+@media (max-width: 800px) {
+  .two-up {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  border-radius: 18px;
+  padding: 28px;
+}
+
+.card-casual {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.card-groups {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+}
+
+.card h3 {
+  font-family: var(--font-heading);
+  font-size: 22px;
+  margin: 0 0 8px;
+}
+
+.card-casual p {
+  color: var(--accent-ink);
+  opacity: 0.85;
+}
+
+.card-groups p {
+  color: var(--ink-soft);
+}
+
+/* ---------- Footer ---------- */
+
+footer.site {
+  border-top: 1px solid var(--line);
+  padding: 32px 0;
+  margin-top: 32px;
+}
+
+footer.site .wrap {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+footer.site nav {
+  display: flex;
+  gap: 20px;
+}
+
+footer.site a {
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 13.5px;
+}
+
+footer.site a:hover {
+  color: var(--ink);
+}
+
+footer.site .copyright {
+  color: var(--ink-faint);
+  font-size: 13px;
+}
+
+/* ---------- Legal pages ---------- */
+
+.legal .wrap {
+  max-width: 760px;
+  padding-top: 48px;
+  padding-bottom: 64px;
+}
+
+.legal h1 {
+  font-family: var(--font-heading);
+  font-size: 34px;
+  margin: 0 0 4px;
+}
+
+.legal .updated {
+  color: var(--ink-faint);
+  font-size: 13.5px;
+  margin: 0 0 40px;
+}
+
+.legal h2 {
+  font-size: 20px;
+  margin: 36px 0 10px;
+}
+
+.legal p,
+.legal li {
+  color: var(--ink-soft);
+  font-size: 15px;
+}
+
+.legal ul {
+  padding-left: 20px;
+}
+
+.legal strong {
+  color: var(--ink);
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--ink-soft);
+}

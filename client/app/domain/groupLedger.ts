@@ -9,7 +9,11 @@ export type GroupExpense = {
   // synthetic fixtures (verifyGroupBalances.ts) can omit them.
   description?: string;
   createdAt?: string;
-  items: Array<{ pricePiastres: number }>;
+  printedTotalPiastres?: number | null;
+  // id/name/quantity/isShared are additive (2026-07-30, expense detail/edit
+  // screens) — optional so ledger math (reads only pricePiastres) and
+  // verifyGroupBalances.ts's synthetic fixtures are unaffected.
+  items: Array<{ id?: string; name?: string; pricePiastres: number; quantity?: number; isShared?: boolean }>;
   // itemIndex -> group_member_id -> weight, the same shape as
   // session.tsx's ItemAssignments but keyed by memberId instead of a
   // person array index.
@@ -22,6 +26,16 @@ export type GroupExpense = {
   servicePiastres: number;
   otherServicePiastres: number;
   totalPiastres: number;
+  // The original rate inputs (2026-07-30, migration 0003) — optional since
+  // older call sites/fixtures don't set them; needed to pre-fill the edit
+  // form with exactly what was originally entered, not a lossy
+  // reconstruction from the piastres amounts alone.
+  taxEnabled?: boolean;
+  taxRatePercent?: number;
+  serviceEnabled?: boolean;
+  serviceRatePercent?: number;
+  otherServiceEnabled?: boolean;
+  otherServiceRatePercent?: number;
 };
 
 export type GroupSettlement = {
@@ -40,8 +54,11 @@ export type GroupSettlement = {
  * referenced by past expenses/settlements but missing from `members`, so
  * ledger math always sees every member who was ever party to the group's
  * money — removal only ever affects future assignability, never past math.
+ * Exported so single-expense views (e.g. ExpenseDetailScreen) can apply the
+ * same backfill without duplicating it (2026-07-30) — pass just the one
+ * expense in `expenses` and `[]` for `settlements` if that's all you have.
  */
-function resolveMembersForLedger(
+export function resolveMembersForLedger(
   members: GroupMember[],
   expenses: GroupExpense[],
   settlements: GroupSettlement[],
@@ -51,7 +68,7 @@ function resolveMembersForLedger(
     if (!known.has(memberId)) {
       known.set(memberId, {
         id: memberId,
-        phoneE164: '',
+        email: '',
         displayName: 'Removed member',
         status: 'removed',
         userId: null,
@@ -100,6 +117,11 @@ export function calculateMemberSharesForExpense(expense: GroupExpense, members: 
 
   const totals: SplitCalculationResult = {
     subtotalPiastres: expense.subtotalPiastres,
+    // Group expenses don't carry a discount field yet — Groups doesn't go
+    // through receipt extraction's discount_line the way Casual Splitting
+    // does, so there's nothing to net out here (0 is a true "no discount",
+    // not a placeholder).
+    discountPiastres: 0,
     taxPiastres: expense.taxPiastres,
     servicePiastres: expense.servicePiastres,
     otherServicePiastres: expense.otherServicePiastres,

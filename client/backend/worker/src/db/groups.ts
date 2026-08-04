@@ -9,7 +9,7 @@ export type GroupMemberRow = {
   id: string;
   group_id: string;
   user_id: string | null;
-  phone_e164: string;
+  email: string;
   display_name: string;
   status: 'pending' | 'active' | 'removed';
   invited_by_user_id: string;
@@ -24,8 +24,8 @@ export async function createGroup(env: Env, name: string, kind: GroupKind, creat
   await env.DB.batch([
     env.DB.prepare('INSERT INTO groups (id, name, kind, created_by_user_id) VALUES (?, ?, ?, ?)').bind(id, name, kind, createdByUserId),
     env.DB.prepare(
-      `INSERT INTO group_members (id, group_id, user_id, phone_e164, display_name, status, invited_by_user_id, joined_at)
-       VALUES (?, ?, ?, (SELECT phone_e164 FROM users WHERE id = ?), (SELECT COALESCE(display_name, phone_e164) FROM users WHERE id = ?), 'active', ?, datetime('now'))`,
+      `INSERT INTO group_members (id, group_id, user_id, email, display_name, status, invited_by_user_id, joined_at)
+       VALUES (?, ?, ?, (SELECT email FROM users WHERE id = ?), (SELECT COALESCE(display_name, email) FROM users WHERE id = ?), 'active', ?, datetime('now'))`,
     ).bind(generateId(), id, createdByUserId, createdByUserId, createdByUserId, createdByUserId),
   ]);
   const row = await env.DB.prepare('SELECT * FROM groups WHERE id = ?').bind(id).first<GroupRow>();
@@ -63,42 +63,42 @@ export async function listGroupMembers(env: Env, groupId: string): Promise<Group
 export async function inviteMember(
   env: Env,
   groupId: string,
-  phoneE164: string,
+  email: string,
   displayName: string,
   invitedByUserId: string,
 ): Promise<GroupMemberRow | 'already_active' | 'already_pending'> {
   const existingMember = await env.DB.prepare(
-    `SELECT status FROM group_members WHERE group_id = ? AND phone_e164 = ? AND status != 'removed'`,
+    `SELECT status FROM group_members WHERE group_id = ? AND email = ? AND status != 'removed'`,
   )
-    .bind(groupId, phoneE164)
+    .bind(groupId, email)
     .first<{ status: 'pending' | 'active' }>();
   if (existingMember) {
     return existingMember.status === 'active' ? 'already_active' : 'already_pending';
   }
 
   const id = generateId();
-  const existingUser = await env.DB.prepare('SELECT id FROM users WHERE phone_e164 = ?').bind(phoneE164).first<{ id: string }>();
-  // Every invite starts pending, regardless of whether the phone already has
+  const existingUser = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(email).first<{ id: string }>();
+  // Every invite starts pending, regardless of whether the email already has
   // an account (fixed 2026-07-30 — an existing user was previously
-  // auto-activated here with no consent step at all). A brand-new phone's
+  // auto-activated here with no consent step at all). A brand-new email's
   // first-ever OTP verification still auto-activates any pending rows for
-  // it via activatePendingMembershipsForPhone below — that remains a
-  // reasonable implicit consent, since verifying a phone in response to
+  // it via activatePendingMembershipsForEmail below — that remains a
+  // reasonable implicit consent, since verifying an email in response to
   // being told about an invite is itself a deliberate act; only an
   // *existing* account being silently opted in with zero action needed
   // fixing. See acceptGroupInvite below and GroupListScreen for the
   // explicit Accept step this now requires.
   try {
     await env.DB.prepare(
-      `INSERT INTO group_members (id, group_id, user_id, phone_e164, display_name, status, invited_by_user_id, joined_at)
+      `INSERT INTO group_members (id, group_id, user_id, email, display_name, status, invited_by_user_id, joined_at)
        VALUES (?, ?, ?, ?, ?, 'pending', ?, NULL)`,
     )
-      .bind(id, groupId, existingUser?.id ?? null, phoneE164, displayName, invitedByUserId)
+      .bind(id, groupId, existingUser?.id ?? null, email, displayName, invitedByUserId)
       .run();
   } catch (error) {
     // TOCTOU guard: two near-simultaneous invites for the same (group_id,
-    // phone_e164) can both pass the existingMember check above before either
-    // inserts — the migration's UNIQUE(group_id, phone_e164) constraint is
+    // email) can both pass the existingMember check above before either
+    // inserts — the migration's UNIQUE(group_id, email) constraint is
     // the real guarantee, this just turns its violation into the same
     // graceful result the non-race path already returns instead of an
     // unhandled 500.
@@ -106,9 +106,9 @@ export async function inviteMember(
       throw error;
     }
     const raceLoser = await env.DB.prepare(
-      `SELECT status FROM group_members WHERE group_id = ? AND phone_e164 = ? AND status != 'removed'`,
+      `SELECT status FROM group_members WHERE group_id = ? AND email = ? AND status != 'removed'`,
     )
-      .bind(groupId, phoneE164)
+      .bind(groupId, email)
       .first<{ status: 'pending' | 'active' }>();
     return raceLoser?.status === 'active' ? 'already_active' : 'already_pending';
   }
@@ -117,23 +117,23 @@ export async function inviteMember(
 }
 
 /**
- * Called right after a phone number verifies its OTP for the first time —
- * flips any pending group_members rows for that phone to active and links
+ * Called right after an email verifies its OTP for the first time —
+ * flips any pending group_members rows for that email to active and links
  * them to the new account, so an invite sent before signup surfaces the
  * moment they join.
  */
-export async function activatePendingMembershipsForPhone(env: Env, phoneE164: string, userId: string): Promise<void> {
+export async function activatePendingMembershipsForEmail(env: Env, email: string, userId: string): Promise<void> {
   await env.DB.prepare(
     `UPDATE group_members SET user_id = ?, status = 'active', joined_at = datetime('now')
-     WHERE phone_e164 = ? AND status = 'pending'`,
+     WHERE email = ? AND status = 'pending'`,
   )
-    .bind(userId, phoneE164)
+    .bind(userId, email)
     .run();
 }
 
 /**
  * An existing account's own explicit accept action for a pending invite —
- * the counterpart to activatePendingMembershipsForPhone above, for a phone
+ * the counterpart to activatePendingMembershipsForEmail above, for an email
  * that already had an account at invite time (2026-07-30 fix). Gated by
  * userId matching the pending row, not by group membership — the caller
  * isn't an active member yet, so requireGroupMember can't gate this route.

@@ -3,14 +3,13 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput } from 'react-native
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { verifyOtp } from '../api/groupApi';
 import { useAccount } from '../domain/account';
-import { formatForDisplay } from '../domain/phone';
 import { fonts, radii, spacing, useTheme } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OtpVerify'>;
 
 export default function OtpVerifyScreen({ navigation, route }: Props) {
-  const { phoneE164 } = route.params;
+  const { email } = route.params;
   const theme = useTheme();
   const { colors, buttonStyles, screenStyles } = theme;
   const styles = StyleSheet.create({
@@ -42,7 +41,7 @@ export default function OtpVerifyScreen({ navigation, route }: Props) {
     }
     setIsVerifying(true);
     setError(null);
-    const result = await verifyOtp(phoneE164, code.trim());
+    const result = await verifyOtp(email, code.trim());
     if (!result.ok) {
       setIsVerifying(false);
       setError(result.message);
@@ -50,10 +49,18 @@ export default function OtpVerifyScreen({ navigation, route }: Props) {
     }
     try {
       await signIn(
-        { userId: result.account.userId, phoneE164: result.account.phoneE164, displayName: result.account.displayName },
+        { userId: result.account.userId, email: result.account.email, displayName: result.account.displayName },
         result.account.token,
       );
-      navigation.reset({ index: 0, routes: [{ name: 'GroupList' }] });
+      // No name on file yet (brand-new account, or a pre-existing one from
+      // before AccountScreen existed) — collect it before landing on
+      // GroupList, so this person doesn't show up as their raw email
+      // address in every group they're in (2026-07-30 gap).
+      if (!result.account.displayName) {
+        navigation.reset({ index: 0, routes: [{ name: 'Account', params: { requireName: true } }] });
+      } else {
+        navigation.reset({ index: 0, routes: [{ name: 'GroupList' }] });
+      }
     } catch {
       // Verify already succeeded server-side at this point — a failure here
       // is purely local persistence (e.g. SecureStore), so surface it
@@ -68,7 +75,7 @@ export default function OtpVerifyScreen({ navigation, route }: Props) {
   return (
     <ScrollView style={screenStyles.container} contentContainerStyle={screenStyles.content}>
       <Text style={screenStyles.heading}>Enter the code</Text>
-      <Text style={screenStyles.subheading}>Sent to {formatForDisplay(phoneE164)}</Text>
+      <Text style={screenStyles.subheading}>Sent to {email}</Text>
       <TextInput
         accessibilityLabel="Verification code"
         style={styles.input}

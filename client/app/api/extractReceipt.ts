@@ -7,8 +7,10 @@ type WorkerResponseBody =
       items: Array<{ name: string; price_piastres: number; quantity: number }>;
       tax_line?: { rate_percent: number };
       service_line?: { rate_percent: number };
+      discount_line?: { amount_piastres?: number; rate_percent?: number };
       flat_fees?: Array<{ name: string; amount_piastres: number }>;
       printed_total_piastres?: number;
+      discount_note?: string;
       image_mismatch_note?: string;
     }
   | { status: 'no_items_found' }
@@ -99,7 +101,10 @@ export function toExtractionResult(body: WorkerResponseBody): ExtractionResult {
       ],
       taxRatePercent: body.tax_line?.rate_percent,
       serviceRatePercent: body.service_line?.rate_percent,
+      discountRatePercent: body.discount_line?.rate_percent,
+      discountFlatPiastres: body.discount_line?.amount_piastres,
       printedTotalPiastres: body.printed_total_piastres,
+      discountNote: body.discount_note,
       imageMismatchWarning: body.image_mismatch_note,
     };
   }

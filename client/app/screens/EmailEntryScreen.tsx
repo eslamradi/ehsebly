@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { requestOtp } from '../api/groupApi';
-import { isValidEgyptianMobile, toE164 } from '../domain/phone';
+import { isValidEmail, normalizeEmail } from '../domain/email';
 import { fonts, radii, spacing, useTheme } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'PhoneEntry'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'EmailEntry'>;
 
-export default function PhoneEntryScreen({ navigation }: Props) {
+export default function EmailEntryScreen({ navigation }: Props) {
   const theme = useTheme();
   const { colors, buttonStyles, screenStyles } = theme;
   const styles = StyleSheet.create({
@@ -19,7 +19,7 @@ export default function PhoneEntryScreen({ navigation }: Props) {
       paddingVertical: 12,
       paddingHorizontal: spacing.md,
       backgroundColor: colors.paperRaised,
-      fontFamily: fonts.monoRegular,
+      fontFamily: fonts.sansRegular,
       fontSize: 16,
       color: colors.ink,
     },
@@ -27,43 +27,44 @@ export default function PhoneEntryScreen({ navigation }: Props) {
     actions: { gap: spacing.md },
   });
 
-  const [localNumber, setLocalNumber] = useState('');
+  const [emailInput, setEmailInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
 
   const handleContinue = async () => {
-    if (!isValidEgyptianMobile(localNumber)) {
-      setError('Enter a valid Egyptian mobile number, e.g. 01012345678.');
+    if (!isValidEmail(emailInput)) {
+      setError('Enter a valid email address.');
       return;
     }
     setIsSending(true);
     setError(null);
-    const phoneE164 = toE164(localNumber);
-    const result = await requestOtp(phoneE164);
+    const email = normalizeEmail(emailInput);
+    const result = await requestOtp(email);
     setIsSending(false);
     if (!result.ok) {
       setError(result.message);
       return;
     }
-    navigation.navigate('OtpVerify', { phoneE164 });
+    navigation.navigate('OtpVerify', { email });
   };
 
   return (
     <ScrollView style={screenStyles.container} contentContainerStyle={screenStyles.content}>
       <Text style={screenStyles.heading}>Sign in</Text>
-      <Text style={screenStyles.subheading}>We'll text a code to confirm it's you.</Text>
+      <Text style={screenStyles.subheading}>We'll email a code to confirm it's you.</Text>
       <TextInput
-        accessibilityLabel="Phone number"
+        accessibilityLabel="Email address"
         style={styles.input}
-        placeholder="01012345678"
+        placeholder="you@example.com"
         placeholderTextColor={colors.inkFaint}
-        keyboardType="phone-pad"
-        value={localNumber}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoCorrect={false}
+        value={emailInput}
         onChangeText={(text) => {
-          setLocalNumber(text);
+          setEmailInput(text);
           setError(null);
         }}
-        maxLength={11}
       />
       {error && <Text style={styles.errorText}>{error}</Text>}
       <Pressable

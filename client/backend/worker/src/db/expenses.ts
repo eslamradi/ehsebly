@@ -12,11 +12,13 @@ export type SubmitExpenseInput = {
   other_service_piastres: number;
   total_piastres: number;
   printed_total_piastres: number | null;
-  // Rate fields exist on the wire only to let submitExpenseRoute recompute
-  // and verify tax_piastres/service_piastres/other_service_piastres/
-  // total_piastres server-side (Story 2.4 code review, 2026-07-30) — not
-  // persisted to the DB, since the already-computed *_piastres columns are
-  // what the ledger reads.
+  // Rate fields let submitExpenseRoute recompute and verify tax_piastres/
+  // service_piastres/other_service_piastres/total_piastres server-side
+  // (Story 2.4 code review, 2026-07-30). Also persisted (migration 0003,
+  // 2026-07-30) so admin expense editing can reconstruct exactly what the
+  // fronter originally entered — the *_piastres columns alone are lossy
+  // for that (0 service_piastres is ambiguous between "disabled" and "0%,
+  // enabled").
   tax_enabled: boolean;
   tax_rate_percent: number;
   service_enabled: boolean;
@@ -37,8 +39,8 @@ export async function insertExpense(
   const expenseId = generateId();
   const statements = [
     env.DB.prepare(
-      `INSERT INTO expenses (id, group_id, created_by_user_id, paid_by_member_id, description, subtotal_piastres, tax_piastres, service_piastres, other_service_piastres, total_piastres, printed_total_piastres)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO expenses (id, group_id, created_by_user_id, paid_by_member_id, description, subtotal_piastres, tax_piastres, service_piastres, other_service_piastres, total_piastres, printed_total_piastres, tax_enabled, tax_rate_percent, service_enabled, service_rate_percent, other_service_enabled, other_service_rate_percent)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).bind(
       expenseId,
       groupId,
@@ -51,6 +53,12 @@ export async function insertExpense(
       input.other_service_piastres,
       input.total_piastres,
       input.printed_total_piastres,
+      input.tax_enabled ? 1 : 0,
+      input.tax_rate_percent,
+      input.service_enabled ? 1 : 0,
+      input.service_rate_percent,
+      input.other_service_enabled ? 1 : 0,
+      input.other_service_rate_percent,
     ),
   ];
 
@@ -82,6 +90,85 @@ export async function insertExpense(
   return expenseId;
 }
 
+export async function getExpenseGroupId(env: Env, expenseId: string): Promise<string | null> {
+  const row = await env.DB.prepare('SELECT group_id FROM expenses WHERE id = ?').bind(expenseId).first<{ group_id: string }>();
+  return row?.group_id ?? null;
+}
+
+/**
+ * Admin-only edit (2026-07-30) — items/assignments are fully replaced
+ * rather than diffed. An edit can add/remove/reorder items entirely, and
+ * diffing buys nothing a v1 friends-only tool needs; delete-then-recreate
+ * is simpler and reuses insertExpense's own all-at-once insert shape.
+ * Caller (updateExpenseRoute) is responsible for auth/membership/admin
+ * checks and re-running the same arithmetic validation submitExpenseRoute
+ * uses — this function trusts `input` completely, like insertExpense does.
+ */
+export async function updateExpense(env: Env, expenseId: string, input: SubmitExpenseInput): Promise<void> {
+  const statements = [
+    env.DB.prepare(
+      `UPDATE expenses SET paid_by_member_id = ?, description = ?, subtotal_piastres = ?, tax_piastres = ?, service_piastres = ?, other_service_piastres = ?, total_piastres = ?, printed_total_piastres = ?, tax_enabled = ?, tax_rate_percent = ?, service_enabled = ?, service_rate_percent = ?, other_service_enabled = ?, other_service_rate_percent = ?
+       WHERE id = ?`,
+    ).bind(
+      input.paid_by_member_id,
+      input.description,
+      input.subtotal_piastres,
+      input.tax_piastres,
+      input.service_piastres,
+      input.other_service_piastres,
+      input.total_piastres,
+      input.printed_total_piastres,
+      input.tax_enabled ? 1 : 0,
+      input.tax_rate_percent,
+      input.service_enabled ? 1 : 0,
+      input.service_rate_percent,
+      input.other_service_enabled ? 1 : 0,
+      input.other_service_rate_percent,
+      expenseId,
+    ),
+    // No ON DELETE CASCADE on these FKs (migration 0002) — assignments must
+    // be deleted before items, items before the new ones are inserted.
+    env.DB.prepare(
+      `DELETE FROM expense_item_assignments WHERE expense_item_id IN (SELECT id FROM expense_items WHERE expense_id = ?)`,
+    ).bind(expenseId),
+    env.DB.prepare(`DELETE FROM expense_items WHERE expense_id = ?`).bind(expenseId),
+  ];
+
+  input.items.forEach((item, index) => {
+    const itemId = generateId();
+    statements.push(
+      env.DB.prepare(
+        `INSERT INTO expense_items (id, expense_id, name, price_piastres, quantity, is_shared, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ).bind(itemId, expenseId, item.name, item.price_piastres, item.quantity, item.is_shared ? 1 : 0, index),
+    );
+    const weights = input.item_assignments[index] ?? {};
+    for (const [memberId, weight] of Object.entries(weights)) {
+      if (weight <= 0) {
+        continue;
+      }
+      statements.push(
+        env.DB.prepare(
+          `INSERT INTO expense_item_assignments (id, expense_item_id, group_member_id, weight) VALUES (?, ?, ?, ?)`,
+        ).bind(generateId(), itemId, memberId, weight),
+      );
+    }
+  });
+
+  await env.DB.batch(statements);
+}
+
+/** Admin-only (2026-07-30). Settlements are untouched — they record actual payments, not tied to any specific expense. */
+export async function deleteExpense(env: Env, expenseId: string): Promise<void> {
+  await env.DB.batch([
+    env.DB.prepare(
+      `DELETE FROM expense_item_assignments WHERE expense_item_id IN (SELECT id FROM expense_items WHERE expense_id = ?)`,
+    ).bind(expenseId),
+    env.DB.prepare(`DELETE FROM expense_items WHERE expense_id = ?`).bind(expenseId),
+    env.DB.prepare(`DELETE FROM expenses WHERE id = ?`).bind(expenseId),
+  ]);
+}
+
 export type ExpenseWithDetails = {
   id: string;
   paid_by_member_id: string;
@@ -93,18 +180,37 @@ export type ExpenseWithDetails = {
   total_piastres: number;
   printed_total_piastres: number | null;
   created_at: string;
+  // Present since migration 0003 (2026-07-30) — needed to reconstruct the
+  // exact original inputs for admin expense editing. Converted from
+  // SQLite's raw 0/1 to real booleans before crossing the wire, same as
+  // expense_items.is_shared below.
+  tax_enabled: boolean;
+  tax_rate_percent: number;
+  service_enabled: boolean;
+  service_rate_percent: number;
+  other_service_enabled: boolean;
+  other_service_rate_percent: number;
   items: Array<{ id: string; name: string; price_piastres: number; quantity: number; is_shared: boolean }>;
   // expense_item_id -> group_member_id -> weight
   assignments: Record<string, Record<string, number>>;
 };
 
+type ExpenseRawRow = Omit<ExpenseWithDetails, 'items' | 'assignments' | 'tax_enabled' | 'service_enabled' | 'other_service_enabled'> & {
+  // D1/SQLite has no boolean type — these come back as raw 0/1 and get
+  // converted to real booleans below, before crossing the wire.
+  tax_enabled: number;
+  service_enabled: number;
+  other_service_enabled: number;
+};
+
 export async function listGroupExpenses(env: Env, groupId: string): Promise<ExpenseWithDetails[]> {
   const { results: expenseRows } = await env.DB.prepare(
-    `SELECT id, paid_by_member_id, description, subtotal_piastres, tax_piastres, service_piastres, other_service_piastres, total_piastres, printed_total_piastres, created_at
+    `SELECT id, paid_by_member_id, description, subtotal_piastres, tax_piastres, service_piastres, other_service_piastres, total_piastres, printed_total_piastres, created_at,
+            tax_enabled, tax_rate_percent, service_enabled, service_rate_percent, other_service_enabled, other_service_rate_percent
      FROM expenses WHERE group_id = ? ORDER BY created_at ASC`,
   )
     .bind(groupId)
-    .all<Omit<ExpenseWithDetails, 'items' | 'assignments'>>();
+    .all<ExpenseRawRow>();
 
   if (expenseRows.length === 0) {
     return [];
@@ -151,6 +257,13 @@ export async function listGroupExpenses(env: Env, groupId: string): Promise<Expe
         assignments[assignment.expense_item_id][assignment.group_member_id] = assignment.weight;
       }
     }
-    return { ...expense, items, assignments };
+    return {
+      ...expense,
+      tax_enabled: expense.tax_enabled === 1,
+      service_enabled: expense.service_enabled === 1,
+      other_service_enabled: expense.other_service_enabled === 1,
+      items,
+      assignments,
+    };
   });
 }

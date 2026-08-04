@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>ehsebly — cost &amp; usage dashboard</title>
+<style>
+  /* Palette mirrors landing/styles.css / client/app/theme.ts so this
+     internal tool still reads as part of the same product family. */
+  :root {
+    --paper: #faf6ee;
+    --paper-raised: #ffffff;
+    --ink: #1c1b19;
+    --ink-soft: #6b6558;
+    --ink-faint: #a49c8a;
+    --accent: #0e6b5c;
+    --accent-soft: #dceee9;
+    --accent-ink: #ffffff;
+    --line: #e4dcc8;
+    --positive: #3f8f5f;
+    --negative: #b24a3d;
+    --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #17181a;
+      --paper-raised: #201f1c;
+      --ink: #f3efe4;
+      --ink-soft: #9c9686;
+      --ink-faint: #6b6558;
+      --accent: #4fbfa6;
+      --accent-soft: #1e3330;
+      --accent-ink: #0d201c;
+      --line: #34322c;
+      --positive: #5fc98a;
+      --negative: #e2695a;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 32px 20px 80px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 8px; }
+  h1 { font-size: 1.3rem; margin: 0; }
+  h1 span { color: var(--ink-soft); font-weight: 400; }
+  #status-line { color: var(--ink-faint); font-size: 0.8rem; font-family: var(--font-mono); }
+  #signout { background: none; border: 1px solid var(--line); color: var(--ink-soft); border-radius: 6px; padding: 6px 12px; font-size: 0.8rem; cursor: pointer; }
+  #signout:hover { border-color: var(--ink-faint); color: var(--ink); }
+
+  /* --- gate --- */
+  #gate { max-width: 380px; margin: 15vh auto 0; text-align: center; }
+  #gate h2 { font-size: 1.1rem; margin-bottom: 4px; }
+  #gate p { color: var(--ink-soft); font-size: 0.9rem; margin-top: 0; }
+  #gate input {
+    width: 100%; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--paper-raised); color: var(--ink); font-family: var(--font-mono); font-size: 0.95rem;
+    margin-bottom: 10px;
+  }
+  #gate button {
+    width: 100%; padding: 12px 14px; border-radius: 8px; border: none;
+    background: var(--accent); color: var(--accent-ink); font-weight: 600; font-size: 0.95rem; cursor: pointer;
+  }
+  #gate button:hover { opacity: 0.92; }
+  #gate-error { color: var(--negative); font-size: 0.85rem; min-height: 1.2em; margin-top: 8px; }
+
+  /* --- stat cards --- */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 28px; }
+  .card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+  .card .label { color: var(--ink-soft); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 6px; }
+  .card .value { font-size: 1.5rem; font-weight: 700; font-family: var(--font-mono); }
+  .card .sub { color: var(--ink-faint); font-size: 0.78rem; margin-top: 4px; }
+
+  section { margin-bottom: 32px; }
+  section h2 { font-size: 0.95rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 12px; }
+
+  #chart-wrap { background: var(--paper-raised); border: 1px solid var(--line); border-radius: 10px; padding: 16px; overflow-x: auto; }
+  canvas { display: block; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--ink-soft); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.02em; }
+  td.mono, th.mono { font-family: var(--font-mono); }
+  .table-scroll { overflow-x: auto; background: var(--paper-raised); border: 1px solid var(--line); border-radius: 10px; }
+  .table-scroll table { border: none; }
+  .table-scroll tr:last-child td { border-bottom: none; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+  .pill.accepted { background: var(--accent-soft); color: var(--accent); }
+  .pill.rejected { background: var(--line); color: var(--ink-soft); }
+  .pill.failed { background: var(--negative); color: #fff; }
+
+  #empty { display: none; color: var(--ink-faint); text-align: center; padding: 60px 0; }
+  #app { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="gate">
+    <h2>ehsebly dashboard</h2>
+    <p>Enter the access token to view extraction cost &amp; usage.</p>
+    <input id="token-input" type="password" placeholder="Access token" autocomplete="off" />
+    <button id="unlock-btn">Unlock</button>
+    <div id="gate-error"></div>
+  </div>
+
+  <div id="app">
+    <header>
+      <h1>ehsebly <span>— cost &amp; usage</span></h1>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span id="status-line"></span>
+        <button id="signout">Sign out</button>
+      </div>
+    </header>
+
+    <div class="cards" id="cards"></div>
+
+    <section>
+      <h2>Requests &amp; cost — last 30 days</h2>
+      <div id="chart-wrap"><canvas id="chart" height="220"></canvas></div>
+    </section>
+
+    <section>
+      <h2>Recent requests</h2>
+      <div class="table-scroll">
+        <table id="recent-table">
+          <thead>
+            <tr>
+              <th>ID</th><th>Time (UTC)</th><th>Outcome</th>
+              <th class="mono">Gemini tok in/out</th><th class="mono">Sonnet tok in/out</th>
+              <th class="mono">Cost</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div id="empty">No requests logged yet.</div>
+    </section>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // Cost/usage data lives on the production extraction worker's
+  // /admin/stats route (src/routes/admin.ts) — this dashboard is a pure
+  // read-only client for that endpoint, no separate backend of its own.
+  var API_BASE = 'https://ehsebly-extraction-worker.eslamradii.workers.dev';
+  var STORAGE_KEY = 'ehsebly_dashboard_token';
+  var REFRESH_MS = 60000;
+
+  var gate = document.getElementById('gate');
+  var app = document.getElementById('app');
+  var tokenInput = document.getElementById('token-input');
+  var unlockBtn = document.getElementById('unlock-btn');
+  var gateError = document.getElementById('gate-error');
+  var signoutBtn = document.getElementById('signout');
+  var statusLine = document.getElementById('status-line');
+  var cardsEl = document.getElementById('cards');
+  var recentBody = document.querySelector('#recent-table tbody');
+  var recentTable = document.getElementById('recent-table');
+  var emptyEl = document.getElementById('empty');
+  var canvas = document.getElementById('chart');
+
+  var refreshTimer = null;
+
+  function fmtUsd(n) {
+    if (n === null || n === undefined) return '$0.0000';
+    return '$' + n.toFixed(4);
+  }
+
+  function fmtPct(n) {
+    if (n === null || n === undefined || isNaN(n)) return '—';
+    return (n * 100).toFixed(0) + '%';
+  }
+
+  function renderCards(stats) {
+    var overall = stats.overall, d1 = stats.last_24h, d7 = stats.last_7d;
+    var acceptRate = overall.total_requests > 0 ? overall.accepted_count / overall.total_requests : null;
+    var cards = [
+      { label: 'Total requests', value: String(overall.total_requests), sub: 'accept rate ' + fmtPct(acceptRate) },
+      { label: 'Total spend', value: fmtUsd(overall.total_cost_usd), sub: 'all time' },
+      { label: 'Last 24h', value: fmtUsd(d1.total_cost_usd), sub: d1.total_requests + ' requests' },
+      { label: 'Last 7d', value: fmtUsd(d7.total_cost_usd), sub: d7.total_requests + ' requests' },
+      { label: 'Gemini spend', value: fmtUsd(overall.gemini_cost_usd), sub: 'cheap-tier attempts' },
+      { label: 'Sonnet spend', value: fmtUsd(overall.sonnet_cost_usd), sub: 'fallback path' },
+    ];
+    cardsEl.innerHTML = cards.map(function (c) {
+      return '<div class="card"><div class="label">' + c.label + '</div><div class="value">' + c.value +
+        '</div><div class="sub">' + c.sub + '</div></div>';
+    }).join('');
+  }
+
+  function pillClass(outcome) {
+    if (outcome === 'accepted') return 'accepted';
+    if (outcome === 'gemini_call_failed') return 'failed';
+    return 'rejected';
+  }
+
+  function renderRecent(rows) {
+    if (!rows.length) {
+      recentTable.style.display = 'none';
+      emptyEl.style.display = 'block';
+      return;
+    }
+    recentTable.style.display = '';
+    emptyEl.style.display = 'none';
+    recentBody.innerHTML = rows.map(function (r) {
+      var geminiTok = (r.gemini_input_tokens != null) ? (r.gemini_input_tokens + ' / ' + r.gemini_output_tokens) : '—';
+      var sonnetTok = r.sonnet_used ? (r.sonnet_input_tokens + ' / ' + r.sonnet_output_tokens) : '—';
+      return '<tr>' +
+        '<td class="mono">' + r.id + '</td>' +
+        '<td class="mono">' + r.created_at + '</td>' +
+        '<td><span class="pill ' + pillClass(r.outcome) + '">' + r.outcome + '</span></td>' +
+        '<td class="mono">' + geminiTok + '</td>' +
+        '<td class="mono">' + sonnetTok + '</td>' +
+        '<td class="mono">' + fmtUsd(r.total_cost_usd) + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  function renderChart(daily) {
+    var dpr = window.devicePixelRatio || 1;
+    var wrapWidth = canvas.parentElement.clientWidth - 32;
+    var cssWidth = Math.max(wrapWidth, daily.length * 28);
+    var cssHeight = 220;
+    canvas.width = cssWidth * dpr;
+    canvas.height = cssHeight * dpr;
+    canvas.style.width = cssWidth + 'px';
+    canvas.style.height = cssHeight + 'px';
+    var ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+    var styles = getComputedStyle(document.documentElement);
+    var accent = styles.getPropertyValue('--accent').trim();
+    var line = styles.getPropertyValue('--line').trim();
+    var inkFaint = styles.getPropertyValue('--ink-faint').trim();
+    var inkSoft = styles.getPropertyValue('--ink-soft').trim();
+
+    if (!daily.length) {
+      ctx.fillStyle = inkFaint;
+      ctx.font = '13px sans-serif';
+      ctx.fillText('No data yet.', 8, 30);
+      return;
+    }
+
+    var padLeft = 8, padRight = 8, padTop = 10, padBottom = 24;
+    var plotW = cssWidth - padLeft - padRight;
+    var plotH = cssHeight - padTop - padBottom;
+    var maxCost = Math.max.apply(null, daily.map(function (d) { return d.total_cost_usd || 0; })) || 0.0001;
+    var barSlot = plotW / daily.length;
+    var barW = Math.min(22, barSlot * 0.6);
+
+    // baseline
+    ctx.strokeStyle = line;
+    ctx.beginPath();
+    ctx.moveTo(padLeft, padTop + plotH);
+    ctx.lineTo(padLeft + plotW, padTop + plotH);
+    ctx.stroke();
+
+    daily.forEach(function (d, i) {
+      var x = padLeft + i * barSlot + (barSlot - barW) / 2;
+      var h = plotH * ((d.total_cost_usd || 0) / maxCost);
+      ctx.fillStyle = accent;
+      ctx.fillRect(x, padTop + plotH - h, barW, Math.max(h, 1));
+
+      if (daily.length <= 15 || i % Math.ceil(daily.length / 15) === 0) {
+        ctx.fillStyle = inkFaint;
+        ctx.font = '10px monospace';
+        ctx.save();
+        ctx.translate(x + barW / 2, padTop + plotH + 14);
+        ctx.textAlign = 'center';
+        ctx.fillText(d.day.slice(5), 0, 0);
+        ctx.restore();
+      }
+    });
+
+    ctx.fillStyle = inkSoft;
+    ctx.font = '10px monospace';
+    ctx.fillText('max ' + fmtUsd(maxCost) + '/day', padLeft, padTop + 10);
+  }
+
+  function showApp() {
+    gate.style.display = 'none';
+    app.style.display = 'block';
+  }
+  function showGate(message) {
+    gate.style.display = 'block';
+    app.style.display = 'none';
+    gateError.textContent = message || '';
+  }
+
+  function fetchStats(token) {
+    statusLine.textContent = 'loading…';
+    return fetch(API_BASE + '/admin/stats', { headers: { authorization: 'Bearer ' + token } })
+      .then(function (res) {
+        if (res.status === 401) {
+          throw new Error('unauthorized');
+        }
+        if (!res.ok) {
+          throw new Error('request failed (' + res.status + ')');
+        }
+        return res.json();
+      })
+      .then(function (stats) {
+        renderCards(stats);
+        renderChart(stats.daily || []);
+        renderRecent(stats.recent || []);
+        statusLine.textContent = 'updated ' + new Date().toLocaleTimeString();
+        showApp();
+      });
+  }
+
+  function startAutoRefresh(token) {
+    if (refreshTimer) clearInterval(refreshTimer);
+    refreshTimer = setInterval(function () {
+      fetchStats(token).catch(function (err) {
+        if (err.message === 'unauthorized') {
+          stopAndSignOut('Token no longer valid — enter it again.');
+        }
+      });
+    }, REFRESH_MS);
+  }
+
+  function stopAndSignOut(message) {
+    if (refreshTimer) clearInterval(refreshTimer);
+    localStorage.removeItem(STORAGE_KEY);
+    tokenInput.value = '';
+    showGate(message || '');
+  }
+
+  function tryToken(token) {
+    unlockBtn.disabled = true;
+    gateError.textContent = '';
+    fetchStats(token)
+      .then(function () {
+        localStorage.setItem(STORAGE_KEY, token);
+        startAutoRefresh(token);
+      })
+      .catch(function (err) {
+        var msg = err.message === 'unauthorized' ? 'Wrong token.' : 'Could not reach the dashboard API — ' + err.message;
+        showGate(msg);
+      })
+      .then(function () { unlockBtn.disabled = false; });
+  }
+
+  unlockBtn.addEventListener('click', function () {
+    var token = tokenInput.value.trim();
+    if (!token) return;
+    tryToken(token);
+  });
+  tokenInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') unlockBtn.click();
+  });
+  signoutBtn.addEventListener('click', function () { stopAndSignOut(); });
+  window.addEventListener('resize', function () {
+    var token = localStorage.getItem(STORAGE_KEY);
+    if (token && app.style.display === 'block') {
+      fetchStats(token).catch(function () {});
+    }
+  });
+
+  var savedToken = localStorage.getItem(STORAGE_KEY);
+  if (savedToken) {
+    tryToken(savedToken);
+  } else {
+    showGate();
+  }
+})();
+</script>
+</body>
+</html>

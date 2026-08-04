@@ -33,6 +33,14 @@ const OTHER_SERVICE_DISABLED = {
   otherServiceRatePercent: 0,
 };
 
+// Spread into any call whose discount isn't the thing under test.
+const DISCOUNT_DISABLED = {
+  discountEnabled: false,
+  discountMode: 'flat' as const,
+  discountRatePercent: 0,
+  discountFlatPiastres: 0,
+};
+
 function assertEqual(label: string, actual: number, expected: number): void {
   checks++;
   if (actual !== expected) {
@@ -53,6 +61,7 @@ function checkGreekClubCairo(): void {
     serviceEnabled: true,
     serviceRatePercent: 12,
     ...OTHER_SERVICE_DISABLED,
+        ...DISCOUNT_DISABLED,
   });
   assertEqual('Greek Club Cairo: subtotal', result.subtotalPiastres, 18400);
   assertEqual('Greek Club Cairo: service', result.servicePiastres, 2208);
@@ -70,6 +79,7 @@ function checkFrenchMenuReceipt(): void {
     serviceEnabled: true,
     serviceRatePercent: 12,
     ...OTHER_SERVICE_DISABLED,
+        ...DISCOUNT_DISABLED,
   });
   assertEqual('French-menu receipt: subtotal', result.subtotalPiastres, 126600);
   assertEqual('French-menu receipt: service', result.servicePiastres, 15192);
@@ -87,6 +97,7 @@ function checkBothDisabled(): void {
     serviceEnabled: false,
     serviceRatePercent: 12,
     ...OTHER_SERVICE_DISABLED,
+        ...DISCOUNT_DISABLED,
   });
   assertEqual('Both disabled: service', result.servicePiastres, 0);
   assertEqual('Both disabled: tax', result.taxPiastres, 0);
@@ -104,6 +115,7 @@ function checkTaxOnlyComputesOnRawSubtotal(): void {
     serviceEnabled: false,
     serviceRatePercent: 12,
     ...OTHER_SERVICE_DISABLED,
+        ...DISCOUNT_DISABLED,
   });
   assertEqual('Tax-only: service', result.servicePiastres, 0);
   assertEqual('Tax-only: tax', result.taxPiastres, 1400);
@@ -118,6 +130,7 @@ function checkServiceOnlyLeavesTaxZero(): void {
     serviceEnabled: true,
     serviceRatePercent: 12,
     ...OTHER_SERVICE_DISABLED,
+        ...DISCOUNT_DISABLED,
   });
   assertEqual('Service-only: service', result.servicePiastres, 1200);
   assertEqual('Service-only: tax', result.taxPiastres, 0);
@@ -222,6 +235,7 @@ function checkNoFloatingPointRoundingDiscrepancyForService(): void {
         serviceEnabled: true,
         serviceRatePercent: ratePercent,
         ...OTHER_SERVICE_DISABLED,
+        ...DISCOUNT_DISABLED,
       }).servicePiastres,
   );
 }
@@ -243,6 +257,7 @@ function checkNoFloatingPointRoundingDiscrepancyForTax(): void {
         serviceEnabled: false,
         serviceRatePercent: 0,
         ...OTHER_SERVICE_DISABLED,
+        ...DISCOUNT_DISABLED,
       }).taxPiastres,
   );
 }
@@ -261,6 +276,7 @@ function checkOtherServiceFoldedIntoTaxBase(): void {
     serviceRatePercent: 12,
     otherServiceEnabled: true,
     otherServiceRatePercent: 10,
+    ...DISCOUNT_DISABLED,
   });
   assertEqual('Other service: service unaffected', result.servicePiastres, 1200);
   assertEqual('Other service: output', result.otherServicePiastres, 1000);
@@ -282,6 +298,7 @@ function checkOtherServiceUserPreviewExample(): void {
     serviceRatePercent: 12,
     otherServiceEnabled: true,
     otherServiceRatePercent: 10,
+    ...DISCOUNT_DISABLED,
   });
   assertEqual('Preview example: service', result.servicePiastres, 4080);
   assertEqual('Preview example: other service', result.otherServicePiastres, 3400);
@@ -301,9 +318,96 @@ function checkOtherServiceDisabledIgnoresRateField(): void {
     serviceRatePercent: 12,
     otherServiceEnabled: false,
     otherServiceRatePercent: 50,
+    ...DISCOUNT_DISABLED,
   });
   assertEqual('Disabled other service: output', result.otherServicePiastres, 0);
   assertEqual('Disabled other service: total', result.totalPiastres, 10000);
+}
+
+// --- discount: reduces subtotal before service/tax compound -------------
+
+function checkFlatDiscountReducesSubtotalFirst(): void {
+  // Real receipt (Al Reef Al Shami delivery order, the bug report this
+  // feature exists to fix): subtotal=315.00, flat discount=47.25, no
+  // tax/service percentage lines on this receipt (its "Service fee"/
+  // "Delivery fee" are flat printed amounts, handled as ordinary flat_fees
+  // items — not this function's concern). Expected: discounted
+  // base=267.75, and since tax/service are both off here, total=267.75.
+  const result = calculateSplitTotals({
+    subtotalPiastres: 31500,
+    discountEnabled: true,
+    discountMode: 'flat',
+    discountRatePercent: 0,
+    discountFlatPiastres: 4725,
+    taxEnabled: false,
+    taxRatePercent: 0,
+    serviceEnabled: false,
+    serviceRatePercent: 0,
+    ...OTHER_SERVICE_DISABLED,
+  });
+  assertEqual('Flat discount: discount', result.discountPiastres, 4725);
+  assertEqual('Flat discount: subtotal unchanged (raw)', result.subtotalPiastres, 31500);
+  assertEqual('Flat discount: total', result.totalPiastres, 26775);
+}
+
+function checkPercentDiscountAppliesBeforeServiceAndTax(): void {
+  // subtotal=1000.00, 10% discount -> discounted base=900.00, service=12%
+  // of 900=108.00, tax base=900+108=1008, tax=14% of 1008=141.12 ->
+  // rounds to 141.12 (exact, no half-up needed), total=1149.12.
+  const result = calculateSplitTotals({
+    subtotalPiastres: 100000,
+    discountEnabled: true,
+    discountMode: 'percent',
+    discountRatePercent: 10,
+    discountFlatPiastres: 0,
+    taxEnabled: true,
+    taxRatePercent: 14,
+    serviceEnabled: true,
+    serviceRatePercent: 12,
+    ...OTHER_SERVICE_DISABLED,
+  });
+  assertEqual('Percent discount: discount', result.discountPiastres, 10000);
+  assertEqual('Percent discount: service computed on discounted base', result.servicePiastres, 10800);
+  assertEqual('Percent discount: tax computed on discounted base + service', result.taxPiastres, 14112);
+  assertEqual('Percent discount: total', result.totalPiastres, 114912);
+}
+
+function checkDiscountDisabledIgnoresValueFields(): void {
+  // Disabled must zero out the output regardless of what's sitting in
+  // either value field — same discipline every other charge holds.
+  const result = calculateSplitTotals({
+    subtotalPiastres: 10000,
+    discountEnabled: false,
+    discountMode: 'flat',
+    discountRatePercent: 50,
+    discountFlatPiastres: 9999,
+    taxEnabled: false,
+    taxRatePercent: 0,
+    serviceEnabled: false,
+    serviceRatePercent: 0,
+    ...OTHER_SERVICE_DISABLED,
+  });
+  assertEqual('Disabled discount: output', result.discountPiastres, 0);
+  assertEqual('Disabled discount: total', result.totalPiastres, 10000);
+}
+
+function checkFlatDiscountClampsAtSubtotal(): void {
+  // A flat discount larger than the subtotal (garbled OCR, or a genuinely
+  // odd receipt) must not drive the discounted base negative.
+  const result = calculateSplitTotals({
+    subtotalPiastres: 5000,
+    discountEnabled: true,
+    discountMode: 'flat',
+    discountRatePercent: 0,
+    discountFlatPiastres: 9000,
+    taxEnabled: false,
+    taxRatePercent: 0,
+    serviceEnabled: false,
+    serviceRatePercent: 0,
+    ...OTHER_SERVICE_DISABLED,
+  });
+  assertEqual('Oversized flat discount: clamped', result.discountPiastres, 5000);
+  assertEqual('Oversized flat discount: total floors at 0', result.totalPiastres, 0);
 }
 
 // --- run everything ------------------------------------------------------
@@ -318,6 +422,10 @@ checkNoFloatingPointRoundingDiscrepancyForTax();
 checkOtherServiceFoldedIntoTaxBase();
 checkOtherServiceUserPreviewExample();
 checkOtherServiceDisabledIgnoresRateField();
+checkFlatDiscountReducesSubtotalFirst();
+checkPercentDiscountAppliesBeforeServiceAndTax();
+checkDiscountDisabledIgnoresValueFields();
+checkFlatDiscountClampsAtSubtotal();
 
 if (failures > 0) {
   console.error(`\n${failures} of ${checks} checks FAILED.`);

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Terms &amp; Conditions — ehsebly</title>
+    <link rel="icon" href="assets/icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="legal">
+    <header class="site">
+      <div class="wrap">
+        <a class="brand" href="index.html">
+          <img src="assets/icon.png" alt="ehsebly logo" />
+          <span>ehsebly</span>
+        </a>
+        <nav class="site-nav">
+          <a href="index.html">Home</a>
+          <a href="privacy.html">Privacy</a>
+        </nav>
+      </div>
+    </header>
+
+    <div class="wrap">
+      <a class="back-link" href="index.html">&larr; Back to ehsebly</a>
+      <h1>Terms &amp; Conditions</h1>
+      <p class="updated">Last updated: July 30, 2026</p>
+
+      <p>
+        These terms govern your use of ehsebly, a bill-breakdown app built and operated by Eslam Radi. ehsebly is
+        currently a private test build shared with friends and family, not a publicly distributed product. By using
+        it, you agree to these terms.
+      </p>
+
+      <h2>1. What ehsebly is</h2>
+      <p>
+        ehsebly reads a photographed receipt, lets you assign items to the people who ordered them, and computes each
+        person's fair share — including their proportional share of tax and service. That's it. ehsebly is a
+        calculation tool, not a payments service, an ongoing expense-tracking ledger for indefinite ongoing use
+        (beyond the Groups feature's household/trip scope), or a substitute for reading your own receipt.
+      </p>
+
+      <h2>2. No warranty — check the number yourself</h2>
+      <p>
+        Receipt reading (OCR) and the tax/service math are done in good faith and reviewed against real receipts
+        during development, but neither is guaranteed to be error-free — a misread price or an unusual receipt
+        format can happen. ehsebly always shows you the printed total alongside its computed total specifically so
+        you can catch a mismatch before relying on the breakdown. ehsebly is provided "as is," without warranties of any
+        kind, and you're responsible for reviewing a breakdown before acting on it (e.g., before paying or telling others
+        what they owe).
+      </p>
+
+      <h2>3. No payments, ever</h2>
+      <p>
+        ehsebly does not process, hold, transmit, or have access to money in any form, in this test build or any
+        future version. It produces a number. Settling up — via InstaPay, Vodafone Cash, cash, bank transfer, or
+        anything else — happens entirely outside ehsebly, between you and the people sharing the bill. ehsebly is not
+        a party to that transaction and bears no responsibility for it.
+      </p>
+
+      <h2>4. Accounts (Groups)</h2>
+      <p>
+        Using Groups requires verifying a phone number you control. You're responsible for keeping your session
+        secure on your own device and for the accuracy of what you enter (group names, expense amounts, who paid).
+        Because this is a private test build, we may reset, migrate, or delete test data at any time without notice
+        — don't treat Groups as a permanent financial record during this phase.
+      </p>
+
+      <h2>5. Acceptable use</h2>
+      <p>
+        Don't use ehsebly for anything illegal, don't attempt to disrupt, abuse, or gain unauthorized access to the
+        service, and don't use it to store or transmit content you don't have the right to share.
+      </p>
+
+      <h2>6. Limitation of liability</h2>
+      <p>
+        To the fullest extent permitted by law, ehsebly and its operator are not liable for any indirect, incidental,
+        or consequential damages arising from your use of the app — including a miscalculated breakdown, a dispute
+        between people sharing a bill, or a payment sent to the wrong person based on ehsebly's output. Your use
+        of ehsebly is at your own discretion and risk.
+      </p>
+
+      <h2>7. Availability and changes</h2>
+      <p>
+        As a private test build, ehsebly may change, break, or become unavailable without notice. We may suspend or
+        end access for any user at any time during this phase, including simply because the test has concluded.
+      </p>
+
+      <h2>8. Governing law</h2>
+      <p>These terms are governed by the laws of the Arab Republic of Egypt.</p>
+
+      <h2>9. Changes to these terms</h2>
+      <p>We'll update the date above when these terms change, and tell existing Groups users directly for any change that matters.</p>
+
+      <h2>10. Contact</h2>
+      <p>Questions about these terms: <a href="mailto:hi@eslamradi.com">hi@eslamradi.com</a>.</p>
+    </div>
+
+    <footer class="site">
+      <div class="wrap">
+        <span class="copyright">&copy; <span id="year"></span> ehsebly</span>
+        <nav>
+          <a href="privacy.html">Privacy Policy</a>
+          <a href="terms.html">Terms &amp; Conditions</a>
+          <a href="mailto:hi@eslamradi.com">Contact</a>
+        </nav>
+      </div>
+    </footer>
+
+    <script>
+      document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+  </body>
+</html>

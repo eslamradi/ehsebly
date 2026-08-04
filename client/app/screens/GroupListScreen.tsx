@@ -15,6 +15,7 @@ export default function GroupListScreen({ navigation }: Props) {
   const { screenStyles, buttonStyles } = theme;
   const styles = StyleSheet.create({
     headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    headerActions: { flexDirection: 'row', gap: spacing.sm },
     backButton: {
       backgroundColor: theme.colors.paperRaised,
       borderWidth: 1,
@@ -50,12 +51,14 @@ export default function GroupListScreen({ navigation }: Props) {
       paddingHorizontal: spacing.lg,
       borderRadius: radii.sm,
     },
+    errorText: { fontFamily: fonts.sansRegular, color: theme.colors.critical, fontSize: 13 },
   });
 
-  const { token } = useAccount();
+  const { token, account } = useAccount();
   const [groups, setGroups] = useState<Group[] | null>(null);
   const [pendingGroups, setPendingGroups] = useState<Group[]>([]);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
     if (!token) {
@@ -63,8 +66,14 @@ export default function GroupListScreen({ navigation }: Props) {
     }
     listGroups(token).then((result) => {
       if (result.status === 'ok') {
+        setLoadError(null);
         setGroups(result.data.groups);
         setPendingGroups(result.data.pendingGroups);
+      } else {
+        // Previously silent — `groups` stayed null forever with no
+        // indication anything failed, reading as a stuck "Loading…" state
+        // (2026-07-30 bugfix).
+        setLoadError(result.message);
       }
     });
   }, [token]);
@@ -75,16 +84,29 @@ export default function GroupListScreen({ navigation }: Props) {
       if (!token) {
         return;
       }
+      // Covers accounts that predate AccountScreen (already signed in, no
+      // name ever set) as well as a fresh sign-in falling through here —
+      // OtpVerifyScreen only catches the fresh-sign-in case.
+      if (account && !account.displayName) {
+        navigation.replace('Account', { requireName: true });
+        return;
+      }
       listGroups(token).then((result) => {
-        if (!cancelled && result.status === 'ok') {
+        if (cancelled) {
+          return;
+        }
+        if (result.status === 'ok') {
+          setLoadError(null);
           setGroups(result.data.groups);
           setPendingGroups(result.data.pendingGroups);
+        } else {
+          setLoadError(result.message);
         }
       });
       return () => {
         cancelled = true;
       };
-    }, [token]),
+    }, [token, account, navigation]),
   );
 
   const handleAccept = async (groupId: string) => {
@@ -103,9 +125,14 @@ export default function GroupListScreen({ navigation }: Props) {
     <ScrollView style={screenStyles.container} contentContainerStyle={screenStyles.content}>
       <View style={styles.headerRow}>
         <Text style={screenStyles.heading}>Groups</Text>
-        <Pressable accessibilityLabel="Back to home" style={styles.backButton} onPress={() => navigation.navigate('Home')}>
-          <Text style={buttonStyles.secondaryText}>Back</Text>
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable accessibilityLabel="Account" style={styles.backButton} onPress={() => navigation.navigate('Account')}>
+            <Text style={buttonStyles.secondaryText}>Account</Text>
+          </Pressable>
+          <Pressable accessibilityLabel="Back to home" style={styles.backButton} onPress={() => navigation.navigate('Home')}>
+            <Text style={buttonStyles.secondaryText}>Back</Text>
+          </Pressable>
+        </View>
       </View>
 
       {pendingGroups.length > 0 && (
@@ -132,7 +159,15 @@ export default function GroupListScreen({ navigation }: Props) {
         </>
       )}
 
-      {groups === null && <Text style={screenStyles.subheading}>Loading…</Text>}
+      {loadError && (
+        <>
+          <Text style={styles.errorText}>Couldn't load your groups: {loadError}</Text>
+          <Pressable accessibilityLabel="Retry loading groups" style={buttonStyles.secondary} onPress={refresh}>
+            <Text style={buttonStyles.secondaryText}>Retry</Text>
+          </Pressable>
+        </>
+      )}
+      {groups === null && !loadError && <Text style={screenStyles.subheading}>Loading…</Text>}
       {groups !== null && groups.length === 0 && pendingGroups.length === 0 && (
         <Text style={screenStyles.subheading}>No groups yet — create one for a household or a trip.</Text>
       )}

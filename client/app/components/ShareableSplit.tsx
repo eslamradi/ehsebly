@@ -35,7 +35,7 @@ export const ShareableSplit = forwardRef<ShareableSplitHandle, ShareableSplitPro
       try {
         const uri = await captureRef(captureViewRef, { format: 'png', quality: 1 });
         if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share split' });
+          await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share breakdown' });
           return;
         }
       } catch {

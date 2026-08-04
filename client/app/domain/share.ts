@@ -27,13 +27,17 @@ export function buildShareText({ items, taxService, people, itemAssignments }: S
     return `${person.name}: ${formatPiastresAsEGP(personTotals[personIndex])} EGP (${itemsDescription})`;
   });
 
+  const discountLine = taxService.discountEnabled
+    ? [`Discount: -${formatPiastresAsEGP(totals.discountPiastres)} EGP`]
+    : [];
   const otherServiceLine = taxService.otherServiceEnabled
     ? [`Other service: ${formatPiastresAsEGP(totals.otherServicePiastres)} EGP`]
     : [];
 
   return [
-    'Split — ehsebly',
+    'Breakdown — ehsebly',
     ...lines,
+    ...discountLine,
     ...otherServiceLine,
     `Total: ${formatPiastresAsEGP(totals.totalPiastres)} EGP`,
   ].join('\n');

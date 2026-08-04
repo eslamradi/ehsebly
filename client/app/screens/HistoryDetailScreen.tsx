@@ -44,7 +44,7 @@ export default function HistoryDetailScreen({ navigation, route }: Props) {
   if (entry === null) {
     return (
       <View style={screenStyles.center}>
-        <Text style={screenStyles.message}>Couldn't find that split.</Text>
+        <Text style={screenStyles.message}>Couldn't find that breakdown.</Text>
         <Pressable accessibilityLabel="Back to history" style={buttonStyles.primary} onPress={handleBack}>
           <Text style={buttonStyles.primaryText}>Back</Text>
         </Pressable>
@@ -54,7 +54,7 @@ export default function HistoryDetailScreen({ navigation, route }: Props) {
 
   return (
     <ScrollView style={screenStyles.container} contentContainerStyle={screenStyles.content}>
-      <Text style={screenStyles.heading}>Split</Text>
+      <Text style={screenStyles.heading}>Breakdown</Text>
 
       <ShareableSplit
         ref={shareRef}
@@ -65,8 +65,8 @@ export default function HistoryDetailScreen({ navigation, route }: Props) {
         itemAssignments={entry.itemAssignments}
       />
 
-      <Pressable accessibilityLabel="Share split" style={buttonStyles.primary} onPress={handleShare}>
-        <Text style={buttonStyles.primaryText}>Share Split</Text>
+      <Pressable accessibilityLabel="Share breakdown" style={buttonStyles.primary} onPress={handleShare}>
+        <Text style={buttonStyles.primaryText}>Share Breakdown</Text>
       </Pressable>
       <Pressable accessibilityLabel="Back to history" style={buttonStyles.secondary} onPress={handleBack}>
         <Text style={buttonStyles.secondaryText}>Back to History</Text>

@@ -235,6 +235,11 @@ export default function ReviewScreen({ navigation }: Props) {
         <SummaryLine styles={styles} label="Subtotal" piastres={totals.subtotalPiastres} />
         <SummaryLine
           styles={styles}
+          label={`Discount${taxService.discountEnabled && taxService.discountMode === 'percent' ? ` (${taxService.discountRatePercent}%)` : taxService.discountEnabled ? '' : ' (off)'}`}
+          piastres={-totals.discountPiastres}
+        />
+        <SummaryLine
+          styles={styles}
           label={`Service${taxService.serviceEnabled ? ` (${taxService.serviceRatePercent}%)` : ' (off)'}`}
           piastres={totals.servicePiastres}
         />
@@ -270,8 +275,8 @@ export default function ReviewScreen({ navigation }: Props) {
       </View>
 
       <View style={styles.actions}>
-        <Pressable accessibilityLabel="Confirm split" style={buttonStyles.primary} onPress={handleConfirm}>
-          <Text style={buttonStyles.primaryText}>Confirm split</Text>
+        <Pressable accessibilityLabel="Confirm breakdown" style={buttonStyles.primary} onPress={handleConfirm}>
+          <Text style={buttonStyles.primaryText}>Confirm breakdown</Text>
         </Pressable>
         <Pressable accessibilityLabel="Back to item assignment" style={buttonStyles.secondary} onPress={handleBack}>
           <Text style={buttonStyles.secondaryText}>Back</Text>

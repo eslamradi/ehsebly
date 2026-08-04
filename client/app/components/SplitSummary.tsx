@@ -59,6 +59,11 @@ export function SplitSummary({ photoUris = [], items, taxService, people, itemAs
           <ReceiptLine styles={styles} label="Subtotal" piastres={totals.subtotalPiastres} />
           <ReceiptLine
             styles={styles}
+            label={`Discount${taxService.discountEnabled && taxService.discountMode === 'percent' ? ` · ${taxService.discountRatePercent}%` : taxService.discountEnabled ? '' : ' (off)'}`}
+            piastres={-totals.discountPiastres}
+          />
+          <ReceiptLine
+            styles={styles}
             label={`Service${taxService.serviceEnabled ? ` · ${taxService.serviceRatePercent}%` : ' (off)'}`}
             piastres={totals.servicePiastres}
           />
@@ -127,6 +132,9 @@ function ReceiptLine({
  */
 function describeIncludedCharges(taxService: TaxServiceSettings): string | null {
   const parts: string[] = [];
+  if (taxService.discountEnabled) {
+    parts.push('the discount');
+  }
   if (taxService.taxEnabled) {
     parts.push('tax');
   }

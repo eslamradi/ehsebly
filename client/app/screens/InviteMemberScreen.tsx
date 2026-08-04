@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import * as Contacts from 'expo-contacts';
 import { inviteMember } from '../api/groupApi';
 import { useAccount } from '../domain/account';
-import { isValidEgyptianMobile, toE164 } from '../domain/phone';
+import { isValidEmail, normalizeEmail } from '../domain/email';
 import { fonts, radii, spacing, useTheme } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -30,9 +31,48 @@ export default function InviteMemberScreen({ navigation, route }: Props) {
 
   const { token } = useAccount();
   const [displayName, setDisplayName] = useState('');
-  const [localNumber, setLocalNumber] = useState('');
+  const [emailInput, setEmailInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+
+  const handlePickContact = async () => {
+    setError(null);
+    // presentContactPickerAsync hands off to the native OS contact picker
+    // (CNContactPickerViewController on iOS, ACTION_PICK on Android) — it
+    // runs out-of-process and returns only the one contact the fronter
+    // picked, so unlike getContactsAsync it needs no Contacts permission
+    // prompt/grant at all, matching this app's minimal-permissions posture.
+    // Not implemented on web (expo-contacts has no web picker) — caught
+    // below rather than left to crash as an unhandled rejection.
+    let contact: Contacts.ExistingContact | null;
+    try {
+      contact = await Contacts.presentContactPickerAsync();
+    } catch {
+      setError('Contact picker is not available here — enter the details manually.');
+      return;
+    }
+    if (!contact) {
+      return; // picker dismissed/cancelled
+    }
+    const email = contact.emails?.map((entry) => entry.email).find((value): value is string => Boolean(value));
+    if (!email) {
+      setError("Couldn't find an email address on that contact — enter it manually.");
+      return;
+    }
+    setEmailInput(email);
+    // `contact.name` is unreliable from the native picker specifically — on
+    // iOS, presentContactPickerAsync's serialization path never populates
+    // the combined `name` field (only firstName/middleName/lastName, which
+    // it does set unconditionally), unlike getContactsAsync's normal query
+    // path. Compose from the name parts rather than trusting `.name`.
+    const composedName = [contact.firstName, contact.middleName, contact.lastName]
+      .filter((part): part is string => Boolean(part && part.trim().length > 0))
+      .join(' ');
+    const resolvedName = contact.name?.trim() || composedName;
+    if (resolvedName) {
+      setDisplayName(resolvedName);
+    }
+  };
 
   const handleInvite = async () => {
     if (!token) {
@@ -46,13 +86,13 @@ export default function InviteMemberScreen({ navigation, route }: Props) {
       setError('Enter a name for this person.');
       return;
     }
-    if (!isValidEgyptianMobile(localNumber)) {
-      setError('Enter a valid Egyptian mobile number, e.g. 01012345678.');
+    if (!isValidEmail(emailInput)) {
+      setError('Enter a valid email address.');
       return;
     }
     setIsSending(true);
     setError(null);
-    const result = await inviteMember(token, groupId, toE164(localNumber), trimmedName);
+    const result = await inviteMember(token, groupId, normalizeEmail(emailInput), trimmedName);
     setIsSending(false);
     if (result.status !== 'ok') {
       setError(result.message);
@@ -64,6 +104,9 @@ export default function InviteMemberScreen({ navigation, route }: Props) {
   return (
     <ScrollView style={screenStyles.container} contentContainerStyle={screenStyles.content}>
       <Text style={screenStyles.heading}>Invite Member</Text>
+      <Pressable accessibilityLabel="Choose from contacts" style={buttonStyles.secondary} onPress={handlePickContact}>
+        <Text style={buttonStyles.secondaryText}>Choose from Contacts</Text>
+      </Pressable>
       <TextInput
         accessibilityLabel="Member's name"
         style={styles.input}
@@ -76,17 +119,18 @@ export default function InviteMemberScreen({ navigation, route }: Props) {
         }}
       />
       <TextInput
-        accessibilityLabel="Member's phone number"
+        accessibilityLabel="Member's email address"
         style={styles.input}
-        placeholder="01012345678"
+        placeholder="you@example.com"
         placeholderTextColor={colors.inkFaint}
-        keyboardType="phone-pad"
-        value={localNumber}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoCorrect={false}
+        value={emailInput}
         onChangeText={(text) => {
-          setLocalNumber(text);
+          setEmailInput(text);
           setError(null);
         }}
-        maxLength={11}
       />
       {error && <Text style={styles.errorText}>{error}</Text>}
       <Pressable

@@ -5,7 +5,7 @@ import { getUserIdByToken } from './db/authSessions';
 export type AuthContext = { userId: string };
 
 /**
- * Every household route needs a signed-in user. Returns a Response (401)
+ * Every group/account route needs a signed-in user. Returns a Response (401)
  * instead of throwing so route handlers can do
  * `const auth = await requireAuth(...); if (auth instanceof Response) return auth;`
  * and stay flat — matches this Worker's existing no-exceptions-as-control-flow
@@ -32,4 +32,18 @@ export async function requireGroupMember(env: Env, groupId: string, userId: stri
     return jsonResponse({ status: 'error', message: 'Not a member of this group.' }, 403);
   }
   return { memberId: row.id };
+}
+
+/**
+ * "Admin" has no dedicated role/permission column (2026-07-30 decision) —
+ * the group's creator (groups.created_by_user_id) is its one, permanent
+ * admin. Call after requireGroupMember, not instead of it — this only
+ * checks creator-ness, not membership.
+ */
+export async function requireGroupAdmin(env: Env, groupId: string, userId: string): Promise<Record<string, never> | Response> {
+  const row = await env.DB.prepare('SELECT id FROM groups WHERE id = ? AND created_by_user_id = ?').bind(groupId, userId).first<{ id: string }>();
+  if (!row) {
+    return jsonResponse({ status: 'error', message: 'Only the group creator can do this.' }, 403);
+  }
+  return {};
 }

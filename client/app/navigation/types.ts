@@ -1,5 +1,6 @@
 export type RootStackParamList = {
   Home: undefined;
+  CasualSplit: undefined;
   Capture: { openGalleryOnMount?: boolean } | undefined;
   ExtractedItems: undefined;
   ExtractionFailed: undefined;
@@ -10,11 +11,14 @@ export type RootStackParamList = {
   FinalSplit: undefined;
   History: undefined;
   HistoryDetail: { entryId: string };
-  PhoneEntry: undefined;
-  OtpVerify: { phoneE164: string };
+  EmailEntry: undefined;
+  OtpVerify: { email: string };
   GroupList: undefined;
+  Account: { requireName?: boolean } | undefined;
   CreateGroup: undefined;
   GroupDetail: { groupId: string };
+  ExpenseDetail: { groupId: string; expenseId: string };
+  ExpenseEdit: { groupId: string; expenseId: string };
   InviteMember: { groupId: string };
   SettleUp: { groupId: string };
 };

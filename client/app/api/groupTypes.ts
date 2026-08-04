@@ -6,8 +6,12 @@
 export type RequestOtpResponse = { status: 'sent' } | { status: 'error'; message: string };
 
 export type VerifyOtpResponse =
-  | { status: 'ok'; token: string; user: { id: string; phone_e164: string; display_name: string | null } }
+  | { status: 'ok'; token: string; user: { id: string; email: string; display_name: string | null } }
   | { status: 'error'; message: string };
+
+export type UserWire = { id: string; email: string; display_name: string | null };
+export type GetAccountResponse = { status: 'ok'; user: UserWire } | { status: 'error'; message: string };
+export type UpdateAccountResponse = { status: 'ok'; user: UserWire } | { status: 'error'; message: string };
 
 export type GroupKindWire = 'household' | 'trip' | 'other';
 
@@ -17,7 +21,7 @@ export type GroupMemberWire = {
   id: string;
   group_id: string;
   user_id: string | null;
-  phone_e164: string;
+  email: string;
   display_name: string;
   status: 'pending' | 'active' | 'removed';
   invited_by_user_id: string;
@@ -45,6 +49,15 @@ export type ExpenseWire = {
   total_piastres: number;
   printed_total_piastres: number | null;
   created_at: string;
+  // Present since migration 0003 (2026-07-30) — the original tax/service
+  // rate inputs, needed to reconstruct exactly what the fronter entered
+  // for admin expense editing (the *_piastres amounts alone are lossy).
+  tax_enabled: boolean;
+  tax_rate_percent: number;
+  service_enabled: boolean;
+  service_rate_percent: number;
+  other_service_enabled: boolean;
+  other_service_rate_percent: number;
   items: ExpenseItemWire[];
   // expense_item_id -> group_member_id -> weight
   assignments: Record<string, Record<string, number>>;
@@ -87,6 +100,8 @@ export type SubmitExpenseBody = {
   item_assignments: Record<number, Record<string, number>>;
 };
 export type SubmitExpenseResponse = { status: 'ok'; expense_id: string } | { status: 'error'; message: string };
+export type UpdateExpenseResponse = { status: 'ok' } | { status: 'error'; message: string };
+export type DeleteExpenseResponse = { status: 'ok' } | { status: 'error'; message: string };
 
 export type RecordSettlementBody = { from_member_id: string; to_member_id: string; amount_piastres: number; note?: string };
 export type RecordSettlementResponse = { status: 'ok'; settlement_id: string } | { status: 'error'; message: string };

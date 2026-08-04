@@ -75,10 +75,10 @@ export function calculatePersonSubtotals(
 }
 
 /**
- * Each person's total = their item subtotal + their proportional share of
- * tax, service, and other service (all three computed off the item
- * subtotal, same base), based only on what they were assigned (Story 1.5 AC
- * #4 / FR-8). A flat delivery-style charge isn't handled here at all — it's
+ * Each person's total = their item subtotal, minus their proportional share
+ * of a whole-order discount, plus their proportional share of tax, service,
+ * and other service (all computed off the same item-subtotal base), based
+ * only on what they were assigned (Story 1.5 AC #4 / FR-8). A flat delivery-style charge isn't handled here at all — it's
  * modeled as an ordinary shared item in `itemAssignments`, so it already
  * flows through `personSubtotal` via `calculatePersonSubtotals` like
  * anything else. Proportional shares are independently round-half-up per
@@ -95,11 +95,12 @@ export function calculatePersonTotals(
     const proportionalShareOf = (chargePiastres: number) =>
       totals.subtotalPiastres === 0 ? 0 : roundHalfUp((chargePiastres * personSubtotal) / totals.subtotalPiastres);
 
+    const discountShare = proportionalShareOf(totals.discountPiastres);
     const taxShare = proportionalShareOf(totals.taxPiastres);
     const serviceShare = proportionalShareOf(totals.servicePiastres);
     const otherServiceShare = proportionalShareOf(totals.otherServicePiastres);
 
-    return personSubtotal + taxShare + serviceShare + otherServiceShare;
+    return personSubtotal - discountShare + taxShare + serviceShare + otherServiceShare;
   });
 }
 

@@ -20,7 +20,17 @@ export type ExtractionResult =
       items: ExtractedItem[];
       taxRatePercent?: number;
       serviceRatePercent?: number;
+      // A whole-order discount (e.g. a delivery-app "Discount" line) —
+      // exactly one of these two is ever set, mirroring whichever form
+      // (percentage vs flat amount) was actually printed. Distinct from
+      // discountNote below, which covers PER-ITEM discounts instead.
+      discountRatePercent?: number;
+      discountFlatPiastres?: number;
       printedTotalPiastres?: number;
+      // Set only when at least one item had a printed per-item discount
+      // applied server-side — item prices below already reflect it; this
+      // is purely a display note so a lower-than-menu price isn't a mystery.
+      discountNote?: string;
       // Set only when multiple photos were submitted as one order but don't
       // actually look like the same order — items/total above still come
       // from whichever single photo was judged coherent; surfaced to the

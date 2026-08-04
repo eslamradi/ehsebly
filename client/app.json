@@ -10,7 +10,7 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.eslamradii.ehsebly",
+      "package": "com.downdev.ehsebly",
       "adaptiveIcon": {
         "backgroundColor": "#FAF6EE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -22,7 +22,7 @@
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
       ],
-      "versionCode": 2
+      "versionCode": 6
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -41,7 +41,8 @@
         }
       ],
       "expo-font",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-contacts"
     ],
     "extra": {
       "eas": {

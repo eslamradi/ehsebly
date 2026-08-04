@@ -33,7 +33,7 @@ function sum(values: number[]): number {
 }
 
 function makeMember(id: string, overrides: Partial<GroupMember> = {}): GroupMember {
-  return { id, phoneE164: `+20100000000${id}`, displayName: `Member ${id}`, status: 'active', userId: `user-${id}`, ...overrides };
+  return { id, email: `member${id}@example.com`, displayName: `Member ${id}`, status: 'active', userId: `user-${id}`, ...overrides };
 }
 
 // --- calculateMemberSharesForExpense: delegates to assignment.ts's math,
@@ -218,7 +218,7 @@ function checkPendingMemberAccumulatesBalance(): void {
   const net = computeGroupNetBalances([expense], [], members);
   // Ledger math keys off member.id only — a pending member (no userId yet)
   // holds a real balance exactly like an active one, which is the whole
-  // point of inviting-by-phone before signup.
+  // point of inviting-by-email before signup.
   assertEqual('pending member still owes their share', net.b, -200);
 }
 

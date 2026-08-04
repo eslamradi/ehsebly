@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { formatPiastresAsEGP, parsePercentInput } from '../domain/money';
+import { formatPiastresAsEGP, parseEGPToPiastres, parsePercentInput } from '../domain/money';
 import { calculateSplitTotals, calculateSubtotalPiastres } from '../domain/splitCalculation';
 import { useSplitSession } from '../domain/session';
 import { fonts, radii, spacing, useTheme, type Theme } from '../theme';
@@ -36,6 +36,17 @@ function makeStyles(theme: Theme) {
         inputError: { borderColor: colors.critical },
         errorText: { fontFamily: fonts.sansRegular, color: colors.critical, fontSize: 12 },
         percentSign: { fontFamily: fonts.sansRegular, fontSize: 16, color: colors.inkSoft },
+        modeRow: { flexDirection: 'row', gap: spacing.sm },
+        modeButton: {
+          paddingVertical: 6,
+          paddingHorizontal: spacing.md,
+          borderRadius: radii.sm,
+          borderWidth: 1,
+          borderColor: colors.line,
+        },
+        modeButtonActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+        modeButtonText: { fontFamily: fonts.sansSemiBold, fontSize: 13, color: colors.inkSoft },
+        modeButtonTextActive: { color: colors.accentInk },
         previewPanel: {
           backgroundColor: colors.paperRaised,
           borderRadius: radii.md,
@@ -78,12 +89,17 @@ export default function TaxServiceScreen({ navigation }: Props) {
   const [taxRateDraft, setTaxRateDraft] = useState<string | null>(null);
   const [serviceRateDraft, setServiceRateDraft] = useState<string | null>(null);
   const [otherServiceRateDraft, setOtherServiceRateDraft] = useState<string | null>(null);
+  // Separate drafts for the two discount value fields — switching mode
+  // shouldn't lose whatever the fronter already typed in the other one.
+  const [discountPercentDraft, setDiscountPercentDraft] = useState<string | null>(null);
+  const [discountFlatDraft, setDiscountFlatDraft] = useState<string | null>(null);
   // Whether the last blur on each field was rejected as unparseable —
   // shown as a brief cue rather than silently reverting with no feedback
   // (code review finding, Story 1.3).
   const [taxRateError, setTaxRateError] = useState(false);
   const [serviceRateError, setServiceRateError] = useState(false);
   const [otherServiceRateError, setOtherServiceRateError] = useState(false);
+  const [discountError, setDiscountError] = useState(false);
 
   if (!extractionResult || extractionResult.status !== 'ok' || !taxService) {
     // Defensive: this screen is only navigated to after ExtractedItemsScreen
@@ -161,6 +177,54 @@ export default function TaxServiceScreen({ navigation }: Props) {
     return true;
   };
 
+  const commitDiscountPercentDraft = (): boolean => {
+    if (discountPercentDraft === null) {
+      return true;
+    }
+    const parsed = parsePercentInput(discountPercentDraft);
+    if (parsed === null) {
+      setDiscountError(true);
+      setDiscountPercentDraft(null);
+      return false;
+    }
+    setTaxService((previous) => ({ ...previous, discountRatePercent: parsed }));
+    setDiscountError(false);
+    setDiscountPercentDraft(null);
+    return true;
+  };
+
+  const commitDiscountFlatDraft = (): boolean => {
+    if (discountFlatDraft === null) {
+      return true;
+    }
+    const parsed = parseEGPToPiastres(discountFlatDraft);
+    if (parsed === null) {
+      setDiscountError(true);
+      setDiscountFlatDraft(null);
+      return false;
+    }
+    setTaxService((previous) => ({ ...previous, discountFlatPiastres: parsed }));
+    setDiscountError(false);
+    setDiscountFlatDraft(null);
+    return true;
+  };
+
+  // Commits whichever of the two discount fields is currently active —
+  // the inactive one's draft (if any) is left pending, same as leaving any
+  // other screen field mid-edit.
+  const commitActiveDiscountDraft = (): boolean =>
+    taxService.discountMode === 'percent' ? commitDiscountPercentDraft() : commitDiscountFlatDraft();
+
+  const handleDiscountToggle = (value: boolean) => {
+    commitActiveDiscountDraft();
+    setTaxService((previous) => ({ ...previous, discountEnabled: value }));
+  };
+
+  const handleDiscountModeChange = (mode: 'flat' | 'percent') => {
+    commitActiveDiscountDraft();
+    setTaxService((previous) => ({ ...previous, discountMode: mode }));
+  };
+
   const handleTaxToggle = (value: boolean) => {
     const parsed = taxRateDraft === null ? null : parsePercentInput(taxRateDraft);
     const invalid = taxRateDraft !== null && parsed === null;
@@ -201,7 +265,8 @@ export default function TaxServiceScreen({ navigation }: Props) {
     const taxCommitted = commitTaxRateDraft();
     const serviceCommitted = commitServiceRateDraft();
     const otherServiceCommitted = commitOtherServiceRateDraft();
-    if (!taxCommitted || !serviceCommitted || !otherServiceCommitted) {
+    const discountCommitted = commitActiveDiscountDraft();
+    if (!taxCommitted || !serviceCommitted || !otherServiceCommitted || !discountCommitted) {
       // Stay put so the fronter can see and fix the error text instead of
       // navigating away in the same tick it was raised (code review finding,
       // Story 1.5 review of this screen).
@@ -213,6 +278,72 @@ export default function TaxServiceScreen({ navigation }: Props) {
   return (
     <ScrollView style={screenStyles.container} contentContainerStyle={screenStyles.content}>
       <Text style={screenStyles.heading}>Tax &amp; Service</Text>
+
+      <View style={styles.rateCard}>
+        <View style={styles.rateLabel}>
+          <Text style={styles.rateName}>Discount</Text>
+          <Switch
+            accessibilityLabel="Discount applies to this receipt"
+            value={taxService.discountEnabled}
+            onValueChange={handleDiscountToggle}
+            trackColor={{ false: colors.line, true: colors.accent }}
+            thumbColor={colors.paperRaised}
+          />
+        </View>
+        <View style={styles.modeRow}>
+          <Pressable
+            accessibilityLabel="Discount as a percentage"
+            style={[styles.modeButton, taxService.discountMode === 'percent' && styles.modeButtonActive]}
+            onPress={() => handleDiscountModeChange('percent')}
+          >
+            <Text style={[styles.modeButtonText, taxService.discountMode === 'percent' && styles.modeButtonTextActive]}>
+              %
+            </Text>
+          </Pressable>
+          <Pressable
+            accessibilityLabel="Discount as a flat EGP amount"
+            style={[styles.modeButton, taxService.discountMode === 'flat' && styles.modeButtonActive]}
+            onPress={() => handleDiscountModeChange('flat')}
+          >
+            <Text style={[styles.modeButtonText, taxService.discountMode === 'flat' && styles.modeButtonTextActive]}>
+              EGP
+            </Text>
+          </Pressable>
+        </View>
+        {taxService.discountMode === 'percent' ? (
+          <View style={styles.rateInputWrapper}>
+            <TextInput
+              accessibilityLabel="Discount rate percent"
+              style={[styles.rateInput, !taxService.discountEnabled && styles.rateInputDisabled, discountError && styles.inputError]}
+              keyboardType="decimal-pad"
+              editable={taxService.discountEnabled}
+              value={discountPercentDraft ?? String(taxService.discountRatePercent)}
+              onChangeText={(text) => {
+                setDiscountPercentDraft(text);
+                setDiscountError(false);
+              }}
+              onBlur={commitDiscountPercentDraft}
+            />
+            <Text style={styles.percentSign}>%</Text>
+          </View>
+        ) : (
+          <View style={styles.rateInputWrapper}>
+            <TextInput
+              accessibilityLabel="Discount flat amount in Egyptian pounds"
+              style={[styles.rateInput, !taxService.discountEnabled && styles.rateInputDisabled, discountError && styles.inputError]}
+              keyboardType="decimal-pad"
+              editable={taxService.discountEnabled}
+              value={discountFlatDraft ?? formatPiastresAsEGP(taxService.discountFlatPiastres)}
+              onChangeText={(text) => {
+                setDiscountFlatDraft(text);
+                setDiscountError(false);
+              }}
+              onBlur={commitDiscountFlatDraft}
+            />
+          </View>
+        )}
+        {discountError && <Text style={styles.errorText}>Couldn&apos;t read that — kept the previous value.</Text>}
+      </View>
 
       <View style={styles.rateCard}>
         <View style={styles.rateLabel}>
@@ -313,6 +444,11 @@ export default function TaxServiceScreen({ navigation }: Props) {
 
       <View style={styles.previewPanel}>
         <PreviewLine styles={styles} label="Subtotal" piastres={totals.subtotalPiastres} />
+        <PreviewLine
+          styles={styles}
+          label={`Discount${taxService.discountEnabled && taxService.discountMode === 'percent' ? ` (${taxService.discountRatePercent}%)` : ''}`}
+          piastres={-totals.discountPiastres}
+        />
         <PreviewLine styles={styles} label="Service" piastres={totals.servicePiastres} />
         <PreviewLine
           styles={styles}

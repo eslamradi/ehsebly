@@ -19,8 +19,12 @@ import { AccountProvider } from './app/domain/account';
 import { SplitSessionProvider } from './app/domain/session';
 import { useTheme } from './app/theme';
 import type { RootStackParamList } from './app/navigation/types';
+import AccountScreen from './app/screens/AccountScreen';
 import CaptureScreen from './app/screens/CaptureScreen';
+import CasualSplitScreen from './app/screens/CasualSplitScreen';
 import CreateGroupScreen from './app/screens/CreateGroupScreen';
+import ExpenseDetailScreen from './app/screens/ExpenseDetailScreen';
+import ExpenseEditScreen from './app/screens/ExpenseEditScreen';
 import ExtractedItemsScreen from './app/screens/ExtractedItemsScreen';
 import ExtractionFailedScreen from './app/screens/ExtractionFailedScreen';
 import FinalSplitScreen from './app/screens/FinalSplitScreen';
@@ -28,12 +32,12 @@ import GroupDetailScreen from './app/screens/GroupDetailScreen';
 import GroupListScreen from './app/screens/GroupListScreen';
 import HistoryDetailScreen from './app/screens/HistoryDetailScreen';
 import HistoryScreen from './app/screens/HistoryScreen';
+import EmailEntryScreen from './app/screens/EmailEntryScreen';
 import HomeScreen from './app/screens/HomeScreen';
 import InviteMemberScreen from './app/screens/InviteMemberScreen';
 import ItemAssignmentScreen from './app/screens/ItemAssignmentScreen';
 import ManualEntryScreen from './app/screens/ManualEntryScreen';
 import OtpVerifyScreen from './app/screens/OtpVerifyScreen';
-import PhoneEntryScreen from './app/screens/PhoneEntryScreen';
 import ReviewScreen from './app/screens/ReviewScreen';
 import SettleUpScreen from './app/screens/SettleUpScreen';
 import TaxServiceScreen from './app/screens/TaxServiceScreen';
@@ -101,6 +105,7 @@ function AppContent() {
             screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.paper } }}
           >
             <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="CasualSplit" component={CasualSplitScreen} />
             <Stack.Screen name="Capture" component={CaptureScreen} />
             <Stack.Screen name="ExtractedItems" component={ExtractedItemsScreen} />
             <Stack.Screen name="ExtractionFailed" component={ExtractionFailedScreen} />
@@ -111,11 +116,14 @@ function AppContent() {
             <Stack.Screen name="FinalSplit" component={FinalSplitScreen} />
             <Stack.Screen name="History" component={HistoryScreen} />
             <Stack.Screen name="HistoryDetail" component={HistoryDetailScreen} />
-            <Stack.Screen name="PhoneEntry" component={PhoneEntryScreen} />
+            <Stack.Screen name="EmailEntry" component={EmailEntryScreen} />
             <Stack.Screen name="OtpVerify" component={OtpVerifyScreen} />
             <Stack.Screen name="GroupList" component={GroupListScreen} />
+            <Stack.Screen name="Account" component={AccountScreen} />
             <Stack.Screen name="CreateGroup" component={CreateGroupScreen} />
             <Stack.Screen name="GroupDetail" component={GroupDetailScreen} />
+            <Stack.Screen name="ExpenseDetail" component={ExpenseDetailScreen} />
+            <Stack.Screen name="ExpenseEdit" component={ExpenseEditScreen} />
             <Stack.Screen name="InviteMember" component={InviteMemberScreen} />
             <Stack.Screen name="SettleUp" component={SettleUpScreen} />
           </Stack.Navigator>

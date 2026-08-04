@@ -30,6 +30,12 @@ function assertEqual(label: string, actual: unknown, expected: unknown): void {
 
 const NO_RATES = { taxEnabled: false, taxRatePercent: 0, serviceEnabled: false, serviceRatePercent: 0 };
 const NO_OTHER_SERVICE = { otherServiceEnabled: false, otherServiceRatePercent: 0 };
+const NO_DISCOUNT = {
+  discountEnabled: false,
+  discountMode: 'flat' as const,
+  discountRatePercent: 0,
+  discountFlatPiastres: 0,
+};
 
 // --- real-world case: IMG_8402, a Zooba order via a delivery app --------
 // Order summary screenshot with no tax/service percentage anywhere — just a
@@ -75,7 +81,7 @@ function checkZoobaDeliveryReceipt(): void {
   // every item — food and both flat fees alike — is summed as an ordinary
   // subtotal, with no tax/service/other-service charges (none were printed).
   const subtotalPiastres = calculateSubtotalPiastres(result.items);
-  const totals = calculateSplitTotals({ subtotalPiastres, ...NO_RATES, ...NO_OTHER_SERVICE });
+  const totals = calculateSplitTotals({ subtotalPiastres, ...NO_RATES, ...NO_OTHER_SERVICE, ...NO_DISCOUNT });
   assertEqual('Zooba receipt: total reconciles against printed total', totals.totalPiastres, 24515);
 
   // Simulates ItemAssignmentScreen's auto-check: both flat fees split

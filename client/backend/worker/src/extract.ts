@@ -1,5 +1,7 @@
-import { parsePrintedPriceToPiastres } from './money';
+import { parsePrintedPriceToPiastres, roundHalfUp } from './money';
 import type { ExtractedItem, ExtractionResponse, FlatFeeLine } from './types';
+import type { Env } from './env';
+import { extractReceiptViaGemini, type GeminiExtractToolInput, type TokenUsage } from './geminiExtract';
 
 const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
@@ -47,8 +49,18 @@ const EXTRACT_RECEIPT_TOOL = {
               description:
                 'The quantity printed for this line, e.g. 10 if the receipt shows "10x Water", a quantity column reads 10, or an app screenshot shows a "1" badge on the item. Default to 1 for a normal single-item line with no quantity printed or implied.',
             },
+            discount_percent: {
+              type: ['number', 'null'],
+              description:
+                'A percentage discount printed against this specific item, e.g. 10 for "10% off" shown on or right next to this line. Null if no discount percentage is printed for this item. Never infer or compute a percentage yourself — transcribe only what is printed.',
+            },
+            discount_flat_egp_text: {
+              type: ['string', 'null'],
+              description:
+                'A flat EGP discount amount printed against this specific item (subtracted from the line\'s price_egp_text), digits only — e.g. "20.00". Null if no flat discount is printed for this item. If both a percentage and a flat amount appear to apply to the same item, report only the one explicitly printed for it; do not report both.',
+            },
           },
-          required: ['name', 'price_egp_text', 'quantity'],
+          required: ['name', 'price_egp_text', 'quantity', 'discount_percent', 'discount_flat_egp_text'],
           additionalProperties: false,
         },
       },
@@ -78,10 +90,29 @@ const EXTRACT_RECEIPT_TOOL = {
         required: ['rate_percent'],
         additionalProperties: false,
       },
+      discount_line: {
+        type: ['object', 'null'],
+        description:
+          'The receipt\'s single explicit discount line applied to the WHOLE order — e.g. a delivery-app "Discount" line, or a receipt-wide coupon/promo — as opposed to a discount printed against one specific item (that\'s each item\'s own discount_percent/discount_flat_egp_text instead). Provide EITHER a flat EGP amount OR a percentage, whichever is actually printed — never both, never compute one from the other. Null if no order-wide discount line is visible.',
+        properties: {
+          amount_egp_text: {
+            type: ['string', 'null'],
+            description:
+              'The order-wide discount\'s flat amount exactly as printed, digits only, no minus sign — e.g. "47.25". Null if the discount is printed as a percentage instead.',
+          },
+          rate_percent: {
+            type: ['number', 'null'],
+            description:
+              'The order-wide discount\'s rate as a percentage, e.g. 10 for "10% off", if printed as a percentage rather than a flat amount. Null if the discount is a flat amount instead.',
+          },
+        },
+        required: ['amount_egp_text', 'rate_percent'],
+        additionalProperties: false,
+      },
       flat_fees: {
         type: 'array',
         description:
-          'Any additional named charge lines that print a flat amount with no percentage — e.g. "Delivery fee", "Service fee", "Preparation fee" on a delivery-app order screen. Do not include a line already captured in tax_line or service_line. Skip a fee that\'s printed as exactly 0 only if you\'re unsure it was actually a real line — when in doubt, include it. Empty array if none.',
+          'Any additional named charge lines that print a flat amount with no percentage — e.g. "Delivery fee", "Service fee", "Preparation fee" on a delivery-app order screen. Do not include a line already captured in tax_line, service_line, or discount_line. Skip a fee that\'s printed as exactly 0 only if you\'re unsure it was actually a real line — when in doubt, include it. Empty array if none.',
         items: {
           type: 'object',
           properties: {
@@ -116,6 +147,7 @@ const EXTRACT_RECEIPT_TOOL = {
       'items',
       'tax_line',
       'service_line',
+      'discount_line',
       'flat_fees',
       'printed_total_text',
       'image_mismatch',
@@ -127,9 +159,16 @@ const EXTRACT_RECEIPT_TOOL = {
 } as const;
 
 type ExtractReceiptToolInput = {
-  items: Array<{ name: string; price_egp_text: string; quantity: number }>;
+  items: Array<{
+    name: string;
+    price_egp_text: string;
+    quantity: number;
+    discount_percent: number | null;
+    discount_flat_egp_text: string | null;
+  }>;
   tax_line: { rate_percent: number } | null;
   service_line: { rate_percent: number } | null;
+  discount_line: { amount_egp_text: string | null; rate_percent: number | null } | null;
   flat_fees: Array<{ name: string; amount_egp_text: string }>;
   printed_total_text: string | null;
   image_mismatch: boolean;
@@ -141,10 +180,21 @@ type ExtractReceiptToolInput = {
  * three AD-4 shapes. Never throws — every failure path (timeout, non-2xx,
  * malformed response) is caught and mapped to {status: "error"}.
  */
-export async function extractReceiptViaVisionLLM(
+export async function extractReceiptViaVisionLLM(imagesBytes: ArrayBuffer[], apiKey: string): Promise<ExtractionResponse> {
+  return (await callSonnetForExtraction(imagesBytes, apiKey)).result;
+}
+
+/**
+ * Does the actual Sonnet call and also returns real token usage, so
+ * extractReceipt can log real cost data. extractReceiptViaVisionLLM stays
+ * as a thin wrapper around this — same public shape as before this
+ * function existed, for any external caller that only wants the
+ * ExtractionResponse and doesn't care about usage.
+ */
+async function callSonnetForExtraction(
   imagesBytes: ArrayBuffer[],
   apiKey: string,
-): Promise<ExtractionResponse> {
+): Promise<{ result: ExtractionResponse; usage: TokenUsage | null }> {
   const imageBlocks = imagesBytes.map((bytes) => ({
     type: 'image' as const,
     source: {
@@ -156,8 +206,8 @@ export async function extractReceiptViaVisionLLM(
 
   const promptText =
     imagesBytes.length > 1
-      ? `These ${imagesBytes.length} images may be multiple photos or screenshots of the SAME single restaurant receipt or delivery-app order — e.g. several photos of one long paper receipt, or multiple screenshots taken while scrolling through one order-summary screen. First check whether they actually do belong to the same single order (same restaurant/store, same order ID if visible, consistent totals). If they do belong together, merge every unique charged line item across all images into a single list, don't double-count a line that appears in more than one image due to overlapping screenshots, and extract any explicit tax/service percentage lines and any flat named fee lines. If they do NOT belong together (different merchants, different orders, unrelated items), set image_mismatch to true and briefly explain why in image_mismatch_note — but still extract every field as normal from whichever single image represents one complete, coherent order (prefer the one with more legible detail), exactly as if that were the only image provided. Never leave items/totals empty just because of a mismatch — only leave them empty if no image contains a legible order at all. Skip anything shown as removed/cancelled/refunded. Use the extract_receipt tool.`
-      : 'This is a photo of a restaurant receipt, or a screenshot of a food/grocery delivery app\'s order-summary screen. Extract every charged line item (skipping anything shown as removed/cancelled/refunded), any explicit tax/service percentage lines, and any flat named fee lines (delivery fee, service fee, preparation fee, etc.) using the extract_receipt tool.';
+      ? `These ${imagesBytes.length} images may be multiple photos or screenshots of the SAME single restaurant receipt or delivery-app order — e.g. several photos of one long paper receipt, or multiple screenshots taken while scrolling through one order-summary screen. First check whether they actually do belong to the same single order (same restaurant/store, same order ID if visible, consistent totals). If they do belong together, merge every unique charged line item across all images into a single list, don't double-count a line that appears in more than one image due to overlapping screenshots, and extract any explicit tax/service percentage lines and any flat named fee lines. Always check carefully, line by line, for a "Discount", "Coupon", or "Promo" line near Subtotal/Delivery fee/Service fee/Total — these are easy to skim past but change the total, so report it in discount_line whenever one is printed, even faintly or in a different color/highlight than the surrounding text. If they do NOT belong together (different merchants, different orders, unrelated items), set image_mismatch to true and briefly explain why in image_mismatch_note — but still extract every field as normal from whichever single image represents one complete, coherent order (prefer the one with more legible detail), exactly as if that were the only image provided. Never leave items/totals empty just because of a mismatch — only leave them empty if no image contains a legible order at all. Skip anything shown as removed/cancelled/refunded. Use the extract_receipt tool.`
+      : 'This is a photo of a restaurant receipt, or a screenshot of a food/grocery delivery app\'s order-summary screen. Extract every charged line item (skipping anything shown as removed/cancelled/refunded), any explicit tax/service percentage lines, and any flat named fee lines (delivery fee, service fee, preparation fee, etc.) using the extract_receipt tool. Always check carefully, line by line, for a "Discount", "Coupon", or "Promo" line near Subtotal/Delivery fee/Service fee/Total — these are easy to skim past but change the total, so report it in discount_line whenever one is printed, even faintly or in a different color/highlight than the surrounding text.';
 
   const controller = new AbortController();
   const timeoutMs = imagesBytes.length > 1 ? VISION_LLM_TIMEOUT_MS_MULTI_IMAGE : VISION_LLM_TIMEOUT_MS;
@@ -195,7 +245,7 @@ export async function extractReceiptViaVisionLLM(
     // Network failure or AbortController timeout — both collapse to the
     // same error shape the client already handles (AC #5).
     console.error('extractReceiptViaVisionLLM: fetch to vision-LLM API failed', error);
-    return { status: 'error', message: 'Could not reach the extraction service.' };
+    return { result: { status: 'error', message: 'Could not reach the extraction service.' }, usage: null };
   } finally {
     clearTimeout(timeout);
   }
@@ -207,7 +257,7 @@ export async function extractReceiptViaVisionLLM(
     // the real reason (e.g. Anthropic's `error.message`), which the status
     // code alone doesn't explain when this needs debugging later.
     console.error('extractReceiptViaVisionLLM: vision-LLM API returned', response.status, responseText);
-    return { status: 'error', message: `Extraction service returned ${response.status}.` };
+    return { result: { status: 'error', message: `Extraction service returned ${response.status}.` }, usage: null };
   }
 
   let body: unknown;
@@ -215,48 +265,133 @@ export async function extractReceiptViaVisionLLM(
     body = JSON.parse(responseText);
   } catch (error) {
     console.error('extractReceiptViaVisionLLM: response body was not valid JSON', error, responseText);
-    return { status: 'error', message: 'Extraction service returned an unreadable response.' };
+    return { result: { status: 'error', message: 'Extraction service returned an unreadable response.' }, usage: null };
   }
+
+  const usage = extractSonnetUsage(body);
 
   if (isTruncatedResponse(body)) {
     console.error('extractReceiptViaVisionLLM: response was truncated (stop_reason: max_tokens)');
     return {
-      status: 'error',
-      message: 'Extraction was truncated — the receipt may have too many items.',
+      result: { status: 'error', message: 'Extraction was truncated — the receipt may have too many items.' },
+      usage,
     };
   }
 
   const toolInput = extractToolInput(body);
   if (!toolInput) {
     console.error('extractReceiptViaVisionLLM: tool call input did not match the expected shape');
-    return { status: 'error', message: 'Extraction service response was malformed.' };
+    return { result: { status: 'error', message: 'Extraction service response was malformed.' }, usage };
   }
 
-  if (toolInput.items.length === 0) {
+  return { result: buildExtractionResponse(toolInput, 'extractReceiptViaVisionLLM'), usage };
+}
+
+/** Anthropic's Messages API response carries `usage: {input_tokens, output_tokens}` at the top level. */
+function extractSonnetUsage(body: unknown): TokenUsage | null {
+  if (typeof body !== 'object' || body === null) {
+    return null;
+  }
+  const usage = (body as { usage?: unknown }).usage;
+  if (typeof usage !== 'object' || usage === null) {
+    return null;
+  }
+  const inputTokens = (usage as { input_tokens?: unknown }).input_tokens;
+  const outputTokens = (usage as { output_tokens?: unknown }).output_tokens;
+  if (typeof inputTokens !== 'number' || typeof outputTokens !== 'number') {
+    return null;
+  }
+  return { inputTokens, outputTokens };
+}
+
+/**
+ * Deterministically parses each item's printed price/discount into net
+ * piastres — shared between the Sonnet and Gemini paths so the money math
+ * (and the discount-reduces-the-line-price rule) has exactly one
+ * implementation. Returns null if any item's price or discount text isn't a
+ * plain non-negative decimal — a genuine transcription problem, not a
+ * conversion error, and the caller rejects the whole extraction rather than
+ * guess at a price.
+ */
+function parseItems(
+  rawItems: Array<{ name: string; price_egp_text: string; quantity: number; discount_percent: number | null; discount_flat_egp_text: string | null }>,
+): { items: ExtractedItem[]; discountedItemCount: number } | null {
+  const items: ExtractedItem[] = [];
+  let discountedItemCount = 0;
+  for (const item of rawItems) {
+    const rawPiastres = parsePrintedPriceToPiastres(item.price_egp_text);
+    if (rawPiastres === null) {
+      return null;
+    }
+
+    // A per-item discount reduces this item's price before it ever
+    // contributes to the subtotal — service% and tax% then compound on top
+    // of the already-discounted amount exactly as they do for any other
+    // item, so no separate discount-aware branch is needed in
+    // splitCalculation.ts. Same deterministic-arithmetic rule as the price
+    // itself: the model transcribes what's printed, this Worker computes
+    // the net piastres.
+    let piastres = rawPiastres;
+    if (item.discount_flat_egp_text !== null) {
+      const discountPiastres = parsePrintedPriceToPiastres(item.discount_flat_egp_text);
+      if (discountPiastres === null || discountPiastres > rawPiastres) {
+        return null;
+      }
+      piastres = rawPiastres - discountPiastres;
+      discountedItemCount += 1;
+    } else if (item.discount_percent !== null) {
+      piastres = roundHalfUp((rawPiastres * (100 - item.discount_percent)) / 100);
+      discountedItemCount += 1;
+    }
+
+    items.push({ name: item.name, price_piastres: piastres, quantity: item.quantity });
+  }
+  return { items, discountedItemCount };
+}
+
+/**
+ * Turns a validated raw tool input (from either Sonnet or an accepted
+ * Gemini result, confidence fields already stripped) into the AD-4
+ * response shape. Single source of truth for the money math so Sonnet and
+ * Gemini can never drift apart on how a price/discount/fee gets computed.
+ */
+function buildExtractionResponse(toolInput: ExtractReceiptToolInput, sourceLabel: string): ExtractionResponse {
+  const parsed = parseItems(toolInput.items);
+  if (parsed === null) {
+    console.error(`${sourceLabel}: unparseable price or discount text among items`);
+    return { status: 'error', message: 'Extraction service returned an unreadable price.' };
+  }
+  const { items, discountedItemCount } = parsed;
+
+  if (items.length === 0) {
     return { status: 'no_items_found' };
   }
 
-  const items: ExtractedItem[] = [];
-  for (const item of toolInput.items) {
-    const piastres = parsePrintedPriceToPiastres(item.price_egp_text);
-    if (piastres === null) {
-      // The model transcribed something that isn't a plain non-negative
-      // decimal price — reject the whole extraction rather than guess at
-      // a price. This is deterministic string parsing, not model
-      // arithmetic (see money.ts), so any failure here is a genuine
-      // transcription problem, not a conversion error.
-      console.error('extractReceiptViaVisionLLM: unparseable price text', item.price_egp_text);
-      return { status: 'error', message: 'Extraction service returned an unreadable price.' };
-    }
-    items.push({ name: item.name, price_piastres: piastres, quantity: item.quantity });
-  }
-
   const result: ExtractionResponse = { status: 'ok', items };
+  if (discountedItemCount > 0) {
+    result.discount_note = `Discount applied to ${discountedItemCount} item${discountedItemCount === 1 ? '' : 's'} — the price${discountedItemCount === 1 ? '' : 's'} below already reflect it.`;
+  }
   if (toolInput.tax_line) {
     result.tax_line = { rate_percent: toolInput.tax_line.rate_percent };
   }
   if (toolInput.service_line) {
     result.service_line = { rate_percent: toolInput.service_line.rate_percent };
+  }
+  if (toolInput.discount_line) {
+    // Same soft-failure treatment as flat_fees/printed_total below — an
+    // unparseable discount amount shouldn't invalidate an otherwise-good
+    // item extraction; the fronter can toggle/edit the discount by hand on
+    // TaxServiceScreen if it's ever wrong or missing.
+    if (toolInput.discount_line.amount_egp_text !== null) {
+      const discountPiastres = parsePrintedPriceToPiastres(toolInput.discount_line.amount_egp_text);
+      if (discountPiastres !== null) {
+        result.discount_line = { amount_piastres: discountPiastres };
+      } else {
+        console.error(`${sourceLabel}: unparseable discount_line amount, omitting`, toolInput.discount_line.amount_egp_text);
+      }
+    } else if (toolInput.discount_line.rate_percent !== null) {
+      result.discount_line = { rate_percent: toolInput.discount_line.rate_percent };
+    }
   }
   if (toolInput.flat_fees.length > 0) {
     // Same soft-failure treatment as the printed total below — a garbled
@@ -267,7 +402,7 @@ export async function extractReceiptViaVisionLLM(
     for (const fee of toolInput.flat_fees) {
       const piastres = parsePrintedPriceToPiastres(fee.amount_egp_text);
       if (piastres === null) {
-        console.error('extractReceiptViaVisionLLM: unparseable flat fee amount, omitting', fee.amount_egp_text);
+        console.error(`${sourceLabel}: unparseable flat fee amount, omitting`, fee.amount_egp_text);
         continue;
       }
       flatFees.push({ name: fee.name, amount_piastres: piastres });
@@ -285,10 +420,7 @@ export async function extractReceiptViaVisionLLM(
     if (printedTotalPiastres !== null) {
       result.printed_total_piastres = printedTotalPiastres;
     } else {
-      console.error(
-        'extractReceiptViaVisionLLM: unparseable printed total text, omitting from response',
-        toolInput.printed_total_text,
-      );
+      console.error(`${sourceLabel}: unparseable printed total text, omitting from response`, toolInput.printed_total_text);
     }
   }
   if (toolInput.image_mismatch && toolInput.image_mismatch_note) {
@@ -300,6 +432,259 @@ export async function extractReceiptViaVisionLLM(
     result.image_mismatch_note = toolInput.image_mismatch_note;
   }
   return result;
+}
+
+// How confident Gemini must be, on EVERY populated field (minimum, not
+// average — one badly-misread price is enough to ruin a split), before its
+// result is trusted instead of paying for Sonnet. Budget math (2026-08-02):
+// at Gemini 2.5 Flash's pricing ($0.30/$2.50 per MTok vs Sonnet 5's
+// $2/$10), the breakeven accept rate is only ~23% — so this threshold can
+// afford to be conservative/high without losing the economics.
+const GEMINI_CONFIDENCE_THRESHOLD = 0.85;
+
+// Same rounding-drift allowance the client's own reconciliation check uses
+// (app/domain/reconciliation.ts's RECONCILIATION_TOLERANCE_PIASTRES) — kept
+// in sync deliberately: this is the identical comparison, just run
+// server-side and earlier, as a pre-flight trust gate rather than the final
+// user-facing match/mismatch badge.
+const GEMINI_RECONCILE_TOLERANCE_PIASTRES = 2;
+
+/**
+ * Recomputes the receipt total from Gemini's own extracted items/discount/
+ * service/tax exactly the way the client's splitCalculation.ts does
+ * (discount reduces the subtotal first, then service, then tax compounds on
+ * top) — server-side, so isGeminiResultAcceptable can compare it against
+ * Gemini's own printed_total_piastres before ever trusting the result.
+ * Returns null if the discount_line amount doesn't parse.
+ */
+function computeReconciledTotalPiastres(toolInput: GeminiExtractToolInput, items: ExtractedItem[]): number | null {
+  const subtotalPiastres = items.reduce((sum, item) => sum + item.price_piastres, 0);
+
+  let discountPiastres = 0;
+  if (toolInput.discount_line) {
+    if (toolInput.discount_line.amount_egp_text !== null) {
+      const parsedDiscount = parsePrintedPriceToPiastres(toolInput.discount_line.amount_egp_text);
+      if (parsedDiscount === null) {
+        return null;
+      }
+      discountPiastres = Math.min(parsedDiscount, subtotalPiastres);
+    } else if (toolInput.discount_line.rate_percent !== null) {
+      discountPiastres = roundHalfUp((subtotalPiastres * toolInput.discount_line.rate_percent) / 100);
+    }
+  }
+  const discountedSubtotalPiastres = subtotalPiastres - discountPiastres;
+
+  const servicePiastres = toolInput.service_line
+    ? roundHalfUp((discountedSubtotalPiastres * toolInput.service_line.rate_percent) / 100)
+    : 0;
+  const taxBasePiastres = discountedSubtotalPiastres + servicePiastres;
+  const taxPiastres = toolInput.tax_line ? roundHalfUp((taxBasePiastres * toolInput.tax_line.rate_percent) / 100) : 0;
+
+  // flat_fees (a flat delivery/service-fee line with no percentage) never
+  // goes through the discount/service/tax compounding — the client folds
+  // each one in as an ordinary shared item, adding straight onto the total.
+  // Omitting these here would make every receipt that has one look like a
+  // reconciliation mismatch regardless of how accurately everything else
+  // was read (found via the discount-receipt test case, 2026-08-02: a
+  // flat "Service fee: 15.75" line was the entire gap, not a real error).
+  let flatFeesPiastres = 0;
+  for (const fee of toolInput.flat_fees) {
+    const parsedFee = parsePrintedPriceToPiastres(fee.amount_egp_text);
+    if (parsedFee === null) {
+      return null;
+    }
+    flatFeesPiastres += parsedFee;
+  }
+
+  return taxBasePiastres + taxPiastres + flatFeesPiastres;
+}
+
+type GateDecision =
+  | { accept: true; minConfidence: number; reconciledTotalPiastres: number; printedTotalPiastres: number }
+  | { accept: false; reason: string; minConfidence?: number; reconciledTotalPiastres?: number; printedTotalPiastres?: number };
+
+// Catches the failure mode the numeric reconciliation check is structurally
+// blind to: a printed "Tax"/"VAT"/"GST" line with a percentage gets
+// misfiled as a flat_fees entry instead of tax_line. The total still
+// reconciles either way (a flat "VAT: 198.51" and a proportional 14% tax
+// happened to sum to the same number on the receipt that surfaced this,
+// 2026-08-02/03), so it slips past the confidence and reconciliation
+// checks — a prompt hint alone didn't fix it (Gemini 3.1 Flash-Lite kept
+// doing it anyway), so this rejects on the name pattern itself rather than
+// trusting the model to self-correct.
+//
+// Deliberately does NOT match "service" — unlike tax/VAT/GST (which in
+// Egypt is essentially always a percentage-based government tax), a
+// "Service fee" is routinely a genuinely flat delivery-app charge with no
+// percentage anywhere on the receipt (confirmed on the discount-receipt
+// test case's real "Service fee: 15.75" line, which is correctly flat, not
+// a misread service_line) — matching "service" here would reject that
+// correct result as a false positive.
+const SUSPICIOUS_FLAT_FEE_NAME_PATTERN = /\b(tax|vat|gst)\b/i;
+
+function hasSuspiciousFlatFee(flatFees: GeminiExtractToolInput['flat_fees']): boolean {
+  return flatFees.some((fee) => SUSPICIOUS_FLAT_FEE_NAME_PATTERN.test(fee.name));
+}
+
+/**
+ * The accept/reject gate (user spec, 2026-08-02): accept Gemini's result
+ * only if every populated confidence field clears the threshold, the
+ * extraction reconciles against Gemini's own printed total, and no
+ * flat_fees entry looks like a misclassified tax line. No printed
+ * total at all counts as a reconciliation failure — without it there's
+ * nothing to verify against, so this errs conservative and falls back to
+ * Sonnet rather than trusting an unverifiable result. Returns a full
+ * decision record (not just a boolean) so the caller can log exactly why a
+ * result was rejected — essential while the real accept rate is still
+ * being measured (2026-08-02: pricing math only pays off if this is tuned
+ * against real behavior, not guessed at).
+ */
+function evaluateGeminiResult(toolInput: GeminiExtractToolInput, items: ExtractedItem[]): GateDecision {
+  if (items.length === 0) {
+    return { accept: false, reason: 'no items' };
+  }
+  if (hasSuspiciousFlatFee(toolInput.flat_fees)) {
+    return { accept: false, reason: 'flat_fees contains a likely misclassified tax line' };
+  }
+  if (toolInput.printed_total_text === null || toolInput.printed_total_confidence === null) {
+    return { accept: false, reason: 'no printed total (nothing to reconcile against)' };
+  }
+  const printedTotalPiastres = parsePrintedPriceToPiastres(toolInput.printed_total_text);
+  if (printedTotalPiastres === null) {
+    return { accept: false, reason: 'unparseable printed total' };
+  }
+
+  const confidences: number[] = [...toolInput.items.map((item) => item.confidence), toolInput.printed_total_confidence];
+  if (toolInput.tax_line) {
+    confidences.push(toolInput.tax_line.confidence);
+  }
+  if (toolInput.service_line) {
+    confidences.push(toolInput.service_line.confidence);
+  }
+  if (toolInput.discount_line) {
+    confidences.push(toolInput.discount_line.confidence);
+  }
+  const minConfidence = Math.min(...confidences);
+
+  const reconciledTotalPiastres = computeReconciledTotalPiastres(toolInput, items);
+  if (reconciledTotalPiastres === null) {
+    return { accept: false, reason: 'unparseable discount_line amount', minConfidence, printedTotalPiastres };
+  }
+
+  if (minConfidence < GEMINI_CONFIDENCE_THRESHOLD) {
+    return { accept: false, reason: 'confidence below threshold', minConfidence, reconciledTotalPiastres, printedTotalPiastres };
+  }
+  if (Math.abs(reconciledTotalPiastres - printedTotalPiastres) > GEMINI_RECONCILE_TOLERANCE_PIASTRES) {
+    return { accept: false, reason: 'reconciliation mismatch', minConfidence, reconciledTotalPiastres, printedTotalPiastres };
+  }
+  return { accept: true, minConfidence, reconciledTotalPiastres, printedTotalPiastres };
+}
+
+// Real per-token pricing (2026-08-03), used to log real cost per request
+// into extraction_requests rather than an estimate. Sonnet's intro pricing
+// ($2/$10 per MTok) expires 2026-08-31 and reverts to $3/$15 — sonnetPricing()
+// below switches automatically so logged costs stay accurate after that date
+// without needing another deploy.
+const GEMINI_INPUT_COST_PER_TOKEN = 0.25 / 1_000_000;
+const GEMINI_OUTPUT_COST_PER_TOKEN = 1.5 / 1_000_000;
+const SONNET_INTRO_PRICING_CUTOFF = new Date('2026-08-31T23:59:59Z');
+const SONNET_INPUT_COST_PER_TOKEN_INTRO = 2 / 1_000_000;
+const SONNET_OUTPUT_COST_PER_TOKEN_INTRO = 10 / 1_000_000;
+const SONNET_INPUT_COST_PER_TOKEN_STANDARD = 3 / 1_000_000;
+const SONNET_OUTPUT_COST_PER_TOKEN_STANDARD = 15 / 1_000_000;
+
+function sonnetCostPerToken(): { input: number; output: number } {
+  return new Date() <= SONNET_INTRO_PRICING_CUTOFF
+    ? { input: SONNET_INPUT_COST_PER_TOKEN_INTRO, output: SONNET_OUTPUT_COST_PER_TOKEN_INTRO }
+    : { input: SONNET_INPUT_COST_PER_TOKEN_STANDARD, output: SONNET_OUTPUT_COST_PER_TOKEN_STANDARD };
+}
+
+function computeCostUsd(usage: TokenUsage, inputCostPerToken: number, outputCostPerToken: number): number {
+  return usage.inputTokens * inputCostPerToken + usage.outputTokens * outputCostPerToken;
+}
+
+/**
+ * Persists one row per extraction request to extraction_requests — the
+ * dashboard's only data source, since Cloudflare's live tail logs are
+ * ephemeral. Best-effort: a logging failure must never break extraction
+ * itself, so insert errors are swallowed (logged, not thrown).
+ */
+async function recordExtractionRequest(
+  env: Env,
+  outcome: string,
+  geminiUsage: TokenUsage | null,
+  sonnetUsage: TokenUsage | null,
+): Promise<void> {
+  const geminiCostUsd = geminiUsage ? computeCostUsd(geminiUsage, GEMINI_INPUT_COST_PER_TOKEN, GEMINI_OUTPUT_COST_PER_TOKEN) : null;
+  const sonnetPricing = sonnetCostPerToken();
+  const sonnetCostUsd = sonnetUsage ? computeCostUsd(sonnetUsage, sonnetPricing.input, sonnetPricing.output) : null;
+  const totalCostUsd = (geminiCostUsd ?? 0) + (sonnetCostUsd ?? 0);
+  try {
+    await env.DB.prepare(
+      `INSERT INTO extraction_requests
+       (outcome, gemini_input_tokens, gemini_output_tokens, gemini_cost_usd, sonnet_used, sonnet_input_tokens, sonnet_output_tokens, sonnet_cost_usd, total_cost_usd)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+      .bind(
+        outcome,
+        geminiUsage?.inputTokens ?? null,
+        geminiUsage?.outputTokens ?? null,
+        geminiCostUsd,
+        sonnetUsage ? 1 : 0,
+        sonnetUsage?.inputTokens ?? null,
+        sonnetUsage?.outputTokens ?? null,
+        sonnetCostUsd,
+        totalCostUsd,
+      )
+      .run();
+  } catch (error) {
+    console.error('recordExtractionRequest: insert failed', error);
+  }
+}
+
+/**
+ * The public entry point (replaces direct calls to
+ * extractReceiptViaVisionLLM): tries Gemini 3.1 Flash-Lite first when
+ * GEMINI_API_KEY is configured, and only trusts its result if
+ * evaluateGeminiResult accepts it. Any failure to get a usable, acceptable
+ * Gemini result — missing key, network failure, malformed response, low
+ * confidence, or a reconciliation mismatch — falls back to the unchanged,
+ * always-trusted Sonnet path. Sonnet's own result is never gated; it's the
+ * backstop. Every path (except the no-key-configured case, which isn't a
+ * real gate decision) logs a row via recordExtractionRequest for the
+ * dashboard.
+ */
+export async function extractReceipt(imagesBytes: ArrayBuffer[], env: Env): Promise<ExtractionResponse> {
+  if (env.GEMINI_API_KEY) {
+    const geminiResult = await extractReceiptViaGemini(imagesBytes, env.GEMINI_API_KEY);
+    if (geminiResult) {
+      const { toolInput: geminiToolInput, usage: geminiUsage } = geminiResult;
+      const parsed = parseItems(geminiToolInput.items);
+      const decision: GateDecision = parsed
+        ? evaluateGeminiResult(geminiToolInput, parsed.items)
+        : { accept: false, reason: 'unparseable item price or discount' };
+      if (decision.accept) {
+        console.log(
+          `extractReceipt: accepted Gemini result (cheap path) — minConfidence=${decision.minConfidence} reconciledTotal=${decision.reconciledTotalPiastres} printedTotal=${decision.printedTotalPiastres}`,
+        );
+        await recordExtractionRequest(env, 'accepted', geminiUsage, null);
+        return buildExtractionResponse(geminiToolInput, 'extractReceiptViaGemini');
+      }
+      console.log(
+        `extractReceipt: Gemini result rejected (${decision.reason}) — minConfidence=${decision.minConfidence ?? 'n/a'} reconciledTotal=${decision.reconciledTotalPiastres ?? 'n/a'} printedTotal=${decision.printedTotalPiastres ?? 'n/a'} — falling back to Sonnet`,
+      );
+      const sonnet = await callSonnetForExtraction(imagesBytes, env.ANTHROPIC_API_KEY);
+      await recordExtractionRequest(env, `rejected: ${decision.reason}`, geminiUsage, sonnet.usage);
+      return sonnet.result;
+    }
+    console.log('extractReceipt: Gemini call failed — falling back to Sonnet');
+    const sonnet = await callSonnetForExtraction(imagesBytes, env.ANTHROPIC_API_KEY);
+    await recordExtractionRequest(env, 'gemini_call_failed', null, sonnet.usage);
+    return sonnet.result;
+  }
+  // No Gemini key configured at all (e.g. local dev) — Sonnet-only mode,
+  // not a real gate decision, so nothing meaningful to log.
+  return extractReceiptViaVisionLLM(imagesBytes, env.ANTHROPIC_API_KEY);
 }
 
 function isTruncatedResponse(body: unknown): boolean {
@@ -357,7 +742,9 @@ function isValidToolInput(input: unknown): input is ExtractReceiptToolInput {
       item !== null &&
       typeof (item as { name?: unknown }).name === 'string' &&
       typeof (item as { price_egp_text?: unknown }).price_egp_text === 'string' &&
-      isValidQuantity((item as { quantity?: unknown }).quantity),
+      isValidQuantity((item as { quantity?: unknown }).quantity) &&
+      isValidDiscountPercent((item as { discount_percent?: unknown }).discount_percent) &&
+      isValidNullableString((item as { discount_flat_egp_text?: unknown }).discount_flat_egp_text),
   );
   if (!itemsValid) {
     return false;
@@ -378,6 +765,7 @@ function isValidToolInput(input: unknown): input is ExtractReceiptToolInput {
   return (
     isValidRateLine(candidate.tax_line) &&
     isValidRateLine(candidate.service_line) &&
+    isValidDiscountLine(candidate.discount_line) &&
     isValidNullableString(candidate.printed_total_text) &&
     typeof candidate.image_mismatch === 'boolean' &&
     isValidNullableString(candidate.image_mismatch_note)
@@ -391,6 +779,13 @@ const MAX_ITEM_QUANTITY = 500;
 
 function isValidQuantity(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= MAX_ITEM_QUANTITY;
+}
+
+function isValidDiscountPercent(value: unknown): value is number | null {
+  if (value === null) {
+    return true;
+  }
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100;
 }
 
 function isValidNullableString(value: unknown): value is string | null {
@@ -420,7 +815,33 @@ function isValidRateLine(value: unknown): value is { rate_percent: number } | nu
   );
 }
 
-type SupportedImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+// A discount can be printed as either a flat amount or a percentage — unlike
+// tax_line/service_line (always percentage), so this accepts a nullable
+// string for the amount alongside a nullable rate, rather than reusing
+// isValidRateLine.
+function isValidDiscountLine(value: unknown): value is { amount_egp_text: string | null; rate_percent: number | null } | null {
+  if (value === null) {
+    return true;
+  }
+  if (typeof value !== 'object') {
+    return false;
+  }
+  const candidate = value as { amount_egp_text?: unknown; rate_percent?: unknown };
+  if (!isValidNullableString(candidate.amount_egp_text)) {
+    return false;
+  }
+  if (candidate.rate_percent === null) {
+    return true;
+  }
+  return (
+    typeof candidate.rate_percent === 'number' &&
+    Number.isFinite(candidate.rate_percent) &&
+    candidate.rate_percent >= 0 &&
+    candidate.rate_percent <= MAX_RATE_PERCENT
+  );
+}
+
+export type SupportedImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
 
 /**
  * Sniffs the real image format from its magic bytes rather than trusting a
@@ -436,7 +857,7 @@ type SupportedImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image
  * Falls back to JPEG when the bytes don't match a known signature, same as
  * the previous hardcoded behavior for the common real-world case.
  */
-function detectImageMediaType(buffer: ArrayBuffer): SupportedImageMediaType {
+export function detectImageMediaType(buffer: ArrayBuffer): SupportedImageMediaType {
   const bytes = new Uint8Array(buffer);
   // PNG: 89 50 4E 47
   if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
@@ -463,7 +884,7 @@ function detectImageMediaType(buffer: ArrayBuffer): SupportedImageMediaType {
   return 'image/jpeg';
 }
 
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
+export function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = '';
   const chunkSize = 0x8000;
