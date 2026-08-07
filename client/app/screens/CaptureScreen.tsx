@@ -24,6 +24,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { extractReceipt } from '../api/extractReceipt';
 import { useSplitSession } from '../domain/session';
 import { fonts, radii, spacing, useTheme } from '../theme';
+import { useI18n } from '../i18n';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Capture'>;
@@ -49,7 +50,9 @@ const MAX_PHOTOS = 8;
  * session and sends all of them to extraction together.
  */
 export default function CaptureScreen({ navigation, route }: Props) {
-  const { colors, insets, buttonStyles, screenStyles } = useTheme();
+  const theme = useTheme();
+  const { colors, insets, buttonStyles, screenStyles } = theme;
+  const { t } = useI18n();
 
   // useCameraPermissions returns a 3-tuple: [status, requestPermission, getPermission].
   // `getPermission` re-checks status without prompting the OS dialog — use it on
@@ -193,7 +196,7 @@ export default function CaptureScreen({ navigation, route }: Props) {
           permission.canAskAgain
             ? { message: 'ehsebly needs access to your photos to pick a receipt.', showSettingsLink: false }
             : {
-                message: 'Photo access is off. Turn it on in Settings to pick a receipt from your gallery.',
+                message: t('capture.photoAccessOff'),
                 showSettingsLink: true,
               },
         );
@@ -312,8 +315,8 @@ export default function CaptureScreen({ navigation, route }: Props) {
       return (
         <View style={screenStyles.center}>
           <Text style={screenStyles.message}>ehsebly needs your camera to photograph a receipt.</Text>
-          <Pressable accessibilityLabel="Grant camera access" style={buttonStyles.primary} onPress={requestPermission}>
-            <Text style={buttonStyles.primaryText}>Grant camera access</Text>
+          <Pressable accessibilityLabel={t('capture.grantCameraAction')} style={buttonStyles.primary} onPress={requestPermission}>
+            <Text style={buttonStyles.primaryText}>{t('capture.grantCameraAction')}</Text>
           </Pressable>
         </View>
       );
@@ -324,8 +327,8 @@ export default function CaptureScreen({ navigation, route }: Props) {
           Camera access is off, so ehsebly can&apos;t photograph a receipt. Turn it on in
           Settings to continue.
         </Text>
-        <Pressable accessibilityLabel="Open Settings" style={buttonStyles.primary} onPress={() => Linking.openSettings()}>
-          <Text style={buttonStyles.primaryText}>Open Settings</Text>
+        <Pressable accessibilityLabel={t('capture.a11yOpenSettings')} style={buttonStyles.primary} onPress={() => Linking.openSettings()}>
+          <Text style={buttonStyles.primaryText}>{t('capture.openSettings')}</Text>
         </Pressable>
       </View>
     );
@@ -337,23 +340,23 @@ export default function CaptureScreen({ navigation, route }: Props) {
         <PhotoPreview uris={confirmedUris} styles={styles} />
         {extracting ? (
           <>
-            <ActivityIndicator accessibilityLabel="Reading receipt" color={colors.accent} />
+            <ActivityIndicator accessibilityLabel={t('capture.a11yReadingReceipt')} color={colors.accent} />
             <Text style={screenStyles.message}>
-              {confirmedUris.length > 1 ? 'Reading your photos…' : 'Reading your receipt…'}
+              {t('capture.reading', { count: confirmedUris.length })}
             </Text>
           </>
         ) : (
           <Text style={screenStyles.message}>
-            {confirmedUris.length > 1 ? `${confirmedUris.length} photos captured.` : 'Photo captured.'}
+            {t('capture.captured', { count: confirmedUris.length })}
           </Text>
         )}
         <Pressable
-          accessibilityLabel="Retake photos"
+          accessibilityLabel={t('capture.a11yRetakePhotos')}
           style={[buttonStyles.secondary, extracting && buttonStyles.disabled]}
           disabled={extracting}
           onPress={handleRetakeAll}
         >
-          <Text style={buttonStyles.secondaryText}>Retake</Text>
+          <Text style={buttonStyles.secondaryText}>{t('capture.retake')}</Text>
         </Pressable>
       </View>
     );
@@ -367,7 +370,7 @@ export default function CaptureScreen({ navigation, route }: Props) {
     // is only ever visible for the brief moment the picker is opening.
     return (
       <View style={screenStyles.center}>
-        {pickingFromGallery && <ActivityIndicator accessibilityLabel="Opening your photos" color={colors.accent} />}
+        {pickingFromGallery && <ActivityIndicator accessibilityLabel={t('capture.a11yOpeningPhotos')} color={colors.accent} />}
       </View>
     );
   }
@@ -381,22 +384,22 @@ export default function CaptureScreen({ navigation, route }: Props) {
         </Text>
         {error && <Text style={[screenStyles.message, { color: colors.critical }]}>{error.message}</Text>}
         <View style={styles.column}>
-          <Pressable accessibilityLabel="Use these photos" style={buttonStyles.primary} onPress={handleUseThesePhotos}>
+          <Pressable accessibilityLabel={t('capture.a11yUsePhotos')} style={buttonStyles.primary} onPress={handleUseThesePhotos}>
             <Text style={buttonStyles.primaryText}>Use These Photos ({pendingUris.length})</Text>
           </Pressable>
-          <Pressable accessibilityLabel="Add another photo with the camera" style={buttonStyles.secondary} onPress={handleAddAnother}>
-            <Text style={buttonStyles.secondaryText}>Add Another (Camera)</Text>
+          <Pressable accessibilityLabel={t('capture.a11yAddAnotherCamera')} style={buttonStyles.secondary} onPress={handleAddAnother}>
+            <Text style={buttonStyles.secondaryText}>{t('capture.addAnotherCamera')}</Text>
           </Pressable>
           <Pressable
-            accessibilityLabel="Add another photo from your gallery"
+            accessibilityLabel={t('capture.a11yAddFromGallery')}
             style={[buttonStyles.secondary, pickingFromGallery && buttonStyles.disabled]}
             disabled={pickingFromGallery}
             onPress={handlePickFromGallery}
           >
-            <Text style={buttonStyles.secondaryText}>Add from Gallery</Text>
+            <Text style={buttonStyles.secondaryText}>{t('capture.addFromGallery')}</Text>
           </Pressable>
-          <Pressable accessibilityLabel="Retake all photos" style={buttonStyles.secondary} onPress={handleRetakeAll}>
-            <Text style={buttonStyles.secondaryText}>Retake All</Text>
+          <Pressable accessibilityLabel={t('capture.a11yRetakeAll')} style={buttonStyles.secondary} onPress={handleRetakeAll}>
+            <Text style={buttonStyles.secondaryText}>{t('capture.retakeAll')}</Text>
           </Pressable>
         </View>
       </View>
@@ -413,17 +416,22 @@ export default function CaptureScreen({ navigation, route }: Props) {
       />
       {error && (
         <View style={[styles.errorBanner, { top: insets.top + 16 }]}>
-          <Text style={styles.errorText}>{error.message}</Text>
+          {/* The chrome block below is intentionally theme-free (fixed camera
+              overlay colours), but its *text* can be Arabic, which the Latin
+              families can't render — so the locale face is applied here. */}
+          <Text style={[styles.errorText, { fontFamily: theme.fonts.sansRegular }]}>{error.message}</Text>
           {error.showSettingsLink && (
-            <Pressable accessibilityLabel="Open Settings" onPress={() => Linking.openSettings()}>
-              <Text style={styles.errorSettingsLink}>Open Settings</Text>
+            <Pressable accessibilityLabel={t('capture.a11yOpenSettings')} onPress={() => Linking.openSettings()}>
+              <Text style={[styles.errorSettingsLink, { fontFamily: theme.fonts.sansSemiBold }]}>
+                {t('capture.openSettings')}
+              </Text>
             </Pressable>
           )}
         </View>
       )}
       <View style={[styles.controls, { bottom: 44 + insets.bottom }]}>
         <Pressable
-          accessibilityLabel="Capture receipt photo"
+          accessibilityLabel={t('capture.a11yCapturePhoto')}
           style={[styles.captureButton, (!cameraReady || capturing) && styles.captureButtonDisabled]}
           disabled={!cameraReady || capturing}
           onPress={handleCapture}
@@ -437,8 +445,9 @@ export default function CaptureScreen({ navigation, route }: Props) {
 
 /** One big preview for the common single-photo case, a horizontal thumbnail strip once there's more than one. */
 function PhotoPreview({ uris, styles: photoStyles }: { uris: string[]; styles: typeof styles }) {
+  const { t } = useI18n();
   if (uris.length === 1) {
-    return <Image accessibilityLabel="Captured receipt photo" source={{ uri: uris[0] }} style={photoStyles.preview} />;
+    return <Image accessibilityLabel={t('capture.a11yCapturedPhoto')} source={{ uri: uris[0] }} style={photoStyles.preview} />;
   }
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={photoStyles.thumbStripContent}>

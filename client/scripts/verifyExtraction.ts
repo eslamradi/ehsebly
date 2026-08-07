@@ -13,7 +13,7 @@
  * Run with: `npx tsx client/scripts/verifyExtraction.ts` (see
  * verifySplitCalculation.ts's header for why plain `node` doesn't work).
  */
-import { toExtractionResult } from '../app/api/extractReceipt';
+import { toExtractionResult } from '../app/api/extractionResponse';
 import { calculatePersonSubtotals, calculatePersonTotals } from '../app/domain/assignment';
 import { calculateSplitTotals, calculateSubtotalPiastres } from '../app/domain/splitCalculation';
 

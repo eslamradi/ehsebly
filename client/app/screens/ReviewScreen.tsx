@@ -10,6 +10,7 @@ import { RECONCILIATION_TOLERANCE_PIASTRES, reconcileWithPrintedTotal } from '..
 import { calculateSplitTotals, calculateSubtotalPiastres } from '../domain/splitCalculation';
 import { useSplitSession, type Person } from '../domain/session';
 import { fonts, radii, spacing, useTheme, type Theme, textAlignEnd } from '../theme';
+import { useI18n } from '../i18n';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Review'>;
@@ -33,7 +34,7 @@ function makeStyles(theme: Theme) {
       borderRadius: radii.sm,
       paddingVertical: 8,
       paddingHorizontal: spacing.md,
-      fontFamily: fonts.sansRegular,
+      fontFamily: theme.fonts.sansRegular,
       color: colors.ink,
     },
     priceInput: {
@@ -47,10 +48,10 @@ function makeStyles(theme: Theme) {
       textAlign: textAlignEnd,
       color: colors.ink,
     },
-    quantityBadge: { fontFamily: fonts.sansSemiBold, fontSize: 13, color: colors.inkSoft, flexShrink: 0 },
+    quantityBadge: { fontFamily: theme.fonts.sansSemiBold, fontSize: 13, color: colors.inkSoft, flexShrink: 0 },
     inputError: { borderColor: colors.critical },
-    errorText: { fontFamily: fonts.sansRegular, color: colors.critical, fontSize: 12 },
-    assigneeText: { fontFamily: fonts.sansRegular, fontSize: 13, color: colors.inkSoft },
+    errorText: { fontFamily: theme.fonts.sansRegular, color: colors.critical, fontSize: 12 },
+    assigneeText: { fontFamily: theme.fonts.sansRegular, fontSize: 13, color: colors.inkSoft },
     summaryPanel: {
       backgroundColor: colors.paperRaised,
       borderRadius: radii.md,
@@ -60,8 +61,8 @@ function makeStyles(theme: Theme) {
     },
     divider: { height: 1, backgroundColor: colors.line, marginVertical: 2 },
     mismatchBlock: { gap: spacing.xs, alignItems: 'flex-start' },
-    reconciliationDetail: { fontFamily: fonts.sansRegular, color: colors.inkSoft, fontSize: 12.5, lineHeight: 18 },
-    reconciliationNeutral: { fontFamily: fonts.sansRegular, color: colors.inkSoft, fontSize: 13 },
+    reconciliationDetail: { fontFamily: theme.fonts.sansRegular, color: colors.inkSoft, fontSize: 12.5, lineHeight: 18 },
+    reconciliationNeutral: { fontFamily: theme.fonts.sansRegular, color: colors.inkSoft, fontSize: 13 },
     previewPanel: {
       backgroundColor: colors.paperRaised,
       borderRadius: radii.md,
@@ -70,10 +71,10 @@ function makeStyles(theme: Theme) {
       ...theme.cardShadow,
     },
     previewLine: { flexDirection: 'row', justifyContent: 'space-between' },
-    previewLabel: { fontFamily: fonts.sansRegular, fontSize: 14, color: colors.inkSoft },
+    previewLabel: { fontFamily: theme.fonts.sansRegular, fontSize: 14, color: colors.inkSoft },
     previewValue: { fontSize: 14, color: colors.ink },
-    previewLabelEmphasis: { fontFamily: fonts.sansBold, fontSize: 16, color: colors.ink },
-    previewValueEmphasis: { fontFamily: fonts.monoBold, fontSize: 16, color: colors.ink },
+    previewLabelEmphasis: { fontFamily: theme.fonts.sansBold, fontSize: 16, color: colors.ink },
+    previewValueEmphasis: { fontFamily: theme.fonts.monoBold, fontSize: 16, color: colors.ink },
     mono: theme.screenStyles.mono,
     actions: { gap: spacing.md },
   });
@@ -90,6 +91,7 @@ function makeStyles(theme: Theme) {
  */
 export default function ReviewScreen({ navigation }: Props) {
   const theme = useTheme();
+  const { t } = useI18n();
   const { buttonStyles, screenStyles } = theme;
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
@@ -119,9 +121,9 @@ export default function ReviewScreen({ navigation }: Props) {
     // session state rather than crashing on `extractionResult.items`.
     return (
       <View style={screenStyles.center}>
-        <Text style={screenStyles.message}>Nothing to review yet.</Text>
-        <Pressable accessibilityLabel="Back to item assignment" style={buttonStyles.primary} onPress={handleBack}>
-          <Text style={buttonStyles.primaryText}>Back</Text>
+        <Text style={screenStyles.message}>{t('review.nothingToReview')}</Text>
+        <Pressable accessibilityLabel={t('review.a11yBackToAssignment')} style={buttonStyles.primary} onPress={handleBack}>
+          <Text style={buttonStyles.primaryText}>{t('common.back')}</Text>
         </Pressable>
       </View>
     );
@@ -188,8 +190,8 @@ export default function ReviewScreen({ navigation }: Props) {
 
   return (
     <ScrollView style={screenStyles.container} contentContainerStyle={screenStyles.content}>
-      <Text style={screenStyles.heading}>Review</Text>
-      <Text style={screenStyles.subheading}>Tap any name or price to fix an OCR misread.</Text>
+      <Text style={screenStyles.heading}>{t('review.title')}</Text>
+      <Text style={screenStyles.subheading}>{t('review.subtitle')}</Text>
 
       {items.map((item, index) => {
         const allocations = itemAssignments[index] ?? {};
@@ -221,10 +223,10 @@ export default function ReviewScreen({ navigation }: Props) {
               {item.quantity > 1 && <Text style={styles.quantityBadge}>×{item.quantity}</Text>}
             </View>
             {nameErrors[index] && (
-              <Text style={styles.errorText}>Name can&apos;t be blank — kept the previous value.</Text>
+              <Text style={styles.errorText}>{t('review.nameBlank')}</Text>
             )}
             {priceErrors[index] && (
-              <Text style={styles.errorText}>Couldn&apos;t read that price — kept the previous value.</Text>
+              <Text style={styles.errorText}>{t('review.priceUnreadable')}</Text>
             )}
             <Text style={styles.assigneeText}>{assigneeSummary}</Text>
           </View>
@@ -275,11 +277,11 @@ export default function ReviewScreen({ navigation }: Props) {
       </View>
 
       <View style={styles.actions}>
-        <Pressable accessibilityLabel="Confirm breakdown" style={buttonStyles.primary} onPress={handleConfirm}>
-          <Text style={buttonStyles.primaryText}>Confirm breakdown</Text>
+        <Pressable accessibilityLabel={t('review.a11yConfirm')} style={buttonStyles.primary} onPress={handleConfirm}>
+          <Text style={buttonStyles.primaryText}>{t('review.confirm')}</Text>
         </Pressable>
-        <Pressable accessibilityLabel="Back to item assignment" style={buttonStyles.secondary} onPress={handleBack}>
-          <Text style={buttonStyles.secondaryText}>Back</Text>
+        <Pressable accessibilityLabel={t('review.a11yBackToAssignment')} style={buttonStyles.secondary} onPress={handleBack}>
+          <Text style={buttonStyles.secondaryText}>{t('common.back')}</Text>
         </Pressable>
       </View>
     </ScrollView>
@@ -332,6 +334,7 @@ function ReconciliationBanner({
   computedTotalPiastres: number;
   printedTotalPiastres: number | undefined;
 }) {
+  const { t } = useI18n();
   if (reconciliation.status === 'unknown') {
     return (
       <Text style={styles.reconciliationNeutral}>
@@ -342,7 +345,7 @@ function ReconciliationBanner({
   if (reconciliation.status === 'match') {
     return (
       <View style={theme.pillStyle('positive')}>
-        <Text style={theme.pillTextStyle('positive')}>Matches receipt</Text>
+        <Text style={theme.pillTextStyle('positive')}>{t('review.matchesReceipt')}</Text>
       </View>
     );
   }
@@ -350,11 +353,14 @@ function ReconciliationBanner({
   return (
     <View style={styles.mismatchBlock}>
       <View style={theme.pillStyle('critical')}>
-        <Text style={theme.pillTextStyle('critical')}>Doesn&apos;t match receipt</Text>
+        <Text style={theme.pillTextStyle('critical')}>{t('review.doesntMatchReceipt')}</Text>
       </View>
       <Text style={styles.reconciliationDetail}>
-        Computed {formatPiastresAsEGP(computedTotalPiastres)} EGP vs printed{' '}
-        {formatPiastresAsEGP(printedTotalPiastres ?? 0)} EGP (off by {diffEGP} EGP).
+        {t('review.reconciliationDetail', {
+          computed: formatPiastresAsEGP(computedTotalPiastres),
+          printed: formatPiastresAsEGP(printedTotalPiastres ?? 0),
+          diff: diffEGP,
+        })}
       </Text>
     </View>
   );

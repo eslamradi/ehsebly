@@ -5,6 +5,7 @@ import { formatPiastresAsEGP, parseEGPToPiastres, parsePercentInput } from '../d
 import { calculateSplitTotals, calculateSubtotalPiastres } from '../domain/splitCalculation';
 import { useSplitSession } from '../domain/session';
 import { fonts, radii, spacing, useTheme, type Theme } from '../theme';
+import { useI18n } from '../i18n';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TaxService'>;
@@ -20,7 +21,7 @@ function makeStyles(theme: Theme) {
           ...theme.cardShadow,
         },
         rateLabel: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-        rateName: { fontFamily: fonts.sansSemiBold, fontSize: 16, color: colors.ink },
+        rateName: { fontFamily: theme.fonts.sansSemiBold, fontSize: 16, color: colors.ink },
         rateInputWrapper: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
         rateInput: {
           flex: 1,
@@ -29,13 +30,13 @@ function makeStyles(theme: Theme) {
           borderRadius: radii.sm,
           paddingVertical: 8,
           paddingHorizontal: spacing.md,
-          fontFamily: fonts.monoRegular,
+          fontFamily: theme.fonts.monoRegular,
           color: colors.ink,
         },
         rateInputDisabled: { backgroundColor: colors.paper, color: colors.inkFaint },
         inputError: { borderColor: colors.critical },
-        errorText: { fontFamily: fonts.sansRegular, color: colors.critical, fontSize: 12 },
-        percentSign: { fontFamily: fonts.sansRegular, fontSize: 16, color: colors.inkSoft },
+        errorText: { fontFamily: theme.fonts.sansRegular, color: colors.critical, fontSize: 12 },
+        percentSign: { fontFamily: theme.fonts.sansRegular, fontSize: 16, color: colors.inkSoft },
         modeRow: { flexDirection: 'row', gap: spacing.sm },
         modeButton: {
           paddingVertical: 6,
@@ -45,7 +46,7 @@ function makeStyles(theme: Theme) {
           borderColor: colors.line,
         },
         modeButtonActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-        modeButtonText: { fontFamily: fonts.sansSemiBold, fontSize: 13, color: colors.inkSoft },
+        modeButtonText: { fontFamily: theme.fonts.sansSemiBold, fontSize: 13, color: colors.inkSoft },
         modeButtonTextActive: { color: colors.accentInk },
         previewPanel: {
           backgroundColor: colors.paperRaised,
@@ -55,10 +56,10 @@ function makeStyles(theme: Theme) {
           ...theme.cardShadow,
         },
         previewLine: { flexDirection: 'row', justifyContent: 'space-between' },
-        previewLabel: { fontFamily: fonts.sansRegular, fontSize: 14, color: colors.inkSoft },
+        previewLabel: { fontFamily: theme.fonts.sansRegular, fontSize: 14, color: colors.inkSoft },
         previewValue: { fontSize: 14, color: colors.ink },
-        previewLabelEmphasis: { fontFamily: fonts.sansBold, fontSize: 16, color: colors.ink },
-        previewValueEmphasis: { fontFamily: fonts.monoBold, fontSize: 16, color: colors.ink },
+        previewLabelEmphasis: { fontFamily: theme.fonts.sansBold, fontSize: 16, color: colors.ink },
+        previewValueEmphasis: { fontFamily: theme.fonts.monoBold, fontSize: 16, color: colors.ink },
     mono: theme.screenStyles.mono,
     actions: { gap: spacing.md },
   });
@@ -77,6 +78,7 @@ function makeStyles(theme: Theme) {
  */
 export default function TaxServiceScreen({ navigation }: Props) {
   const theme = useTheme();
+  const { t } = useI18n();
   const { colors, buttonStyles, screenStyles } = theme;
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
@@ -107,13 +109,13 @@ export default function TaxServiceScreen({ navigation }: Props) {
     // rather than crashing on `extractionResult.items` or `taxService.*`.
     return (
       <View style={screenStyles.center}>
-        <Text style={screenStyles.message}>Nothing to confirm yet.</Text>
+        <Text style={screenStyles.message}>{t('taxService.nothingToConfirm')}</Text>
         <Pressable
-          accessibilityLabel="Back to extracted items"
+          accessibilityLabel={t('taxService.a11yBackToExtracted')}
           style={buttonStyles.primary}
           onPress={() => navigation.navigate('ExtractedItems')}
         >
-          <Text style={buttonStyles.primaryText}>Back</Text>
+          <Text style={buttonStyles.primaryText}>{t('common.back')}</Text>
         </Pressable>
       </View>
     );
@@ -277,13 +279,13 @@ export default function TaxServiceScreen({ navigation }: Props) {
 
   return (
     <ScrollView style={screenStyles.container} contentContainerStyle={screenStyles.content}>
-      <Text style={screenStyles.heading}>Tax &amp; Service</Text>
+      <Text style={screenStyles.heading}>{t('taxService.title')}</Text>
 
       <View style={styles.rateCard}>
         <View style={styles.rateLabel}>
-          <Text style={styles.rateName}>Discount</Text>
+          <Text style={styles.rateName}>{t('taxService.discount')}</Text>
           <Switch
-            accessibilityLabel="Discount applies to this receipt"
+            accessibilityLabel={t('taxService.a11yDiscountToggle')}
             value={taxService.discountEnabled}
             onValueChange={handleDiscountToggle}
             trackColor={{ false: colors.line, true: colors.accent }}
@@ -292,7 +294,7 @@ export default function TaxServiceScreen({ navigation }: Props) {
         </View>
         <View style={styles.modeRow}>
           <Pressable
-            accessibilityLabel="Discount as a percentage"
+            accessibilityLabel={t('taxService.a11yDiscountPercentMode')}
             style={[styles.modeButton, taxService.discountMode === 'percent' && styles.modeButtonActive]}
             onPress={() => handleDiscountModeChange('percent')}
           >
@@ -301,7 +303,7 @@ export default function TaxServiceScreen({ navigation }: Props) {
             </Text>
           </Pressable>
           <Pressable
-            accessibilityLabel="Discount as a flat EGP amount"
+            accessibilityLabel={t('taxService.a11yDiscountFlatMode')}
             style={[styles.modeButton, taxService.discountMode === 'flat' && styles.modeButtonActive]}
             onPress={() => handleDiscountModeChange('flat')}
           >
@@ -313,7 +315,7 @@ export default function TaxServiceScreen({ navigation }: Props) {
         {taxService.discountMode === 'percent' ? (
           <View style={styles.rateInputWrapper}>
             <TextInput
-              accessibilityLabel="Discount rate percent"
+              accessibilityLabel={t('taxService.a11yDiscountRate')}
               style={[styles.rateInput, !taxService.discountEnabled && styles.rateInputDisabled, discountError && styles.inputError]}
               keyboardType="decimal-pad"
               editable={taxService.discountEnabled}
@@ -329,7 +331,7 @@ export default function TaxServiceScreen({ navigation }: Props) {
         ) : (
           <View style={styles.rateInputWrapper}>
             <TextInput
-              accessibilityLabel="Discount flat amount in Egyptian pounds"
+              accessibilityLabel={t('taxService.a11yDiscountFlat')}
               style={[styles.rateInput, !taxService.discountEnabled && styles.rateInputDisabled, discountError && styles.inputError]}
               keyboardType="decimal-pad"
               editable={taxService.discountEnabled}
@@ -342,14 +344,14 @@ export default function TaxServiceScreen({ navigation }: Props) {
             />
           </View>
         )}
-        {discountError && <Text style={styles.errorText}>Couldn&apos;t read that — kept the previous value.</Text>}
+        {discountError && <Text style={styles.errorText}>{t('taxService.valueUnreadable')}</Text>}
       </View>
 
       <View style={styles.rateCard}>
         <View style={styles.rateLabel}>
-          <Text style={styles.rateName}>Tax</Text>
+          <Text style={styles.rateName}>{t('taxService.tax')}</Text>
           <Switch
-            accessibilityLabel="Tax applies to this receipt"
+            accessibilityLabel={t('taxService.a11yTaxToggle')}
             value={taxService.taxEnabled}
             onValueChange={handleTaxToggle}
             trackColor={{ false: colors.line, true: colors.accent }}
@@ -358,7 +360,7 @@ export default function TaxServiceScreen({ navigation }: Props) {
         </View>
         <View style={styles.rateInputWrapper}>
           <TextInput
-            accessibilityLabel="Tax rate percent"
+            accessibilityLabel={t('taxService.a11yTaxRate')}
             style={[styles.rateInput, !taxService.taxEnabled && styles.rateInputDisabled, taxRateError && styles.inputError]}
             keyboardType="decimal-pad"
             editable={taxService.taxEnabled}
@@ -371,14 +373,14 @@ export default function TaxServiceScreen({ navigation }: Props) {
           />
           <Text style={styles.percentSign}>%</Text>
         </View>
-        {taxRateError && <Text style={styles.errorText}>Couldn&apos;t read that rate — kept the previous value.</Text>}
+        {taxRateError && <Text style={styles.errorText}>{t('taxService.rateUnreadable')}</Text>}
       </View>
 
       <View style={styles.rateCard}>
         <View style={styles.rateLabel}>
-          <Text style={styles.rateName}>Service</Text>
+          <Text style={styles.rateName}>{t('taxService.service')}</Text>
           <Switch
-            accessibilityLabel="Service applies to this receipt"
+            accessibilityLabel={t('taxService.a11yServiceToggle')}
             value={taxService.serviceEnabled}
             onValueChange={handleServiceToggle}
             trackColor={{ false: colors.line, true: colors.accent }}
@@ -387,7 +389,7 @@ export default function TaxServiceScreen({ navigation }: Props) {
         </View>
         <View style={styles.rateInputWrapper}>
           <TextInput
-            accessibilityLabel="Service rate percent"
+            accessibilityLabel={t('taxService.a11yServiceRate')}
             style={[
               styles.rateInput,
               !taxService.serviceEnabled && styles.rateInputDisabled,
@@ -404,14 +406,14 @@ export default function TaxServiceScreen({ navigation }: Props) {
           />
           <Text style={styles.percentSign}>%</Text>
         </View>
-        {serviceRateError && <Text style={styles.errorText}>Couldn&apos;t read that rate — kept the previous value.</Text>}
+        {serviceRateError && <Text style={styles.errorText}>{t('taxService.rateUnreadable')}</Text>}
       </View>
 
       <View style={styles.rateCard}>
         <View style={styles.rateLabel}>
-          <Text style={styles.rateName}>Other service</Text>
+          <Text style={styles.rateName}>{t('taxService.otherService')}</Text>
           <Switch
-            accessibilityLabel="Other service applies to this receipt"
+            accessibilityLabel={t('taxService.a11yOtherServiceToggle')}
             value={taxService.otherServiceEnabled}
             onValueChange={handleOtherServiceToggle}
             trackColor={{ false: colors.line, true: colors.accent }}
@@ -420,7 +422,7 @@ export default function TaxServiceScreen({ navigation }: Props) {
         </View>
         <View style={styles.rateInputWrapper}>
           <TextInput
-            accessibilityLabel="Other service rate percent"
+            accessibilityLabel={t('taxService.a11yOtherServiceRate')}
             style={[
               styles.rateInput,
               !taxService.otherServiceEnabled && styles.rateInputDisabled,
@@ -438,7 +440,7 @@ export default function TaxServiceScreen({ navigation }: Props) {
           <Text style={styles.percentSign}>%</Text>
         </View>
         {otherServiceRateError && (
-          <Text style={styles.errorText}>Couldn&apos;t read that rate — kept the previous value.</Text>
+          <Text style={styles.errorText}>{t('taxService.rateUnreadable')}</Text>
         )}
       </View>
 
@@ -461,13 +463,13 @@ export default function TaxServiceScreen({ navigation }: Props) {
 
       <View style={styles.actions}>
         <Pressable
-          accessibilityLabel="Continue to item assignment"
+          accessibilityLabel={t('taxService.a11yContinueAssignment')}
           style={buttonStyles.primary}
           onPress={() => navigation.navigate('ItemAssignment')}
         >
-          <Text style={buttonStyles.primaryText}>Continue</Text>
+          <Text style={buttonStyles.primaryText}>{t('common.continue')}</Text>
         </Pressable>
-        <Pressable accessibilityLabel="Back to extracted items" style={buttonStyles.secondary} onPress={handleBack}>
+        <Pressable accessibilityLabel={t('taxService.a11yBackToExtracted')} style={buttonStyles.secondary} onPress={handleBack}>
           <Text style={buttonStyles.secondaryText}>Back</Text>
         </Pressable>
       </View>

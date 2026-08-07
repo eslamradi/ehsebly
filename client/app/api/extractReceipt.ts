@@ -1,21 +1,7 @@
 import { Platform } from 'react-native';
 import { EXTRACTION_ENDPOINT } from './extractionEndpoint';
 import type { ExtractionResult } from './types';
-
-type WorkerResponseBody =
-  | {
-      status: 'ok';
-      items: Array<{ name: string; price_piastres: number; quantity: number }>;
-      tax_line?: { rate_percent: number };
-      service_line?: { rate_percent: number };
-      discount_line?: { amount_piastres?: number; rate_percent?: number };
-      flat_fees?: Array<{ name: string; amount_piastres: number }>;
-      printed_total_piastres?: number;
-      discount_note?: string;
-      image_mismatch_note?: string;
-    }
-  | { status: 'no_items_found' }
-  | { status: 'error'; message: string };
+import { toExtractionResult, type WorkerResponseBody } from './extractionResponse';
 
 // Generous margin over the Worker's own 45s vision-LLM budget (extract.ts's
 // VISION_LLM_TIMEOUT_MS), to also cover round-trip/cold-start latency to the
@@ -87,40 +73,4 @@ export async function extractReceipt(photoUris: string[]): Promise<ExtractionRes
   } finally {
     clearTimeout(timeout);
   }
-}
-
-/** Exported for scripts/verifyExtraction.ts — otherwise only used internally above. */
-export function toExtractionResult(body: WorkerResponseBody): ExtractionResult {
-  if (body.status === 'ok') {
-    // A detected flat fee (delivery, service, preparation — see extract.ts's
-    // flat_fees) becomes an ordinary `shared` item, the exact same shape the
-    // fronter's own manual "Add item" on ExtractedItemsScreen produces —
-    // split equally among everyone once people exist, editable/removable
-    // like any other item, no separate code path needed for it.
-    const flatFeeItems = (body.flat_fees ?? []).map((fee) => ({
-      name: fee.name,
-      pricePiastres: fee.amount_piastres,
-      quantity: 1,
-      shared: true,
-    }));
-    return {
-      status: 'ok',
-      items: [
-        ...body.items.map((item) => ({
-          name: item.name,
-          pricePiastres: item.price_piastres,
-          quantity: item.quantity,
-        })),
-        ...flatFeeItems,
-      ],
-      taxRatePercent: body.tax_line?.rate_percent,
-      serviceRatePercent: body.service_line?.rate_percent,
-      discountRatePercent: body.discount_line?.rate_percent,
-      discountFlatPiastres: body.discount_line?.amount_piastres,
-      printedTotalPiastres: body.printed_total_piastres,
-      discountNote: body.discount_note,
-      imageMismatchWarning: body.image_mismatch_note,
-    };
-  }
-  return body;
 }

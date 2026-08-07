@@ -8,6 +8,7 @@ import { saveSplitToHistory } from '../domain/history';
 import { useSplitSession } from '../domain/session';
 import { calculateSplitTotals, calculateSubtotalPiastres } from '../domain/splitCalculation';
 import { spacing, useTheme } from '../theme';
+import { useI18n } from '../i18n';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FinalSplit'>;
@@ -19,7 +20,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'FinalSplit'>;
  * feature, so there is nothing here to build for it beyond not adding one.
  */
 export default function FinalSplitScreen({ navigation }: Props) {
-  const { buttonStyles, pillStyle, pillTextStyle, screenStyles } = useTheme();
+  const theme = useTheme();
+  const { buttonStyles, pillStyle, pillTextStyle, screenStyles } = theme;
+  const { t } = useI18n();
   const { session, clearPhoto } = useSplitSession();
   const { extractionResult, taxService, people, itemAssignments } = session;
   const { token } = useAccount();
@@ -49,7 +52,7 @@ export default function FinalSplitScreen({ navigation }: Props) {
         // local-only save instead would look identical to success while the
         // group never sees it. Nothing is saved anywhere; the fronter must
         // sign in again and re-enter this expense.
-        setSubmitError('Your session expired before this could be saved to the group — sign in again, then re-enter this expense.');
+        setSubmitError(t('final.sessionExpired'));
         return;
       }
       // Logging a group expense (household/trip) instead of a solo split —
@@ -142,9 +145,9 @@ export default function FinalSplitScreen({ navigation }: Props) {
     // rather than crashing on `extractionResult.items`/`taxService.*`.
     return (
       <View style={screenStyles.center}>
-        <Text style={screenStyles.message}>Nothing to show yet.</Text>
-        <Pressable accessibilityLabel="Back to review" style={buttonStyles.primary} onPress={handleBack}>
-          <Text style={buttonStyles.primaryText}>Back</Text>
+        <Text style={screenStyles.message}>{t('final.nothingToShow')}</Text>
+        <Pressable accessibilityLabel={t('final.a11yBackToReview')} style={buttonStyles.primary} onPress={handleBack}>
+          <Text style={buttonStyles.primaryText}>{t('common.back')}</Text>
         </Pressable>
       </View>
     );
@@ -157,9 +160,9 @@ export default function FinalSplitScreen({ navigation }: Props) {
   return (
     <ScrollView style={screenStyles.container} contentContainerStyle={screenStyles.content}>
       <View style={styles.headerRow}>
-        <Text style={screenStyles.heading}>Breakdown</Text>
+        <Text style={screenStyles.heading}>{t('final.title')}</Text>
         <View style={pillStyle('positive')}>
-          <Text style={pillTextStyle('positive')}>Complete</Text>
+          <Text style={pillTextStyle('positive')}>{t('final.complete')}</Text>
         </View>
       </View>
 
@@ -175,14 +178,14 @@ export default function FinalSplitScreen({ navigation }: Props) {
       />
 
       <View style={styles.actions}>
-        <Pressable accessibilityLabel="Share breakdown" style={buttonStyles.primary} onPress={handleShare}>
-          <Text style={buttonStyles.primaryText}>Share Breakdown</Text>
+        <Pressable accessibilityLabel={t('final.a11yShare')} style={buttonStyles.primary} onPress={handleShare}>
+          <Text style={buttonStyles.primaryText}>{t('final.shareBreakdown')}</Text>
         </Pressable>
-        <Pressable accessibilityLabel="Start new breakdown" style={buttonStyles.secondary} onPress={handleStartNewSplit}>
-          <Text style={buttonStyles.secondaryText}>Start New Breakdown</Text>
+        <Pressable accessibilityLabel={t('final.a11yStartNew')} style={buttonStyles.secondary} onPress={handleStartNewSplit}>
+          <Text style={buttonStyles.secondaryText}>{t('final.startNew')}</Text>
         </Pressable>
-        <Pressable accessibilityLabel="Back to review" style={buttonStyles.secondary} onPress={handleBack}>
-          <Text style={buttonStyles.secondaryText}>Back</Text>
+        <Pressable accessibilityLabel={t('final.a11yBackToReview')} style={buttonStyles.secondary} onPress={handleBack}>
+          <Text style={buttonStyles.secondaryText}>{t('common.back')}</Text>
         </Pressable>
       </View>
     </ScrollView>

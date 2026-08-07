@@ -143,6 +143,8 @@ function checkNotUntranslated(): void {
     '*:language.arabic',
     '*:language.franco',
     'franco:common.egp',
+    // A numeric placeholder, not prose — Western digits in every locale.
+    '*:extracted.pricePlaceholder',
     'franco:home.groupsTitle',
   ]);
   for (const [localeName, table] of LOCALES) {

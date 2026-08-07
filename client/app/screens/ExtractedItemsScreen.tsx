@@ -6,6 +6,7 @@ import { formatPiastresAsEGP, parseEGPToPiastres } from '../domain/money';
 import { computeInitialTaxServiceSettings } from '../domain/splitCalculation';
 import { useSplitSession } from '../domain/session';
 import { fonts, radii, spacing, useTheme, textAlignEnd } from '../theme';
+import { useI18n } from '../i18n';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ExtractedItems'>;
@@ -19,6 +20,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ExtractedItems'>;
 export default function ExtractedItemsScreen({ navigation }: Props) {
   const theme = useTheme();
   const { buttonStyles, screenStyles } = theme;
+  const { t } = useI18n();
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -31,7 +33,7 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
         },
         itemRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
         quantityRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-        quantityLabel: { fontFamily: fonts.sansRegular, fontSize: 14, color: theme.colors.inkSoft },
+        quantityLabel: { fontFamily: theme.fonts.sansRegular, fontSize: 14, color: theme.colors.inkSoft },
         nameInput: {
           flex: 1,
           minWidth: 0,
@@ -40,7 +42,7 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
           borderRadius: radii.sm,
           paddingVertical: 10,
           paddingHorizontal: spacing.md,
-          fontFamily: fonts.sansRegular,
+          fontFamily: theme.fonts.sansRegular,
           color: theme.colors.ink,
         },
         priceInput: {
@@ -52,12 +54,12 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
           paddingVertical: 10,
           paddingHorizontal: spacing.md,
           textAlign: textAlignEnd,
-          fontFamily: fonts.monoRegular,
+          fontFamily: theme.fonts.monoRegular,
           color: theme.colors.ink,
         },
         inputError: { borderColor: theme.colors.critical },
-        errorText: { fontFamily: fonts.sansRegular, color: theme.colors.critical, fontSize: 12 },
-        note: { fontFamily: fonts.sansRegular, fontSize: 14, color: theme.colors.inkSoft },
+        errorText: { fontFamily: theme.fonts.sansRegular, color: theme.colors.critical, fontSize: 12 },
+        note: { fontFamily: theme.fonts.sansRegular, fontSize: 14, color: theme.colors.inkSoft },
         mismatchBanner: {
           backgroundColor: theme.colors.paperRaised,
           borderWidth: 1,
@@ -66,8 +68,8 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
           padding: spacing.lg,
           gap: spacing.xs,
         },
-        mismatchBannerTitle: { fontFamily: fonts.sansSemiBold, fontSize: 14, color: theme.colors.critical },
-        mismatchBannerText: { fontFamily: fonts.sansRegular, fontSize: 13, color: theme.colors.critical },
+        mismatchBannerTitle: { fontFamily: theme.fonts.sansSemiBold, fontSize: 14, color: theme.colors.critical },
+        mismatchBannerText: { fontFamily: theme.fonts.sansRegular, fontSize: 13, color: theme.colors.critical },
         addItemRow: { flexDirection: 'row', gap: spacing.md },
         addButton: {
           backgroundColor: theme.colors.accent,
@@ -114,9 +116,9 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
     // crashing on `result.items`.
     return (
       <View style={screenStyles.center}>
-        <Text style={screenStyles.message}>No extracted items to show.</Text>
-        <Pressable accessibilityLabel="Back to camera" style={buttonStyles.primary} onPress={handleBackToCamera}>
-          <Text style={buttonStyles.primaryText}>Back to Camera</Text>
+        <Text style={screenStyles.message}>{t('extracted.noExtractedItems')}</Text>
+        <Pressable accessibilityLabel={t('extracted.a11yBackToCamera')} style={buttonStyles.primary} onPress={handleBackToCamera}>
+          <Text style={buttonStyles.primaryText}>{t('extracted.backToCamera')}</Text>
         </Pressable>
       </View>
     );
@@ -166,7 +168,7 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
   const handleAddItem = () => {
     const trimmedName = newItemName.trim();
     if (trimmedName.length === 0) {
-      setAddItemError('Enter a name before adding.');
+      setAddItemError(t('extracted.errNeedName'));
       return;
     }
     const parsedPrice = parseEGPToPiastres(newItemPriceDraft);
@@ -197,11 +199,11 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
 
   return (
     <ScrollView style={screenStyles.container} contentContainerStyle={screenStyles.content}>
-      <Text style={screenStyles.heading}>Extracted items</Text>
-      <Text style={screenStyles.subheading}>Tap any name or price to fix an OCR misread.</Text>
+      <Text style={screenStyles.heading}>{t('extracted.title')}</Text>
+      <Text style={screenStyles.subheading}>{t('extracted.subtitle')}</Text>
       {result.imageMismatchWarning && (
         <View style={styles.mismatchBanner}>
-          <Text style={styles.mismatchBannerTitle}>Check your photos</Text>
+          <Text style={styles.mismatchBannerTitle}>{t('extracted.checkYourPhotos')}</Text>
           <Text style={styles.mismatchBannerText}>
             {result.imageMismatchWarning} Only one order was extracted — retake if you meant to include more than one
             receipt.
@@ -230,7 +232,7 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
             />
           </View>
           <View style={styles.quantityRow}>
-            <Text style={styles.quantityLabel}>Quantity</Text>
+            <Text style={styles.quantityLabel}>{t('extracted.quantity')}</Text>
             <QuantityStepper
               accessibilityLabel={`${item.name} quantity`}
               value={item.quantity}
@@ -239,16 +241,16 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
             />
           </View>
           {priceErrors[index] && (
-            <Text style={styles.errorText}>Couldn&apos;t read that price — kept the previous value.</Text>
+            <Text style={styles.errorText}>{t('extracted.priceUnreadable')}</Text>
           )}
         </View>
       ))}
 
       <View style={styles.addItemRow}>
         <TextInput
-          accessibilityLabel="New item name"
+          accessibilityLabel={t('extracted.a11yNewItemName')}
           style={styles.nameInput}
-          placeholder="Delivery, etc."
+          placeholder={t('extracted.addItemPlaceholder')}
           placeholderTextColor={theme.colors.inkFaint}
           value={newItemName}
           onChangeText={(text) => {
@@ -257,10 +259,10 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
           }}
         />
         <TextInput
-          accessibilityLabel="New item price in Egyptian pounds"
+          accessibilityLabel={t('extracted.a11yNewItemPrice')}
           style={[styles.priceInput, addItemError && styles.inputError]}
           keyboardType="decimal-pad"
-          placeholder="0.00"
+          placeholder={t('extracted.pricePlaceholder')}
           placeholderTextColor={theme.colors.inkFaint}
           value={newItemPriceDraft}
           onChangeText={(text) => {
@@ -268,21 +270,21 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
             setAddItemError(null);
           }}
         />
-        <Pressable accessibilityLabel="Add item" style={styles.addButton} onPress={handleAddItem}>
-          <Text style={buttonStyles.primaryText}>Add</Text>
+        <Pressable accessibilityLabel={t('extracted.a11yAddItem')} style={styles.addButton} onPress={handleAddItem}>
+          <Text style={buttonStyles.primaryText}>{t('common.add')}</Text>
         </Pressable>
       </View>
       {addItemError && <Text style={styles.errorText}>{addItemError}</Text>}
-      <Text style={styles.note}>Added items (like a delivery fee) are divided equally among everyone.</Text>
+      <Text style={styles.note}>{t('extracted.addedItemsNote')}</Text>
 
       {rateNote && <Text style={styles.note}>{rateNote}</Text>}
       {result.discountNote && <Text style={styles.note}>{result.discountNote}</Text>}
       <View style={styles.actions}>
-        <Pressable accessibilityLabel="Continue to tax and service" style={buttonStyles.primary} onPress={handleContinue}>
-          <Text style={buttonStyles.primaryText}>Continue</Text>
+        <Pressable accessibilityLabel={t('extracted.a11yContinueTax')} style={buttonStyles.primary} onPress={handleContinue}>
+          <Text style={buttonStyles.primaryText}>{t('common.continue')}</Text>
         </Pressable>
-        <Pressable accessibilityLabel="Back to camera" style={buttonStyles.secondary} onPress={handleBackToCamera}>
-          <Text style={buttonStyles.secondaryText}>Back to Camera</Text>
+        <Pressable accessibilityLabel={t('extracted.a11yBackToCamera')} style={buttonStyles.secondary} onPress={handleBackToCamera}>
+          <Text style={buttonStyles.secondaryText}>{t('extracted.backToCamera')}</Text>
         </Pressable>
       </View>
     </ScrollView>
