@@ -13,7 +13,7 @@ import {
 import { formatPiastresAsEGP } from '../domain/money';
 import { calculateSplitTotals, calculateSubtotalPiastres } from '../domain/splitCalculation';
 import { useSplitSession } from '../domain/session';
-import { fonts, radii, spacing, textAlignEnd, useTheme } from '../theme';
+import { fonts, radii, spacing, textAlignEnd, useTheme, userTextStyle } from '../theme';
 import { useI18n } from '../i18n';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -443,7 +443,7 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
           <View key={itemIndex} style={[styles.itemCard, isUnassigned && styles.itemCardUnassigned]}>
             <View style={styles.itemHeader}>
               <View style={styles.itemHeaderText}>
-                <Text style={styles.itemName}>{item.name}</Text>
+                <Text style={[styles.itemName, userTextStyle(item.name, 'sansSemiBold', theme.fonts)]}>{item.name}</Text>
                 {isMultiQuantity && <Text style={styles.quantityBadge}>×{item.quantity}</Text>}
               </View>
               <Text style={[styles.itemPrice, screenStyles.mono]}>{formatPiastresAsEGP(item.pricePiastres)} EGP</Text>
@@ -526,7 +526,13 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
                     </View>
                     {assignedIndices.map((personIndex) => (
                       <View key={personIndex} style={styles.allocationRow}>
-                        <Text style={styles.allocationName} numberOfLines={1}>
+                        <Text
+                          style={[
+                            styles.allocationName,
+                            userTextStyle(people[personIndex].name, 'sansRegular', theme.fonts),
+                          ]}
+                          numberOfLines={1}
+                        >
                           {people[personIndex].name}
                         </Text>
                         <QuantityStepper
@@ -562,7 +568,7 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.totalsStrip}>
             {people.map((person, personIndex) => (
               <View key={personIndex} style={styles.totalsEntry}>
-                <Text style={styles.totalsName}>{person.name}</Text>
+                <Text style={[styles.totalsName, userTextStyle(person.name, 'sansRegular', theme.fonts)]}>{person.name}</Text>
                 <Text style={styles.totalsValue}>{formatPiastresAsEGP(personTotals[personIndex])}</Text>
               </View>
             ))}

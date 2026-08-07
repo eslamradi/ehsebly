@@ -16,6 +16,7 @@ import { en } from '../app/i18n/locales/en';
 import { ar } from '../app/i18n/locales/ar';
 import { franco } from '../app/i18n/locales/franco';
 import { pluralCategory, type LocaleCode, type PluralForms } from '../app/i18n/plural';
+import { containsArabicScript } from '../app/i18n/script';
 
 let checks = 0;
 let failures = 0;
@@ -194,6 +195,40 @@ function checkPluralCategories(): void {
   }
 }
 
+/**
+ * Picks the typeface for *user data* — receipt items, people's names — which
+ * the Latin faces cannot draw. Strings below are real production extraction
+ * output, including the mixed-script lines that make "any Arabic character"
+ * the right rule rather than "mostly Arabic".
+ */
+function checkArabicScriptDetection(): void {
+  const cases: Array<[string, boolean]> = [
+    ['كشري', true],
+    ['كوفير', true],
+    ['خدمة طاولات', true],
+    ['شوربة فراخ', true],
+    // Real mixed-script lines: a Latin-only face would drop half of each.
+    ['PZ هاواى', true],
+    ['PA لازانيا', true],
+    ['Koshary', false],
+    ['Grilled Chicken', false],
+    // Franco is Latin script — it must NOT trigger the Arabic face.
+    ['7esab Saree3', false],
+    ['Meen akal eh?', false],
+    // French, from the receipt set — Latin with diacritics.
+    ['magret de canard', false],
+    ['', false],
+    ['45.00', false],
+  ];
+  for (const [text, expected] of cases) {
+    checks++;
+    if (containsArabicScript(text) !== expected) {
+      fail(`containsArabicScript(${JSON.stringify(text)}) — expected ${expected}`);
+    }
+  }
+}
+
+checkArabicScriptDetection();
 checkPlaceholderParity();
 checkPluralCompleteness();
 checkNotUntranslated();

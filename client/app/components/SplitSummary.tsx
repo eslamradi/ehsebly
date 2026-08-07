@@ -4,7 +4,7 @@ import { calculatePersonSubtotals, calculatePersonTotals, describePersonItems } 
 import { formatPiastresAsEGP } from '../domain/money';
 import { calculateSplitTotals, calculateSubtotalPiastres } from '../domain/splitCalculation';
 import type { ItemAssignments, Person, TaxServiceSettings } from '../domain/session';
-import { fonts, radii, spacing, useTheme, type Theme } from '../theme';
+import { fonts, radii, spacing, useTheme, type Theme, userTextStyle } from '../theme';
 
 type SplitSummaryProps = {
   photoUris?: string[];
@@ -90,7 +90,7 @@ export function SplitSummary({ photoUris = [], items, taxService, people, itemAs
       {people.map((person, personIndex) => (
         <View key={personIndex} style={styles.personRow}>
           <View style={styles.personInfo}>
-            <Text style={styles.personName}>{person.name}</Text>
+            <Text style={[styles.personName, userTextStyle(person.name, 'sansSemiBold', theme.fonts)]}>{person.name}</Text>
             <Text style={styles.personItems}>{describePersonItems(personIndex, items, itemAssignments)}</Text>
             {contextNote && <Text style={styles.contextNote}>{contextNote}</Text>}
           </View>
@@ -160,7 +160,7 @@ function joinWithAnd(parts: string[]): string {
   return `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`;
 }
 
-function useThemedStyles({ colors, cardShadow, screenStyles }: Theme) {
+function useThemedStyles({ colors, cardShadow, screenStyles, fonts }: Theme) {
   return useMemo(
     () =>
       StyleSheet.create({

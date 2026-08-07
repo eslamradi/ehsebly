@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { I18nManager, useColorScheme, type TextStyle, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets, type EdgeInsets } from 'react-native-safe-area-context';
 import { useI18n } from './i18n';
+import { containsArabicScript } from './i18n/script';
 
 /**
  * Shared design tokens — "a ledger, not a form": warm paper instead of
@@ -120,6 +121,21 @@ export const arabicFonts: FontSet = {
  * app reload, which is exactly what switching to or from Arabic triggers.
  */
 export const textAlignEnd: TextStyle['textAlign'] = I18nManager.isRTL ? 'left' : 'right';
+
+/**
+ * Font override for text the *user* supplied rather than copy we wrote —
+ * receipt item names, people's names. Spread it after a base style:
+ *
+ *   <Text style={[styles.itemName, userTextStyle(item.name, 'sansSemiBold', theme.fonts)]}>
+ *
+ * The locale's own face is wrong for this content, because the content's
+ * script has nothing to do with the interface language: an Arabic receipt
+ * read in the English or Franco UI would be set in Manrope, which cannot
+ * draw a single Arabic glyph. See `i18n/script.ts`.
+ */
+export function userTextStyle(text: string, weight: keyof FontSet, localeFonts: FontSet): TextStyle {
+  return { fontFamily: containsArabicScript(text) ? arabicFonts[weight] : localeFonts[weight] };
+}
 
 export const spacing = {
   xs: 4,

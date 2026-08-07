@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { fonts, radii, spacing, useTheme } from '../theme';
+import { radii, spacing, useTheme, userTextStyle } from '../theme';
 
 type PersonChipProps = {
   label: string;
@@ -74,7 +74,7 @@ export function PersonChip({
         // on — visibly a control in both states, never mistaken for a person.
         chipEveryone: { borderColor: colors.accent },
         chipEveryoneSelected: { backgroundColor: colors.accentSoft, borderColor: colors.accent },
-        text: { fontFamily: fonts.sansSemiBold, fontSize: 14, color: colors.ink },
+        text: { fontFamily: theme.fonts.sansSemiBold, fontSize: 14, color: colors.ink },
         textSelected: { color: colors.accentInk },
         textEveryone: { color: colors.accent },
         textEveryoneSelected: { color: colors.accent },
@@ -86,7 +86,7 @@ export function PersonChip({
           backgroundColor: colors.accentInk,
           alignItems: 'center',
         },
-        countText: { fontFamily: fonts.monoSemiBold, fontSize: 12, color: colors.accent },
+        countText: { fontFamily: theme.fonts.monoSemiBold, fontSize: 12, color: colors.accent },
       }),
     [theme],
   );
@@ -114,6 +114,9 @@ export function PersonChip({
         numberOfLines={1}
         style={[
           styles.text,
+          // A person's name is user data — see userTextStyle. The Everyone
+          // chip is our own copy, so it follows the locale like any label.
+          !isEveryone && userTextStyle(label, 'sansSemiBold', theme.fonts),
           isEveryone && styles.textEveryone,
           selected && (isEveryone ? styles.textEveryoneSelected : styles.textSelected),
         ]}
