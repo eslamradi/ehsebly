@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAccount } from '../domain/account';
+import { LanguagePicker } from '../components/LanguagePicker';
+import { useI18n } from '../i18n';
 import { fonts, radii, spacing, useTheme } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -30,7 +32,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
  * (prfaq-hasebly.md, 2026-07-16), not invented copy.
  */
 export default function HomeScreen({ navigation }: Props) {
-  const { colors, cardShadow, insets } = useTheme();
+  const theme = useTheme();
+  const { colors, cardShadow, insets } = theme;
+  const { t } = useI18n();
   const { account } = useAccount();
   const styles = useMemo(
     () =>
@@ -46,8 +50,8 @@ export default function HomeScreen({ navigation }: Props) {
         },
         brand: { alignItems: 'center', gap: 10 },
         logo: { width: 64, height: 64, borderRadius: 14 },
-        title: { fontFamily: fonts.headingSemiBold, fontSize: 26, color: colors.ink, letterSpacing: -0.2 },
-        subtitle: { fontFamily: fonts.sansRegular, fontSize: 13.5, color: colors.inkSoft, textAlign: 'center' },
+        title: { fontFamily: theme.fonts.headingSemiBold, fontSize: 26, color: colors.ink, letterSpacing: -0.2 },
+        subtitle: { fontFamily: theme.fonts.sansRegular, fontSize: 13.5, color: colors.inkSoft, textAlign: 'center' },
         actions: { gap: spacing.md },
         sectionButton: {
           borderRadius: radii.lg,
@@ -58,12 +62,12 @@ export default function HomeScreen({ navigation }: Props) {
         },
         sectionButtonCasual: { backgroundColor: colors.accent },
         sectionButtonGroups: { backgroundColor: colors.paperRaised, borderWidth: 1, borderColor: colors.line },
-        sectionTitleCasual: { fontFamily: fonts.sansBold, fontSize: 18, color: colors.accentInk },
-        sectionTitleGroups: { fontFamily: fonts.sansBold, fontSize: 18, color: colors.ink },
-        sectionSubtitleCasual: { fontFamily: fonts.sansRegular, fontSize: 13.5, color: colors.accentInk, opacity: 0.85 },
-        sectionSubtitleGroups: { fontFamily: fonts.sansRegular, fontSize: 13.5, color: colors.inkSoft },
+        sectionTitleCasual: { fontFamily: theme.fonts.sansBold, fontSize: 18, color: colors.accentInk },
+        sectionTitleGroups: { fontFamily: theme.fonts.sansBold, fontSize: 18, color: colors.ink },
+        sectionSubtitleCasual: { fontFamily: theme.fonts.sansRegular, fontSize: 13.5, color: colors.accentInk, opacity: 0.85 },
+        sectionSubtitleGroups: { fontFamily: theme.fonts.sansRegular, fontSize: 13.5, color: colors.inkSoft },
       }),
-    [colors, cardShadow, insets],
+    [theme, colors, cardShadow, insets],
   );
 
   return (
@@ -71,31 +75,29 @@ export default function HomeScreen({ navigation }: Props) {
       <View style={styles.brand}>
         <Image accessibilityLabel="ehsebly logo" source={require('../../assets/icon.png')} style={styles.logo} />
         <Text style={styles.title}>ehsebly</Text>
-        <Text style={styles.subtitle}>Break down a receipt in a few taps — no calculator, no guessing the tax.</Text>
+        <Text style={styles.subtitle}>{t('home.tagline')}</Text>
       </View>
 
       <View style={styles.actions}>
         <Pressable
-          accessibilityLabel="Casual Breakdown"
+          accessibilityLabel={t('home.casualTitle')}
           style={[styles.sectionButton, styles.sectionButtonCasual]}
           onPress={() => navigation.navigate('CasualSplit')}
         >
-          <Text style={styles.sectionTitleCasual}>Casual Breakdown</Text>
-          <Text style={styles.sectionSubtitleCasual}>
-            No sign-up — snap a receipt and 14% tax compounds correctly on 12% service, automatically.
-          </Text>
+          <Text style={styles.sectionTitleCasual}>{t('home.casualTitle')}</Text>
+          <Text style={styles.sectionSubtitleCasual}>{t('home.casualSubtitle')}</Text>
         </Pressable>
         <Pressable
-          accessibilityLabel="Groups"
+          accessibilityLabel={t('home.groupsTitle')}
           style={[styles.sectionButton, styles.sectionButtonGroups]}
           onPress={() => navigation.navigate(account ? 'GroupList' : 'EmailEntry')}
         >
-          <Text style={styles.sectionTitleGroups}>Groups</Text>
-          <Text style={styles.sectionSubtitleGroups}>
-            Households and trips — a running ledger. Settle up via InstaPay, Vodafone Cash, or cash.
-          </Text>
+          <Text style={styles.sectionTitleGroups}>{t('home.groupsTitle')}</Text>
+          <Text style={styles.sectionSubtitleGroups}>{t('home.groupsSubtitle')}</Text>
         </Pressable>
       </View>
+
+      <LanguagePicker />
     </View>
   );
 }

@@ -9,7 +9,7 @@ import { formatPiastresAsEGP, parseEGPToPiastres } from '../domain/money';
 import { RECONCILIATION_TOLERANCE_PIASTRES, reconcileWithPrintedTotal } from '../domain/reconciliation';
 import { calculateSplitTotals, calculateSubtotalPiastres } from '../domain/splitCalculation';
 import { useSplitSession, type Person } from '../domain/session';
-import { fonts, radii, spacing, useTheme, type Theme } from '../theme';
+import { fonts, radii, spacing, useTheme, type Theme, textAlignEnd } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Review'>;
@@ -44,7 +44,7 @@ function makeStyles(theme: Theme) {
       borderRadius: radii.sm,
       paddingVertical: 8,
       paddingHorizontal: spacing.md,
-      textAlign: 'right',
+      textAlign: textAlignEnd,
       color: colors.ink,
     },
     quantityBadge: { fontFamily: fonts.sansSemiBold, fontSize: 13, color: colors.inkSoft, flexShrink: 0 },

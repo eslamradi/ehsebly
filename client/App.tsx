@@ -13,10 +13,17 @@ import {
   IBMPlexMono_600SemiBold,
   IBMPlexMono_700Bold,
 } from '@expo-google-fonts/ibm-plex-mono';
+import {
+  IBMPlexSansArabic_400Regular,
+  IBMPlexSansArabic_500Medium,
+  IBMPlexSansArabic_600SemiBold,
+  IBMPlexSansArabic_700Bold,
+} from '@expo-google-fonts/ibm-plex-sans-arabic';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AccountProvider } from './app/domain/account';
 import { SplitSessionProvider } from './app/domain/session';
+import { I18nProvider, useI18n } from './app/i18n';
 import { useTheme } from './app/theme';
 import type { RootStackParamList } from './app/navigation/types';
 import AccountScreen from './app/screens/AccountScreen';
@@ -55,13 +62,16 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function App() {
   return (
     <SafeAreaProvider>
-      <AppContent />
+      <I18nProvider>
+        <AppContent />
+      </I18nProvider>
     </SafeAreaProvider>
   );
 }
 
 function AppContent() {
   const { colors, isDark } = useTheme();
+  const { ready: localeReady } = useI18n();
   const [fontsLoaded] = useFonts({
     Fraunces_600SemiBold,
     Fraunces_700Bold,
@@ -72,13 +82,22 @@ function AppContent() {
     IBMPlexMono_400Regular,
     IBMPlexMono_600SemiBold,
     IBMPlexMono_700Bold,
+    // Loaded unconditionally rather than per-locale: useFonts takes a fixed
+    // map, and swapping it mid-session would unload the faces already on
+    // screen. Four extra files is a cheaper trade than a font pop on switch.
+    IBMPlexSansArabic_400Regular,
+    IBMPlexSansArabic_500Medium,
+    IBMPlexSansArabic_600SemiBold,
+    IBMPlexSansArabic_700Bold,
   });
 
   // Every screen's styles reference these exact family names (see
   // theme.ts's `fonts`) — render a plain paper-colored blank instead of the
   // tree until they're in, rather than a flash of fallback system fonts
   // that would re-layout a beat later once the real ones swap in.
-  if (!fontsLoaded) {
+  // Also gated on the stored locale, so the first paint is never the wrong
+  // language (or the wrong writing direction) for a frame before correcting.
+  if (!fontsLoaded || !localeReady) {
     return <View style={{ flex: 1, backgroundColor: colors.paper }} />;
   }
 

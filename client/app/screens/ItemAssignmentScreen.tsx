@@ -13,7 +13,8 @@ import {
 import { formatPiastresAsEGP } from '../domain/money';
 import { calculateSplitTotals, calculateSubtotalPiastres } from '../domain/splitCalculation';
 import { useSplitSession } from '../domain/session';
-import { fonts, radii, spacing, useTheme } from '../theme';
+import { fonts, radii, spacing, textAlignEnd, useTheme } from '../theme';
+import { useI18n } from '../i18n';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ItemAssignment'>;
@@ -63,6 +64,7 @@ const FILTER_MIN_ITEMS = 8;
 export default function ItemAssignmentScreen({ navigation }: Props) {
   const theme = useTheme();
   const { colors, buttonStyles, screenStyles } = theme;
+  const { t } = useI18n();
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -76,7 +78,7 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
           paddingVertical: 10,
           paddingHorizontal: spacing.md,
           backgroundColor: colors.paperRaised,
-          fontFamily: fonts.sansRegular,
+          fontFamily: theme.fonts.sansRegular,
           color: colors.ink,
         },
         addButton: {
@@ -97,22 +99,22 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
         // the rail is what makes it findable while scroll-skimming a 30-line
         // grocery receipt, and the pill's text is what keeps the state from
         // being communicated by colour alone.
-        itemCardUnassigned: { borderLeftWidth: 3, borderLeftColor: colors.critical },
+        itemCardUnassigned: { borderStartWidth: 3, borderStartColor: colors.critical },
         itemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing.md },
         itemHeaderText: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-        itemName: { flexShrink: 1, fontFamily: fonts.sansSemiBold, fontSize: 16, color: colors.ink },
-        quantityBadge: { fontFamily: fonts.monoRegular, fontSize: 13, color: colors.inkSoft },
+        itemName: { flexShrink: 1, fontFamily: theme.fonts.sansSemiBold, fontSize: 16, color: colors.ink },
+        quantityBadge: { fontFamily: theme.fonts.monoRegular, fontSize: 13, color: colors.inkSoft },
         itemPrice: { flexShrink: 0, fontSize: 16, color: colors.ink },
         chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
         helperRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
-        helperText: { fontFamily: fonts.sansRegular, fontSize: 13, color: colors.inkSoft },
-        helperMoney: { fontFamily: fonts.monoRegular, fontSize: 13, color: colors.inkSoft },
-        helperSeparator: { fontFamily: fonts.sansRegular, fontSize: 13, color: colors.inkFaint },
+        helperText: { fontFamily: theme.fonts.sansRegular, fontSize: 13, color: colors.inkSoft },
+        helperMoney: { fontFamily: theme.fonts.monoRegular, fontSize: 13, color: colors.inkSoft },
+        helperSeparator: { fontFamily: theme.fonts.sansRegular, fontSize: 13, color: colors.inkFaint },
         // "Set amounts" stays rendered (muted) even before anyone is assigned:
         // it is the entire discoverability budget for uneven allocation, and
         // hiding it until assignment is how that capability gets lost.
-        setAmountsButton: { paddingVertical: spacing.xs, paddingRight: spacing.sm },
-        setAmountsText: { fontFamily: fonts.sansSemiBold, fontSize: 13, color: colors.accent },
+        setAmountsButton: { paddingVertical: spacing.xs, paddingEnd: spacing.sm },
+        setAmountsText: { fontFamily: theme.fonts.sansSemiBold, fontSize: 13, color: colors.accent },
         setAmountsTextDisabled: { color: colors.inkFaint },
         amountsPanel: {
           backgroundColor: colors.paper,
@@ -121,17 +123,17 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
           gap: spacing.sm,
         },
         amountsPanelHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-        amountsPanelTitle: { fontFamily: fonts.sansSemiBold, fontSize: 13, color: colors.ink },
-        amountsDoneText: { fontFamily: fonts.sansSemiBold, fontSize: 13, color: colors.accent },
+        amountsPanelTitle: { fontFamily: theme.fonts.sansSemiBold, fontSize: 13, color: colors.ink },
+        amountsDoneText: { fontFamily: theme.fonts.sansSemiBold, fontSize: 13, color: colors.accent },
         allocationRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-        allocationName: { flex: 1, minWidth: 0, fontFamily: fonts.sansRegular, fontSize: 14, color: colors.ink },
+        allocationName: { flex: 1, minWidth: 0, fontFamily: theme.fonts.sansRegular, fontSize: 14, color: colors.ink },
         // The live per-person figure is what makes "shares, not units" legible
         // without a word of explanation — set 3 and 3 on a ×10 and you see
         // 15.00 / 15.00 immediately, rather than discovering it at the end.
-        allocationShare: { minWidth: 62, textAlign: 'right', fontFamily: fonts.monoRegular, fontSize: 14, color: colors.inkSoft },
-        reconcileText: { fontFamily: fonts.sansRegular, fontSize: 12, color: colors.inkSoft },
-        note: { fontFamily: fonts.sansRegular, fontSize: 14, color: colors.inkSoft },
-        errorText: { fontFamily: fonts.sansRegular, color: colors.critical, fontSize: 12 },
+        allocationShare: { minWidth: 62, textAlign: textAlignEnd, fontFamily: theme.fonts.monoRegular, fontSize: 14, color: colors.inkSoft },
+        reconcileText: { fontFamily: theme.fonts.sansRegular, fontSize: 12, color: colors.inkSoft },
+        note: { fontFamily: theme.fonts.sansRegular, fontSize: 14, color: colors.inkSoft },
+        errorText: { fontFamily: theme.fonts.sansRegular, color: colors.critical, fontSize: 12 },
 
         // The screen is a scroll region plus a pinned footer rather than one
         // long ScrollView: the running per-person totals used to sit *below*
@@ -156,7 +158,7 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
         progressRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
         progressTrack: { flex: 1, height: 4, borderRadius: 2, backgroundColor: colors.line, overflow: 'hidden' },
         progressFill: { height: 4, borderRadius: 2, backgroundColor: colors.accent },
-        progressLabel: { flexShrink: 0, fontFamily: fonts.sansMedium, fontSize: 13, color: colors.inkSoft },
+        progressLabel: { flexShrink: 0, fontFamily: theme.fonts.sansMedium, fontSize: 13, color: colors.inkSoft },
         filterToggle: {
           flexShrink: 0,
           borderWidth: 1,
@@ -166,7 +168,7 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
           paddingHorizontal: spacing.md,
         },
         filterToggleActive: { backgroundColor: colors.accentSoft, borderColor: colors.accent },
-        filterToggleText: { fontFamily: fonts.sansSemiBold, fontSize: 12, color: colors.inkSoft },
+        filterToggleText: { fontFamily: theme.fonts.sansSemiBold, fontSize: 12, color: colors.inkSoft },
         filterToggleTextActive: { color: colors.accent },
         footer: {
           backgroundColor: colors.paperRaised,
@@ -179,10 +181,10 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
         },
         totalsStrip: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
         totalsEntry: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
-        totalsName: { fontFamily: fonts.sansRegular, fontSize: 13, color: colors.inkSoft },
-        totalsValue: { fontFamily: fonts.monoSemiBold, fontSize: 14, color: colors.ink },
+        totalsName: { fontFamily: theme.fonts.sansRegular, fontSize: 13, color: colors.inkSoft },
+        totalsValue: { fontFamily: theme.fonts.monoSemiBold, fontSize: 14, color: colors.ink },
       }),
-    [theme],
+    [theme, colors],
   );
 
   const { session, addPerson, setItemAllocations, setPaidByMemberId } = useSplitSession();
@@ -210,9 +212,9 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
     // session state rather than crashing on `extractionResult.items`.
     return (
       <View style={screenStyles.center}>
-        <Text style={screenStyles.message}>Nothing to assign yet.</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel="Back to tax and service" style={buttonStyles.primary} onPress={handleBack}>
-          <Text style={buttonStyles.primaryText}>Back</Text>
+        <Text style={screenStyles.message}>{t('assignment.nothingToAssign')}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={t('assignment.a11yBackToTax')} style={buttonStyles.primary} onPress={handleBack}>
+          <Text style={buttonStyles.primaryText}>{t('common.back')}</Text>
         </Pressable>
       </View>
     );
@@ -223,7 +225,7 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
   const handleAddPerson = () => {
     const trimmed = newPersonName.trim();
     if (trimmed.length === 0) {
-      setAddPersonError('Enter a name before adding.');
+      setAddPersonError(t('assignment.errNeedName'));
       return;
     }
     const newPersonIndex = people.length;
@@ -268,24 +270,23 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
 
   const handleContinue = () => {
     if (people.length === 0) {
-      setBlockedMessage('Add at least one person before continuing.');
+      setBlockedMessage(t('assignment.errNeedPerson'));
       return;
     }
     if (!areAllItemsAssigned(items.length, itemAssignments)) {
       const remaining = items.filter(
         (_item, itemIndex) => !Object.values(itemAssignments[itemIndex] ?? {}).some((weight) => weight > 0),
       ).length;
-      const noun = remaining === 1 ? 'item' : 'items';
       if (items.length >= FILTER_MIN_ITEMS) {
         setOnlyUnassigned(true);
-        setBlockedMessage(`${remaining} ${noun} still need someone — showing just those.`);
+        setBlockedMessage(t('assignment.errUnassignedFiltered', { count: remaining }));
       } else {
-        setBlockedMessage(`${remaining} ${noun} still need someone — they're flagged in red.`);
+        setBlockedMessage(t('assignment.errUnassigned', { count: remaining }));
       }
       return;
     }
     if (group && !group.paidByMemberId) {
-      setBlockedMessage('Choose who paid before continuing.');
+      setBlockedMessage(t('assignment.errNeedPayer'));
       return;
     }
     setBlockedMessage(null);
@@ -311,14 +312,14 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
     <View style={styles.screen}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}>
       <View style={styles.headerRow}>
-        <Text style={screenStyles.heading}>Who had what?</Text>
+        <Text style={screenStyles.heading}>{t('assignment.title')}</Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Back to tax and service"
+          accessibilityLabel={t('assignment.a11yBackToTax')}
           style={styles.backButton}
           onPress={handleBack}
         >
-          <Text style={buttonStyles.secondaryText}>Back</Text>
+          <Text style={buttonStyles.secondaryText}>{t('common.back')}</Text>
         </Pressable>
       </View>
 
@@ -330,20 +331,16 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${(assignedCount / items.length) * 100}%` }]} />
           </View>
-          <Text style={styles.progressLabel}>
-            {assignedCount} of {items.length}
-          </Text>
+          <Text style={styles.progressLabel}>{t('assignment.progress', { assigned: assignedCount, total: items.length })}</Text>
           {showFilter && (
             <Pressable
               accessibilityRole="button"
               accessibilityState={{ selected: onlyUnassigned }}
-              accessibilityLabel="Show only unassigned items"
+              accessibilityLabel={t('assignment.a11yOnlyUnassigned')}
               style={[styles.filterToggle, onlyUnassigned && styles.filterToggleActive]}
               onPress={() => setOnlyUnassigned((previous) => !previous)}
             >
-              <Text style={[styles.filterToggleText, onlyUnassigned && styles.filterToggleTextActive]}>
-                Only unassigned
-              </Text>
+              <Text style={[styles.filterToggleText, onlyUnassigned && styles.filterToggleTextActive]}>{t('assignment.onlyUnassigned')}</Text>
             </Pressable>
           )}
         </View>
@@ -355,17 +352,14 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
         // group_member_id, so their assigned items would silently vanish from
         // the submitted ledger (Story 2.4 code-review finding, 2026-07-29).
         // Membership changes go through Invite Member (Story 2.3), not here.
-        <Text style={styles.note}>
-          Assigning items among this group's members. To include someone new, invite them from the group screen, then start
-          this expense again.
-        </Text>
+        <Text style={styles.note}>{t('assignment.groupNote')}</Text>
       ) : (
         <>
           <View style={styles.addPersonRow}>
             <TextInput
-              accessibilityLabel="New person's name"
+              accessibilityLabel={t('assignment.a11yNewPersonName')}
               style={styles.nameInput}
-              placeholder="Add a person"
+              placeholder={t('assignment.addPersonPlaceholder')}
               placeholderTextColor={colors.inkFaint}
               value={newPersonName}
               onChangeText={(text) => {
@@ -374,8 +368,8 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
               }}
               onSubmitEditing={handleAddPerson}
             />
-            <Pressable accessibilityRole="button" accessibilityLabel="Add person" style={styles.addButton} onPress={handleAddPerson}>
-              <Text style={buttonStyles.primaryText}>Add</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel={t('assignment.a11yAddPerson')} style={styles.addButton} onPress={handleAddPerson}>
+              <Text style={buttonStyles.primaryText}>{t('common.add')}</Text>
             </Pressable>
           </View>
           {addPersonError && <Text style={styles.errorText}>{addPersonError}</Text>}
@@ -384,7 +378,7 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
 
       {group && (
         <View style={{ gap: spacing.sm }}>
-          <Text style={styles.note}>Who paid?</Text>
+          <Text style={styles.note}>{t('assignment.whoPaid')}</Text>
           <View style={styles.chipRow}>
             {people.map((person, personIndex) => {
               const memberId = group.memberIdByPersonIndex[personIndex];
@@ -394,7 +388,7 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
                   key={personIndex}
                   label={person.name}
                   selected={selected}
-                  accessibilityLabel={`${person.name} paid`}
+                  accessibilityLabel={t('assignment.a11yPersonPaid', { person: person.name })}
                   onPress={() => memberId && setPaidByMemberId(memberId)}
                 />
               );
@@ -404,7 +398,7 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
       )}
 
       {onlyUnassigned && visibleItems.length === 0 && (
-        <Text style={styles.note}>Everything's assigned — switch the filter off to review the full receipt.</Text>
+        <Text style={styles.note}>{t('assignment.allAssignedFiltered')}</Text>
       )}
 
       {visibleItems.map(({ item, itemIndex }) => {
@@ -426,20 +420,22 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
         const sharesAreEqual = shareValues.every((value) => value === shareValues[0]);
         const eachLabel =
           assignedIndices.length >= 2 && !uneven
-            ? `${sharesAreEqual ? '' : '≈'}${formatPiastresAsEGP(shareValues[0])} each`
+            ? t(sharesAreEqual ? 'assignment.eachAmount' : 'assignment.eachAmountApprox', {
+                amount: formatPiastresAsEGP(shareValues[0]),
+              })
             : null;
 
         let reconcileLabel: string | null = null;
         if (assignedIndices.length >= 2) {
           const weightSum = assignedIndices.reduce((sum, personIndex) => sum + weights[personIndex], 0);
           if (!uneven) {
-            reconcileLabel = 'Shared evenly.';
+            reconcileLabel = t('assignment.sharedEvenly');
           } else if (weightSum === item.quantity) {
-            reconcileLabel = `All ${item.quantity} counted.`;
+            reconcileLabel = t('assignment.allCounted', { count: item.quantity });
           } else if (weightSum < item.quantity) {
-            reconcileLabel = `${weightSum} of ${item.quantity} counted — the rest follow the same amounts.`;
+            reconcileLabel = t('assignment.someCounted', { counted: weightSum, total: item.quantity });
           } else {
-            reconcileLabel = `${weightSum} counted, receipt shows ${item.quantity} — amounts follow these numbers.`;
+            reconcileLabel = t('assignment.overCounted', { counted: weightSum, total: item.quantity });
           }
         }
 
@@ -455,22 +451,24 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
 
             {isUnassigned && people.length > 0 && (
               <View style={theme.pillStyle('critical')}>
-                <Text style={theme.pillTextStyle('critical')}>Unassigned</Text>
+                <Text style={theme.pillTextStyle('critical')}>{t('assignment.unassigned')}</Text>
               </View>
             )}
 
             {people.length === 0 ? (
-              <Text style={styles.note}>Add a person above to assign this item.</Text>
+              <Text style={styles.note}>{t('assignment.addPersonFirst')}</Text>
             ) : (
               <>
                 <View style={styles.chipRow}>
                   {people.length > 1 && (
                     <PersonChip
                       variant="everyone"
-                      label="Everyone"
+                      label={t('assignment.everyone')}
                       selected={everyoneSelected}
                       accessibilityLabel={
-                        everyoneSelected ? `Remove everyone from ${item.name}` : `Assign ${item.name} to everyone`
+                        everyoneSelected
+                          ? t('assignment.a11yRemoveEveryone', { item: item.name })
+                          : t('assignment.a11yAssignEveryone', { item: item.name })
                       }
                       onPress={() => toggleEveryone(itemIndex, everyoneSelected)}
                     />
@@ -486,7 +484,7 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
                         // `count` docs and `describePersonItems`, which apply
                         // the identical rule to the summary line.
                         count={uneven ? weight : undefined}
-                        accessibilityLabel={`Assign ${item.name} to ${person.name}`}
+                        accessibilityLabel={t('assignment.a11yAssignTo', { item: item.name, person: person.name })}
                         onPress={() => setWeightForPerson(itemIndex, personIndex, weight > 0 ? 0 : 1)}
                       />
                     );
@@ -501,13 +499,13 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
                       <Pressable
                         accessibilityRole="button"
                         accessibilityState={{ expanded: amountsOpen, disabled: isUnassigned }}
-                        accessibilityLabel={`Set per-person amounts for ${item.name}`}
+                        accessibilityLabel={t('assignment.a11ySetAmounts', { item: item.name })}
                         disabled={isUnassigned}
                         style={styles.setAmountsButton}
                         onPress={() => setOpenAmountsItemIndex(amountsOpen ? null : itemIndex)}
                       >
                         <Text style={[styles.setAmountsText, isUnassigned && styles.setAmountsTextDisabled]}>
-                          {amountsOpen ? 'Hide amounts' : 'Set amounts'}
+                          {amountsOpen ? t('assignment.hideAmounts') : t('assignment.setAmounts')}
                         </Text>
                       </Pressable>
                     )}
@@ -517,13 +515,13 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
                 {isMultiQuantity && amountsOpen && !isUnassigned && (
                   <View style={styles.amountsPanel}>
                     <View style={styles.amountsPanelHeader}>
-                      <Text style={styles.amountsPanelTitle}>How many each?</Text>
+                      <Text style={styles.amountsPanelTitle}>{t('assignment.howManyEach')}</Text>
                       <Pressable
                         accessibilityRole="button"
-                        accessibilityLabel={`Done setting amounts for ${item.name}`}
+                        accessibilityLabel={t('assignment.a11yDoneAmounts', { item: item.name })}
                         onPress={() => setOpenAmountsItemIndex(null)}
                       >
-                        <Text style={styles.amountsDoneText}>Done</Text>
+                        <Text style={styles.amountsDoneText}>{t('common.done')}</Text>
                       </Pressable>
                     </View>
                     {assignedIndices.map((personIndex) => (
@@ -532,7 +530,7 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
                           {people[personIndex].name}
                         </Text>
                         <QuantityStepper
-                          accessibilityLabel={`${item.name} share for ${people[personIndex].name}`}
+                          accessibilityLabel={t('assignment.a11yShareFor', { item: item.name, person: people[personIndex].name })}
                           value={weights[personIndex] ?? 0}
                           min={0}
                           max={MAX_WEIGHT_PER_PERSON}
@@ -572,11 +570,11 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
         )}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Continue to review"
+          accessibilityLabel={t('assignment.a11yContinueReview')}
           style={buttonStyles.primary}
           onPress={handleContinue}
         >
-          <Text style={buttonStyles.primaryText}>Continue</Text>
+          <Text style={buttonStyles.primaryText}>{t('common.continue')}</Text>
         </Pressable>
       </View>
     </View>

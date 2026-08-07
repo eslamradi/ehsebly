@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
-import { useColorScheme, type TextStyle, type ViewStyle } from 'react-native';
+import { I18nManager, useColorScheme, type TextStyle, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets, type EdgeInsets } from 'react-native-safe-area-context';
+import { useI18n } from './i18n';
 
 /**
  * Shared design tokens — "a ledger, not a form": warm paper instead of
@@ -78,6 +79,48 @@ export const fonts = {
   monoBold: 'IBMPlexMono_700Bold',
 } as const;
 
+/** Widened off `fonts`'s keys — `as const` would pin each value to the Latin family name. */
+export type FontSet = Record<keyof typeof fonts, string>;
+
+/**
+ * Fraunces and Manrope are Latin-only — Arabic text set in either falls back
+ * to whatever the OS picks, which loses the app's voice on every screen and
+ * differs between iOS and Android. IBM Plex Sans Arabic carries the whole
+ * script and is the sibling of the IBM Plex Mono already used for money, so
+ * the pairing stays deliberate rather than accidental.
+ *
+ * Fraunces has no Arabic counterpart at all, so headings fall to the Plex
+ * Arabic bold weights: the serif display voice simply doesn't survive the
+ * script change, and faking it with a mismatched face would look worse than
+ * a clean weight contrast.
+ *
+ * The mono entries are untouched. Money renders in Western digits in every
+ * locale (see en.ts), so the ledger column keeps its tabular figures.
+ *
+ * Franco needs none of this — it's Egyptian Arabic in Latin script, so it
+ * uses the Latin set exactly as English does.
+ */
+export const arabicFonts: FontSet = {
+  headingSemiBold: 'IBMPlexSansArabic_600SemiBold',
+  headingBold: 'IBMPlexSansArabic_700Bold',
+  sansRegular: 'IBMPlexSansArabic_400Regular',
+  sansMedium: 'IBMPlexSansArabic_500Medium',
+  sansSemiBold: 'IBMPlexSansArabic_600SemiBold',
+  sansBold: 'IBMPlexSansArabic_700Bold',
+  monoRegular: 'IBMPlexMono_400Regular',
+  monoSemiBold: 'IBMPlexMono_600SemiBold',
+  monoBold: 'IBMPlexMono_700Bold',
+};
+
+/**
+ * React Native's `textAlign` only accepts physical values — there is no
+ * logical `end` the way there is for padding/border — so a money column set
+ * to 'right' would hug the wrong edge once Arabic mirrors the layout. Read
+ * once at module scope because `I18nManager.isRTL` can only change across an
+ * app reload, which is exactly what switching to or from Arabic triggers.
+ */
+export const textAlignEnd: TextStyle['textAlign'] = I18nManager.isRTL ? 'left' : 'right';
+
 export const spacing = {
   xs: 4,
   sm: 8,
@@ -114,7 +157,7 @@ function makeCardShadow(colors: ThemeColors, isDark: boolean): ViewStyle {
   };
 }
 
-function makeScreenStyles(colors: ThemeColors, insets: EdgeInsets) {
+function makeScreenStyles(colors: ThemeColors, insets: EdgeInsets, f: FontSet) {
   return {
     container: { flex: 1, backgroundColor: colors.paper } as ViewStyle,
     // Screens don't render behind a native header (screenOptions sets
@@ -140,17 +183,17 @@ function makeScreenStyles(colors: ThemeColors, insets: EdgeInsets) {
       gap: spacing.lg,
     } as ViewStyle,
     heading: {
-      fontFamily: fonts.headingSemiBold,
+      fontFamily: f.headingSemiBold,
       fontSize: 22,
       color: colors.ink,
     } as TextStyle,
-    subheading: { fontFamily: fonts.sansRegular, fontSize: 14, color: colors.inkSoft } as TextStyle,
-    message: { fontFamily: fonts.sansRegular, textAlign: 'center', fontSize: 16, color: colors.ink } as TextStyle,
-    mono: { fontFamily: fonts.monoRegular } as TextStyle,
+    subheading: { fontFamily: f.sansRegular, fontSize: 14, color: colors.inkSoft } as TextStyle,
+    message: { fontFamily: f.sansRegular, textAlign: 'center', fontSize: 16, color: colors.ink } as TextStyle,
+    mono: { fontFamily: f.monoRegular } as TextStyle,
   };
 }
 
-function makeButtonStyles(colors: ThemeColors) {
+function makeButtonStyles(colors: ThemeColors, f: FontSet) {
   return {
     primary: {
       backgroundColor: colors.accent,
@@ -164,7 +207,7 @@ function makeButtonStyles(colors: ThemeColors) {
       shadowRadius: 16,
       elevation: 4,
     } as ViewStyle,
-    primaryText: { fontFamily: fonts.sansBold, color: colors.accentInk, fontSize: 15 } as TextStyle,
+    primaryText: { fontFamily: f.sansBold, color: colors.accentInk, fontSize: 15 } as TextStyle,
     secondary: {
       backgroundColor: colors.paperRaised,
       borderWidth: 1,
@@ -174,7 +217,7 @@ function makeButtonStyles(colors: ThemeColors) {
       borderRadius: radii.md,
       alignItems: 'center',
     } as ViewStyle,
-    secondaryText: { fontFamily: fonts.sansSemiBold, color: colors.ink, fontSize: 15 } as TextStyle,
+    secondaryText: { fontFamily: f.sansSemiBold, color: colors.ink, fontSize: 15 } as TextStyle,
     disabled: { opacity: 0.45 } as ViewStyle,
   };
 }
@@ -189,9 +232,9 @@ function makePillStyle(colors: ThemeColors, tone: 'positive' | 'critical'): View
     alignSelf: 'flex-start',
   };
 }
-function makePillTextStyle(colors: ThemeColors, tone: 'positive' | 'critical'): TextStyle {
+function makePillTextStyle(colors: ThemeColors, tone: 'positive' | 'critical', f: FontSet): TextStyle {
   return {
-    fontFamily: fonts.sansBold,
+    fontFamily: f.sansBold,
     color: tone === 'positive' ? colors.positive : colors.critical,
     fontSize: 11,
     letterSpacing: 0.4,
@@ -204,6 +247,8 @@ export type Theme = {
   colors: ThemeColors;
   insets: EdgeInsets;
   cardShadow: ViewStyle;
+  /** Resolved for the active locale — Arabic swaps in IBM Plex Sans Arabic. */
+  fonts: FontSet;
   screenStyles: ReturnType<typeof makeScreenStyles>;
   buttonStyles: ReturnType<typeof makeButtonStyles>;
   pillStyle: (tone: 'positive' | 'critical') => ViewStyle;
@@ -218,19 +263,23 @@ export type Theme = {
 export function useTheme(): Theme {
   const scheme = useColorScheme();
   const insets = useSafeAreaInsets();
+  const { locale } = useI18n();
   const isDark = scheme === 'dark';
   const colors = isDark ? darkColors : lightColors;
+  // Franco is Latin script, so only Arabic swaps the typeface.
+  const activeFonts = locale === 'ar' ? arabicFonts : fonts;
   return useMemo(
     () => ({
       isDark,
       colors,
       insets,
+      fonts: activeFonts,
       cardShadow: makeCardShadow(colors, isDark),
-      screenStyles: makeScreenStyles(colors, insets),
-      buttonStyles: makeButtonStyles(colors),
+      screenStyles: makeScreenStyles(colors, insets, activeFonts),
+      buttonStyles: makeButtonStyles(colors, activeFonts),
       pillStyle: (tone: 'positive' | 'critical') => makePillStyle(colors, tone),
-      pillTextStyle: (tone: 'positive' | 'critical') => makePillTextStyle(colors, tone),
+      pillTextStyle: (tone: 'positive' | 'critical') => makePillTextStyle(colors, tone, activeFonts),
     }),
-    [colors, isDark, insets.top, insets.bottom, insets.left, insets.right],
+    [colors, isDark, activeFonts, insets.top, insets.bottom, insets.left, insets.right],
   );
 }

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { fonts, radii, spacing, useTheme } from '../theme';
+import { useI18n } from '../i18n';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CasualSplit'>;
@@ -16,7 +17,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'CasualSplit'>;
  * group ledger.
  */
 export default function CasualSplitScreen({ navigation }: Props) {
-  const { colors, insets, buttonStyles } = useTheme();
+  const theme = useTheme();
+  const { colors, insets, buttonStyles } = theme;
+  const { t } = useI18n();
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -29,8 +32,8 @@ export default function CasualSplitScreen({ navigation }: Props) {
           paddingBottom: 32 + insets.bottom,
         },
         headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-        title: { fontFamily: fonts.headingSemiBold, fontSize: 24, color: colors.ink, letterSpacing: -0.2 },
-        subtitle: { fontFamily: fonts.sansRegular, fontSize: 13.5, color: colors.inkSoft, marginTop: 6 },
+        title: { fontFamily: theme.fonts.headingSemiBold, fontSize: 24, color: colors.ink, letterSpacing: -0.2 },
+        subtitle: { fontFamily: theme.fonts.sansRegular, fontSize: 13.5, color: colors.inkSoft, marginTop: 6 },
         backButton: {
           backgroundColor: colors.paperRaised,
           borderWidth: 1,
@@ -41,40 +44,40 @@ export default function CasualSplitScreen({ navigation }: Props) {
         },
         actions: { gap: 10 },
         ghostButton: { paddingVertical: 14, alignItems: 'center' },
-        ghostButtonText: { fontFamily: fonts.sansMedium, color: colors.inkSoft, fontSize: 15 },
+        ghostButtonText: { fontFamily: theme.fonts.sansMedium, color: colors.inkSoft, fontSize: 15 },
       }),
-    [colors, insets],
+    [theme, colors, insets],
   );
 
   return (
     <View style={styles.container}>
       <View>
         <View style={styles.headerRow}>
-          <Text style={styles.title}>Casual Breakdown</Text>
-          <Pressable accessibilityLabel="Back to home" style={styles.backButton} onPress={() => navigation.navigate('Home')}>
-            <Text style={buttonStyles.secondaryText}>Back</Text>
+          <Text style={styles.title}>{t('casual.title')}</Text>
+          <Pressable accessibilityLabel={t('casual.a11yBackHome')} style={styles.backButton} onPress={() => navigation.navigate('Home')}>
+            <Text style={buttonStyles.secondaryText}>{t('common.back')}</Text>
           </Pressable>
         </View>
-        <Text style={styles.subtitle}>Break down one receipt in a few taps — no sign-up.</Text>
+        <Text style={styles.subtitle}>{t('casual.subtitle')}</Text>
       </View>
 
       <View style={styles.actions}>
         <Pressable
-          accessibilityLabel="Take a photo of a receipt"
+          accessibilityLabel={t('casual.a11yTakePhoto')}
           style={buttonStyles.primary}
           onPress={() => navigation.navigate('Capture', undefined)}
         >
-          <Text style={buttonStyles.primaryText}>Take Photo</Text>
+          <Text style={buttonStyles.primaryText}>{t('casual.takePhoto')}</Text>
         </Pressable>
         <Pressable
-          accessibilityLabel="Choose photo from gallery"
+          accessibilityLabel={t('casual.a11yChooseFromGallery')}
           style={buttonStyles.secondary}
           onPress={() => navigation.navigate('Capture', { openGalleryOnMount: true })}
         >
-          <Text style={buttonStyles.secondaryText}>Choose from Gallery</Text>
+          <Text style={buttonStyles.secondaryText}>{t('casual.chooseFromGallery')}</Text>
         </Pressable>
-        <Pressable accessibilityLabel="View breakdown history" style={styles.ghostButton} onPress={() => navigation.navigate('History')}>
-          <Text style={styles.ghostButtonText}>History</Text>
+        <Pressable accessibilityLabel={t('casual.a11yHistory')} style={styles.ghostButton} onPress={() => navigation.navigate('History')}>
+          <Text style={styles.ghostButtonText}>{t('casual.history')}</Text>
         </Pressable>
       </View>
     </View>

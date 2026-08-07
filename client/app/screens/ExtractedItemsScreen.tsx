@@ -5,7 +5,7 @@ import { QuantityStepper } from '../components/QuantityStepper';
 import { formatPiastresAsEGP, parseEGPToPiastres } from '../domain/money';
 import { computeInitialTaxServiceSettings } from '../domain/splitCalculation';
 import { useSplitSession } from '../domain/session';
-import { fonts, radii, spacing, useTheme } from '../theme';
+import { fonts, radii, spacing, useTheme, textAlignEnd } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ExtractedItems'>;
@@ -51,7 +51,7 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
           borderRadius: radii.sm,
           paddingVertical: 10,
           paddingHorizontal: spacing.md,
-          textAlign: 'right',
+          textAlign: textAlignEnd,
           fontFamily: fonts.monoRegular,
           color: theme.colors.ink,
         },
