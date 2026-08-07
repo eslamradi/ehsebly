@@ -4,6 +4,7 @@ import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
 import { SplitSummary } from './SplitSummary';
 import { shareSplitText, type ShareableSplit as ShareableSplitData } from '../domain/share';
+import { useI18n } from '../i18n';
 import { spacing, useTheme } from '../theme';
 
 type ShareableSplitProps = ShareableSplitData & {
@@ -27,6 +28,7 @@ export const ShareableSplit = forwardRef<ShareableSplitHandle, ShareableSplitPro
   ref,
 ) {
   const { colors } = useTheme();
+  const { t } = useI18n();
   const captureViewRef = useRef<View>(null);
 
   useImperativeHandle(ref, () => ({
@@ -35,13 +37,13 @@ export const ShareableSplit = forwardRef<ShareableSplitHandle, ShareableSplitPro
       try {
         const uri = await captureRef(captureViewRef, { format: 'png', quality: 1 });
         if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share breakdown' });
+          await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: t('share.dialogTitle') });
           return;
         }
       } catch {
         // Capture or platform share failure — fall through to text below.
       }
-      await shareSplitText(split);
+      await shareSplitText(split, t);
     },
   }));
 

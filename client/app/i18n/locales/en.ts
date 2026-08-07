@@ -63,6 +63,7 @@ export const en = {
     retakeAll: 'Retake All',
     retake: 'Retake',
     grantCamera: 'ehsebly needs your camera to photograph a receipt.',
+    photoPermission: 'ehsebly needs access to your photos to pick a receipt.',
     grantCameraAction: 'Grant camera access',
     openSettings: 'Open Settings',
     photoAccessOff: 'Photo access is off. Turn it on in Settings to pick a receipt from your gallery.',
@@ -199,6 +200,32 @@ export const en = {
     a11yShare: 'Share breakdown',
     a11yStartNew: 'Start new breakdown',
     a11yBackToReview: 'Back to review',
+  },
+
+  summary: {
+    receiptPhoto: 'Receipt photo',
+    receiptPhotoIndexed: 'Receipt photo {index} of {total}',
+    // Charge rows compose a base label with either its rate or an off marker,
+    // so the punctuation stays in the table and a locale can move it.
+    withRate: '{label} · {rate}%',
+    disabled: '{label} (off)',
+    includesShareOf: 'Includes their share of {charges}',
+    noCharges: 'No tax, service, or other service charge on this receipt — just their share of the items',
+    chargeDiscount: 'the discount',
+    chargeTax: 'tax',
+    chargeService: 'service',
+    chargeOtherService: 'the other service charge',
+    // Joins the charge list: "tax and service", "the discount, tax and service".
+    listAnd: 'and',
+  },
+
+  share: {
+    title: 'Breakdown — ehsebly',
+    dialogTitle: 'Share breakdown',
+    personLine: '{name}: {amount} EGP ({items})',
+    discountLine: 'Discount: -{amount} EGP',
+    otherServiceLine: 'Other service: {amount} EGP',
+    totalLine: 'Total: {amount} EGP',
   },
 
   extractionFailed: {

@@ -4,6 +4,14 @@ import { formatPiastresAsEGP } from './money';
 import { calculateSplitTotals, calculateSubtotalPiastres } from './splitCalculation';
 import type { ItemAssignments, Person, TaxServiceSettings } from './session';
 
+/**
+ * The translator, injected rather than pulled from a hook: this module is a
+ * pure text builder with no React context available to it. The share text is
+ * rendered in the *sender's* language — they're the one composing the
+ * message, and the recipient may not even use the app.
+ */
+export type Translate = (path: string, values?: Record<string, string | number>) => string;
+
 export type ShareableSplit = {
   items: Array<{ name: string; pricePiastres: number; quantity: number }>;
   taxService: TaxServiceSettings;
@@ -16,30 +24,36 @@ export type ShareableSplit = {
  * share target outside the app (WhatsApp, SMS, etc.) — same numbers as
  * SplitSummary's on-screen display, formatted as text instead of UI.
  */
-export function buildShareText({ items, taxService, people, itemAssignments }: ShareableSplit): string {
+export function buildShareText(
+  { items, taxService, people, itemAssignments }: ShareableSplit,
+  t: Translate,
+): string {
   const subtotalPiastres = calculateSubtotalPiastres(items);
   const totals = calculateSplitTotals({ subtotalPiastres, ...taxService });
   const personSubtotals = calculatePersonSubtotals(items, itemAssignments, people.length);
   const personTotals = calculatePersonTotals(personSubtotals, totals);
 
-  const lines = people.map((person, personIndex) => {
-    const itemsDescription = describePersonItems(personIndex, items, itemAssignments);
-    return `${person.name}: ${formatPiastresAsEGP(personTotals[personIndex])} EGP (${itemsDescription})`;
-  });
+  const lines = people.map((person, personIndex) =>
+    t('share.personLine', {
+      name: person.name,
+      amount: formatPiastresAsEGP(personTotals[personIndex]),
+      items: describePersonItems(personIndex, items, itemAssignments),
+    }),
+  );
 
   const discountLine = taxService.discountEnabled
-    ? [`Discount: -${formatPiastresAsEGP(totals.discountPiastres)} EGP`]
+    ? [t('share.discountLine', { amount: formatPiastresAsEGP(totals.discountPiastres) })]
     : [];
   const otherServiceLine = taxService.otherServiceEnabled
-    ? [`Other service: ${formatPiastresAsEGP(totals.otherServicePiastres)} EGP`]
+    ? [t('share.otherServiceLine', { amount: formatPiastresAsEGP(totals.otherServicePiastres) })]
     : [];
 
   return [
-    'Breakdown — ehsebly',
+    t('share.title'),
     ...lines,
     ...discountLine,
     ...otherServiceLine,
-    `Total: ${formatPiastresAsEGP(totals.totalPiastres)} EGP`,
+    t('share.totalLine', { amount: formatPiastresAsEGP(totals.totalPiastres) }),
   ].join('\n');
 }
 
@@ -51,9 +65,9 @@ export function buildShareText({ items, taxService, people, itemAssignments }: S
  * rejects just like a real failure would, and neither should surface as an
  * error to the fronter.
  */
-export async function shareSplitText(split: ShareableSplit): Promise<void> {
+export async function shareSplitText(split: ShareableSplit, t: Translate): Promise<void> {
   try {
-    await Share.share({ message: buildShareText(split) });
+    await Share.share({ message: buildShareText(split, t) });
   } catch {
     // Cancelled share sheet or platform-level failure — nothing to recover.
   }

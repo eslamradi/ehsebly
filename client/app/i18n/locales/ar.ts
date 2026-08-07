@@ -82,6 +82,7 @@ export const ar: Translations = {
     retakeAll: 'صوّر من الأول',
     retake: 'صوّر تاني',
     grantCamera: 'ehsebly محتاج الكاميرا علشان تصوّر الفاتورة.',
+    photoPermission: 'ehsebly محتاج يوصل لصورك علشان تختار فاتورة.',
     grantCameraAction: 'اسمح بالكاميرا',
     openSettings: 'افتح الإعدادات',
     photoAccessOff: 'الوصول للصور مقفول. افتحه من الإعدادات علشان تختار فاتورة من الاستوديو.',
@@ -224,6 +225,29 @@ export const ar: Translations = {
     a11yShare: 'ابعت الحساب',
     a11yStartNew: 'ابدأ حساب جديد',
     a11yBackToReview: 'رجوع للمراجعة',
+  },
+
+  summary: {
+    receiptPhoto: 'صورة الفاتورة',
+    receiptPhotoIndexed: 'صورة الفاتورة {index} من {total}',
+    withRate: '{label} · {rate}%',
+    disabled: '{label} (مقفول)',
+    includesShareOf: 'شامل نصيبه من {charges}',
+    noCharges: 'مفيش ضريبة ولا خدمة ولا خدمة تانية على الفاتورة دي — بس نصيبه من الأصناف',
+    chargeDiscount: 'الخصم',
+    chargeTax: 'الضريبة',
+    chargeService: 'الخدمة',
+    chargeOtherService: 'الخدمة التانية',
+    listAnd: 'و',
+  },
+
+  share: {
+    title: 'الحساب — ehsebly',
+    dialogTitle: 'ابعت الحساب',
+    personLine: '{name}: {amount} ج.م ({items})',
+    discountLine: 'خصم: -{amount} ج.م',
+    otherServiceLine: 'خدمة تانية: {amount} ج.م',
+    totalLine: 'الإجمالي: {amount} ج.م',
   },
 
   extractionFailed: {

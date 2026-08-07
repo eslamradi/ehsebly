@@ -11,6 +11,7 @@ import { calculateSplitTotals, calculateSubtotalPiastres } from '../domain/split
 import { useSplitSession, type Person } from '../domain/session';
 import { fonts, radii, spacing, useTheme, type Theme, textAlignEnd } from '../theme';
 import { useI18n } from '../i18n';
+import type { Translate } from '../domain/share';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Review'>;
@@ -195,7 +196,7 @@ export default function ReviewScreen({ navigation }: Props) {
 
       {items.map((item, index) => {
         const allocations = itemAssignments[index] ?? {};
-        const assigneeSummary = describeAllocations(allocations, people);
+        const assigneeSummary = describeAllocations(allocations, people, t);
         return (
           <View key={index} style={styles.itemCard}>
             <View style={styles.itemRow}>
@@ -234,7 +235,7 @@ export default function ReviewScreen({ navigation }: Props) {
       })}
 
       <View style={styles.summaryPanel}>
-        <SummaryLine styles={styles} label="Subtotal" piastres={totals.subtotalPiastres} />
+        <SummaryLine styles={styles} label={t('taxService.subtotal')} piastres={totals.subtotalPiastres} />
         <SummaryLine
           styles={styles}
           label={`Discount${taxService.discountEnabled && taxService.discountMode === 'percent' ? ` (${taxService.discountRatePercent}%)` : taxService.discountEnabled ? '' : ' (off)'}`}
@@ -256,7 +257,7 @@ export default function ReviewScreen({ navigation }: Props) {
           piastres={totals.taxPiastres}
         />
         <View style={styles.divider} />
-        <SummaryLine styles={styles} label="Total" piastres={totals.totalPiastres} emphasize />
+        <SummaryLine styles={styles} label={t('taxService.total')} piastres={totals.totalPiastres} emphasize />
       </View>
 
       <ReconciliationBanner
@@ -289,7 +290,8 @@ export default function ReviewScreen({ navigation }: Props) {
 }
 
 /** e.g. "Alice ×3, Bob ×1" for a multi-quantity item, or plain names when every allocation is a single unit. */
-function describeAllocations(allocations: Record<number, number>, people: Person[]): string {
+/** `t` is injected — plain helper, no hook available. */
+function describeAllocations(allocations: Record<number, number>, people: Person[], t: Translate): string {
   const parts = Object.entries(allocations)
     .map(([personIndexText, count]) => [Number(personIndexText), count] as const)
     .sort((a, b) => a[0] - b[0])
@@ -297,7 +299,7 @@ function describeAllocations(allocations: Record<number, number>, people: Person
       const name = people[personIndex]?.name ?? '?';
       return count > 1 ? `${name} ×${count}` : name;
     });
-  return parts.length > 0 ? parts.join(', ') : 'Unassigned';
+  return parts.length > 0 ? parts.join(', ') : t('review.unassigned');
 }
 
 function SummaryLine({

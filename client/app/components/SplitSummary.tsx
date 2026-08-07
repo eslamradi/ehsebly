@@ -4,6 +4,8 @@ import { calculatePersonSubtotals, calculatePersonTotals, describePersonItems } 
 import { formatPiastresAsEGP } from '../domain/money';
 import { calculateSplitTotals, calculateSubtotalPiastres } from '../domain/splitCalculation';
 import type { ItemAssignments, Person, TaxServiceSettings } from '../domain/session';
+import type { Translate } from '../domain/share';
+import { useI18n } from '../i18n';
 import { fonts, radii, spacing, useTheme, type Theme, userTextStyle } from '../theme';
 
 type SplitSummaryProps = {
@@ -24,20 +26,21 @@ const TORN_EDGE_NOTCHES = 14;
  */
 export function SplitSummary({ photoUris = [], items, taxService, people, itemAssignments }: SplitSummaryProps) {
   const theme = useTheme();
+  const { t } = useI18n();
   const styles = useThemedStyles(theme);
 
   const subtotalPiastres = calculateSubtotalPiastres(items);
   const totals = calculateSplitTotals({ subtotalPiastres, ...taxService });
   const personSubtotals = calculatePersonSubtotals(items, itemAssignments, people.length);
   const personTotals = calculatePersonTotals(personSubtotals, totals);
-  const contextNote = describeIncludedCharges(taxService);
+  const contextNote = describeIncludedCharges(taxService, t);
 
   return (
     <>
       {photoUris.length === 1 ? (
         // The common case: one photo renders full-width, same as before
         // multi-photo support existed.
-        <Image accessibilityLabel="Receipt photo" source={{ uri: photoUris[0] }} style={styles.photo} />
+        <Image accessibilityLabel={t('summary.receiptPhoto')} source={{ uri: photoUris[0] }} style={styles.photo} />
       ) : photoUris.length > 1 ? (
         // Multiple photos (e.g. a long receipt shot in pieces, or several
         // scrolled screenshots of one delivery-app order) — a horizontal
@@ -46,7 +49,7 @@ export function SplitSummary({ photoUris = [], items, taxService, people, itemAs
           {photoUris.map((uri, index) => (
             <Image
               key={uri}
-              accessibilityLabel={`Receipt photo ${index + 1} of ${photoUris.length}`}
+              accessibilityLabel={t('summary.receiptPhotoIndexed', { index: index + 1, total: photoUris.length })}
               source={{ uri }}
               style={styles.photoThumb}
             />
@@ -56,29 +59,41 @@ export function SplitSummary({ photoUris = [], items, taxService, people, itemAs
 
       <View style={styles.receiptCard}>
         <View style={styles.receiptBody}>
-          <ReceiptLine styles={styles} label="Subtotal" piastres={totals.subtotalPiastres} />
+          <ReceiptLine styles={styles} label={t('taxService.subtotal')} piastres={totals.subtotalPiastres} />
           <ReceiptLine
             styles={styles}
-            label={`Discount${taxService.discountEnabled && taxService.discountMode === 'percent' ? ` · ${taxService.discountRatePercent}%` : taxService.discountEnabled ? '' : ' (off)'}`}
+            label={chargeLabel(
+              t,
+              t('taxService.discount'),
+              taxService.discountEnabled,
+              // A flat discount has no rate to show, so it stays a bare label
+              // rather than being marked "off" — it is very much on.
+              taxService.discountMode === 'percent' ? taxService.discountRatePercent : null,
+            )}
             piastres={-totals.discountPiastres}
           />
           <ReceiptLine
             styles={styles}
-            label={`Service${taxService.serviceEnabled ? ` · ${taxService.serviceRatePercent}%` : ' (off)'}`}
+            label={chargeLabel(t, t('taxService.service'), taxService.serviceEnabled, taxService.serviceRatePercent)}
             piastres={totals.servicePiastres}
           />
           <ReceiptLine
             styles={styles}
-            label={`Other service${taxService.otherServiceEnabled ? ` · ${taxService.otherServiceRatePercent}%` : ' (off)'}`}
+            label={chargeLabel(
+              t,
+              t('taxService.otherService'),
+              taxService.otherServiceEnabled,
+              taxService.otherServiceRatePercent,
+            )}
             piastres={totals.otherServicePiastres}
           />
           <ReceiptLine
             styles={styles}
-            label={`Tax${taxService.taxEnabled ? ` · ${taxService.taxRatePercent}%` : ' (off)'}`}
+            label={chargeLabel(t, t('taxService.tax'), taxService.taxEnabled, taxService.taxRatePercent)}
             piastres={totals.taxPiastres}
           />
           <View style={styles.divider} />
-          <ReceiptLine styles={styles} label="Total" piastres={totals.totalPiastres} emphasize />
+          <ReceiptLine styles={styles} label={t('taxService.total')} piastres={totals.totalPiastres} emphasize />
         </View>
         <View style={styles.tornEdgeRow}>
           {Array.from({ length: TORN_EDGE_NOTCHES }, (_, i) => (
@@ -130,34 +145,50 @@ function ReceiptLine({
  * both be off — the SEA SOUL spike finding, now extended to other service).
  * Only describes charges that are actually enabled for this receipt.
  */
-function describeIncludedCharges(taxService: TaxServiceSettings): string | null {
-  const parts: string[] = [];
-  if (taxService.discountEnabled) {
-    parts.push('the discount');
+/**
+ * Composes a charge row's label with its rate, or marks it off. Kept as one
+ * helper so the punctuation between label and rate lives in the string table
+ * (`summary.withRate`) and a locale can move or drop it, rather than being
+ * hardcoded at five separate call sites.
+ */
+function chargeLabel(t: Translate, label: string, enabled: boolean, ratePercent: number | null): string {
+  if (!enabled) {
+    return t('summary.disabled', { label });
   }
-  if (taxService.taxEnabled) {
-    parts.push('tax');
-  }
-  if (taxService.serviceEnabled) {
-    parts.push('service');
-  }
-  if (taxService.otherServiceEnabled) {
-    parts.push('the other service charge');
-  }
-  if (parts.length === 0) {
-    return 'No tax, service, or other service charge on this receipt — just their share of the items';
-  }
-  return `Includes their share of ${joinWithAnd(parts)}`;
+  return ratePercent === null ? label : t('summary.withRate', { label, rate: ratePercent });
 }
 
-function joinWithAnd(parts: string[]): string {
+function describeIncludedCharges(taxService: TaxServiceSettings, t: Translate): string | null {
+  const parts: string[] = [];
+  if (taxService.discountEnabled) {
+    parts.push(t('summary.chargeDiscount'));
+  }
+  if (taxService.taxEnabled) {
+    parts.push(t('summary.chargeTax'));
+  }
+  if (taxService.serviceEnabled) {
+    parts.push(t('summary.chargeService'));
+  }
+  if (taxService.otherServiceEnabled) {
+    parts.push(t('summary.chargeOtherService'));
+  }
+  if (parts.length === 0) {
+    return t('summary.noCharges');
+  }
+  return t('summary.includesShareOf', { charges: joinWithAnd(parts, t('summary.listAnd')) });
+}
+
+/**
+ * "tax and service", "the discount, tax and service". The conjunction comes
+ * from the locale (Arabic's و attaches without a preceding comma, which is
+ * why the Oxford comma is dropped rather than hardcoded).
+ */
+function joinWithAnd(parts: string[], and: string): string {
   if (parts.length === 1) {
     return parts[0];
   }
-  if (parts.length === 2) {
-    return `${parts[0]} and ${parts[1]}`;
-  }
-  return `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`;
+  const leading = parts.slice(0, -1).join(', ');
+  return `${leading} ${and} ${parts[parts.length - 1]}`;
 }
 
 function useThemedStyles({ colors, cardShadow, screenStyles, fonts }: Theme) {

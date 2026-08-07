@@ -445,20 +445,31 @@ export default function TaxServiceScreen({ navigation }: Props) {
       </View>
 
       <View style={styles.previewPanel}>
-        <PreviewLine styles={styles} label="Subtotal" piastres={totals.subtotalPiastres} />
+        <PreviewLine styles={styles} label={t('taxService.subtotal')} piastres={totals.subtotalPiastres} />
         <PreviewLine
           styles={styles}
-          label={`Discount${taxService.discountEnabled && taxService.discountMode === 'percent' ? ` (${taxService.discountRatePercent}%)` : ''}`}
+          label={
+            taxService.discountEnabled && taxService.discountMode === 'percent'
+              ? t('summary.withRate', { label: t('taxService.discount'), rate: taxService.discountRatePercent })
+              : t('taxService.discount')
+          }
           piastres={-totals.discountPiastres}
         />
-        <PreviewLine styles={styles} label="Service" piastres={totals.servicePiastres} />
+        <PreviewLine styles={styles} label={t('taxService.service')} piastres={totals.servicePiastres} />
         <PreviewLine
           styles={styles}
-          label={`Other service${taxService.otherServiceEnabled ? ` (${taxService.otherServiceRatePercent}%)` : ' (off)'}`}
+          label={
+            taxService.otherServiceEnabled
+              ? t('summary.withRate', {
+                  label: t('taxService.otherService'),
+                  rate: taxService.otherServiceRatePercent,
+                })
+              : t('summary.disabled', { label: t('taxService.otherService') })
+          }
           piastres={totals.otherServicePiastres}
         />
-        <PreviewLine styles={styles} label="Tax" piastres={totals.taxPiastres} />
-        <PreviewLine styles={styles} label="Total" piastres={totals.totalPiastres} emphasize />
+        <PreviewLine styles={styles} label={t('taxService.tax')} piastres={totals.taxPiastres} />
+        <PreviewLine styles={styles} label={t('taxService.total')} piastres={totals.totalPiastres} emphasize />
       </View>
 
       <View style={styles.actions}>

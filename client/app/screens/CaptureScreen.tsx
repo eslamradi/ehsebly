@@ -194,7 +194,7 @@ export default function CaptureScreen({ navigation, route }: Props) {
         }
         setError(
           permission.canAskAgain
-            ? { message: 'ehsebly needs access to your photos to pick a receipt.', showSettingsLink: false }
+            ? { message: t('capture.photoPermission'), showSettingsLink: false }
             : {
                 message: t('capture.photoAccessOff'),
                 showSettingsLink: true,

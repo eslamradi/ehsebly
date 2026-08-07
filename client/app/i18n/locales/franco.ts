@@ -86,6 +86,7 @@ export const franco: Translations = {
     retakeAll: 'Sawwar men el awel',
     retake: 'Sawwar tany',
     grantCamera: 'ehsebly me7tag el kamera 3ashan tesawwar el fatoura.',
+    photoPermission: 'ehsebly me7tag yewsal le soarak 3ashan tekhtar fatoura.',
     grantCameraAction: 'Esma7 bel kamera',
     openSettings: 'Efta7 el settings',
     photoAccessOff: 'El wosool lel soar ma2foul. Efta7o men el settings 3ashan tekhtar fatoura men el studio.',
@@ -228,6 +229,29 @@ export const franco: Translations = {
     a11yShare: 'Eb3at el 7esab',
     a11yStartNew: 'Ebda2 7esab gedeed',
     a11yBackToReview: 'Rago3 lel moraga3a',
+  },
+
+  summary: {
+    receiptPhoto: 'Sooret el fatoura',
+    receiptPhotoIndexed: 'Sooret el fatoura {index} men {total}',
+    withRate: '{label} · {rate}%',
+    disabled: '{label} (ma2foul)',
+    includesShareOf: 'Shamel naseebo men {charges}',
+    noCharges: 'Mafeesh dareeba wala khedma wala khedma tanya 3ala el fatoura di — bas naseebo men el asnaf',
+    chargeDiscount: 'el khasm',
+    chargeTax: 'el dareeba',
+    chargeService: 'el khedma',
+    chargeOtherService: 'el khedma el tanya',
+    listAnd: 'w',
+  },
+
+  share: {
+    title: 'El 7esab — ehsebly',
+    dialogTitle: 'Eb3at el 7esab',
+    personLine: '{name}: {amount} EGP ({items})',
+    discountLine: 'Khasm: -{amount} EGP',
+    otherServiceLine: 'Khedma tanya: {amount} EGP',
+    totalLine: 'El egmaly: {amount} EGP',
   },
 
   extractionFailed: {

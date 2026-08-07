@@ -3,6 +3,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ExtractionResult } from '../api/types';
 import { useSplitSession } from '../domain/session';
 import { useTheme } from '../theme';
+import { useI18n } from '../i18n';
+import type { Translate } from '../domain/share';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ExtractionFailed'>;
@@ -20,11 +22,13 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ExtractionFailed'>;
  * gives up and does it manually"), not a same-photo retry.
  */
 export default function ExtractionFailedScreen({ navigation }: Props) {
-  const { buttonStyles, screenStyles } = useTheme();
+  const theme = useTheme();
+  const { buttonStyles, screenStyles } = theme;
+  const { t } = useI18n();
   const { session, clearPhoto } = useSplitSession();
 
   const result = session.extractionResult;
-  const detail = describeFailure(result);
+  const detail = describeFailure(result, t);
 
   const handleRetry = () => {
     // Clears photoUri + extractionResult so CaptureScreen resets its own
@@ -36,23 +40,24 @@ export default function ExtractionFailedScreen({ navigation }: Props) {
 
   return (
     <View style={screenStyles.center}>
-      <Text style={screenStyles.heading}>Couldn&apos;t read this receipt</Text>
+      <Text style={screenStyles.heading}>{t('extractionFailed.title')}</Text>
       <Text style={screenStyles.message}>{detail}</Text>
-      <Pressable accessibilityLabel="Retry with a new photo" style={buttonStyles.primary} onPress={handleRetry}>
-        <Text style={buttonStyles.primaryText}>Retry</Text>
+      <Pressable accessibilityLabel={t('extractionFailed.a11yRetry')} style={buttonStyles.primary} onPress={handleRetry}>
+        <Text style={buttonStyles.primaryText}>{t('extractionFailed.retry')}</Text>
       </Pressable>
       <Pressable
-        accessibilityLabel="Enter items manually"
+        accessibilityLabel={t('extractionFailed.a11yEnterManually')}
         style={buttonStyles.secondary}
         onPress={() => navigation.navigate('ManualEntry')}
       >
-        <Text style={buttonStyles.secondaryText}>Enter Items Manually</Text>
+        <Text style={buttonStyles.secondaryText}>{t('extractionFailed.enterManually')}</Text>
       </Pressable>
     </View>
   );
 }
 
-function describeFailure(result: ExtractionResult | null): string {
+/** `t` is injected — this is a plain helper, not a component, so it can't hold a hook. */
+function describeFailure(result: ExtractionResult | null, t: Translate): string {
   if (result?.status === 'error') {
     return result.message;
   }
@@ -61,7 +66,7 @@ function describeFailure(result: ExtractionResult | null): string {
     // session state could in principle change between navigation and
     // render. Say something accurate rather than falling through to the
     // "no items found" message, which would be misleading here.
-    return 'Extraction actually succeeded — this screen shouldn’t be showing. Try again.';
+    return t('extractionFailed.succeededUnexpectedly');
   }
-  return 'No plausible items were found on that photo.';
+  return t('extractionFailed.noPlausibleItems');
 }

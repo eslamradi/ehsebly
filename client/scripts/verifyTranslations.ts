@@ -146,6 +146,10 @@ function checkNotUntranslated(): void {
     'franco:common.egp',
     // A numeric placeholder, not prose — Western digits in every locale.
     '*:extracted.pricePlaceholder',
+    // Pure format strings — punctuation and placeholders, no words to translate.
+    '*:summary.withRate',
+    // Franco writes amounts in EGP like English; only Arabic uses ج.م.
+    'franco:share.personLine',
     'franco:home.groupsTitle',
   ]);
   for (const [localeName, table] of LOCALES) {
