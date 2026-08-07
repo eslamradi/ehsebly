@@ -25,6 +25,10 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ItemAssignment'>;
 // only cap left is a fat-finger guard.
 const MAX_WEIGHT_PER_PERSON = 99;
 
+// Below this the whole list already fits in a screen or two, so a filter would
+// be chrome with nothing to hide.
+const FILTER_MIN_ITEMS = 8;
+
 /**
  * Assigns each item to one or more people from an ad-hoc roster (Story 1.5
  * AC #1-#3), and shows a live per-person running total (AC #4) via
@@ -128,17 +132,55 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
         reconcileText: { fontFamily: fonts.sansRegular, fontSize: 12, color: colors.inkSoft },
         note: { fontFamily: fonts.sansRegular, fontSize: 14, color: colors.inkSoft },
         errorText: { fontFamily: fonts.sansRegular, color: colors.critical, fontSize: 12 },
-        previewPanel: {
-          backgroundColor: colors.paperRaised,
-          borderRadius: radii.md,
-          padding: spacing.lg,
-          gap: spacing.sm,
-          ...theme.cardShadow,
+
+        // The screen is a scroll region plus a pinned footer rather than one
+        // long ScrollView: the running per-person totals used to sit *below*
+        // every item card, which on a 30-line receipt put them off-screen for
+        // the entire task they exist to support.
+        screen: { flex: 1, backgroundColor: colors.paper },
+        scrollContent: {
+          paddingTop: spacing.xl + theme.insets.top,
+          paddingBottom: spacing.xl,
+          paddingHorizontal: spacing.xl,
+          gap: spacing.lg,
         },
-        previewLine: { flexDirection: 'row', justifyContent: 'space-between' },
-        previewLabel: { fontFamily: fonts.sansRegular, fontSize: 14, color: colors.inkSoft },
-        previewValue: { fontSize: 14, color: colors.ink },
-        actions: { gap: spacing.md },
+        headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.md },
+        backButton: {
+          backgroundColor: colors.paperRaised,
+          borderWidth: 1,
+          borderColor: colors.line,
+          paddingVertical: 10,
+          paddingHorizontal: spacing.lg,
+          borderRadius: radii.sm,
+        },
+        progressRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+        progressTrack: { flex: 1, height: 4, borderRadius: 2, backgroundColor: colors.line, overflow: 'hidden' },
+        progressFill: { height: 4, borderRadius: 2, backgroundColor: colors.accent },
+        progressLabel: { flexShrink: 0, fontFamily: fonts.sansMedium, fontSize: 13, color: colors.inkSoft },
+        filterToggle: {
+          flexShrink: 0,
+          borderWidth: 1,
+          borderColor: colors.line,
+          borderRadius: radii.pill,
+          paddingVertical: 6,
+          paddingHorizontal: spacing.md,
+        },
+        filterToggleActive: { backgroundColor: colors.accentSoft, borderColor: colors.accent },
+        filterToggleText: { fontFamily: fonts.sansSemiBold, fontSize: 12, color: colors.inkSoft },
+        filterToggleTextActive: { color: colors.accent },
+        footer: {
+          backgroundColor: colors.paperRaised,
+          borderTopWidth: 1,
+          borderTopColor: colors.line,
+          paddingHorizontal: spacing.xl,
+          paddingTop: spacing.md,
+          paddingBottom: spacing.md + theme.insets.bottom,
+          gap: spacing.md,
+        },
+        totalsStrip: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+        totalsEntry: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
+        totalsName: { fontFamily: fonts.sansRegular, fontSize: 13, color: colors.inkSoft },
+        totalsValue: { fontFamily: fonts.monoSemiBold, fontSize: 14, color: colors.ink },
       }),
     [theme],
   );
@@ -152,6 +194,11 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
   // At most one amounts panel is open at a time — two open panels on a long
   // receipt make the scroll position jump unpredictably as they expand.
   const [openAmountsItemIndex, setOpenAmountsItemIndex] = useState<number | null>(null);
+  // Narrows the list to the items still needing someone. Offered only on
+  // receipts long enough for scrolling to be the actual obstacle, and switched
+  // on automatically when Continue is blocked — a far more reliable "take me
+  // to the problem" than trying to scroll a specific card into view.
+  const [onlyUnassigned, setOnlyUnassigned] = useState(false);
 
   const handleBack = () => {
     navigation.navigate('TaxService');
@@ -225,7 +272,16 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
       return;
     }
     if (!areAllItemsAssigned(items.length, itemAssignments)) {
-      setBlockedMessage('Assign every item to at least one person before continuing — unassigned items are flagged below.');
+      const remaining = items.filter(
+        (_item, itemIndex) => !Object.values(itemAssignments[itemIndex] ?? {}).some((weight) => weight > 0),
+      ).length;
+      const noun = remaining === 1 ? 'item' : 'items';
+      if (items.length >= FILTER_MIN_ITEMS) {
+        setOnlyUnassigned(true);
+        setBlockedMessage(`${remaining} ${noun} still need someone — showing just those.`);
+      } else {
+        setBlockedMessage(`${remaining} ${noun} still need someone — they're flagged in red.`);
+      }
       return;
     }
     if (group && !group.paidByMemberId) {
@@ -241,9 +297,57 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
   const personSubtotals = calculatePersonSubtotals(items, itemAssignments, people.length);
   const personTotals = calculatePersonTotals(personSubtotals, totals);
 
+  // Indices are carried alongside the items so filtering the list never
+  // desynchronises a card from the `itemAssignments` key it writes to.
+  const indexedItems = items.map((item, itemIndex) => ({ item, itemIndex }));
+  const unassignedItems = indexedItems.filter(
+    ({ itemIndex }) => !Object.values(itemAssignments[itemIndex] ?? {}).some((weight) => weight > 0),
+  );
+  const assignedCount = items.length - unassignedItems.length;
+  const showFilter = items.length >= FILTER_MIN_ITEMS;
+  const visibleItems = onlyUnassigned ? unassignedItems : indexedItems;
+
   return (
-    <ScrollView style={screenStyles.container} contentContainerStyle={screenStyles.content}>
-      <Text style={screenStyles.heading}>Who had what?</Text>
+    <View style={styles.screen}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}>
+      <View style={styles.headerRow}>
+        <Text style={screenStyles.heading}>Who had what?</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Back to tax and service"
+          style={styles.backButton}
+          onPress={handleBack}
+        >
+          <Text style={buttonStyles.secondaryText}>Back</Text>
+        </Pressable>
+      </View>
+
+      {/* The row hides once everything is assigned — unless the filter is on,
+          which would otherwise strand the user on an empty list with the only
+          control that could restore it gone from the screen. */}
+      {people.length > 0 && (assignedCount < items.length || onlyUnassigned) && (
+        <View style={styles.progressRow}>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${(assignedCount / items.length) * 100}%` }]} />
+          </View>
+          <Text style={styles.progressLabel}>
+            {assignedCount} of {items.length}
+          </Text>
+          {showFilter && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: onlyUnassigned }}
+              accessibilityLabel="Show only unassigned items"
+              style={[styles.filterToggle, onlyUnassigned && styles.filterToggleActive]}
+              onPress={() => setOnlyUnassigned((previous) => !previous)}
+            >
+              <Text style={[styles.filterToggleText, onlyUnassigned && styles.filterToggleTextActive]}>
+                Only unassigned
+              </Text>
+            </Pressable>
+          )}
+        </View>
+      )}
 
       {group ? (
         // Group expenses assign items among the group's actual members only —
@@ -299,7 +403,11 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
         </View>
       )}
 
-      {items.map((item, itemIndex) => {
+      {onlyUnassigned && visibleItems.length === 0 && (
+        <Text style={styles.note}>Everything's assigned — switch the filter off to review the full receipt.</Text>
+      )}
+
+      {visibleItems.map(({ item, itemIndex }) => {
         const weights = itemAssignments[itemIndex] ?? {};
         const assignedIndices = people
           .map((_person, personIndex) => personIndex)
@@ -442,27 +550,35 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
         );
       })}
 
-      {people.length > 0 && (
-        <View style={styles.previewPanel}>
-          {people.map((person, personIndex) => (
-            <View key={personIndex} style={styles.previewLine}>
-              <Text style={styles.previewLabel}>{person.name}</Text>
-              <Text style={[styles.previewValue, screenStyles.mono]}>{formatPiastresAsEGP(personTotals[personIndex])} EGP</Text>
-            </View>
-          ))}
-        </View>
-      )}
+      </ScrollView>
 
-      {blockedMessage && <Text style={styles.errorText}>{blockedMessage}</Text>}
-
-      <View style={styles.actions}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Continue to review" style={buttonStyles.primary} onPress={handleContinue}>
+      <View style={styles.footer}>
+        {/* Lives beside Continue, not at the end of the scroll content — the
+            button is pinned, so an explanation left up there would sit
+            off-screen exactly when it's needed. */}
+        {blockedMessage && <Text style={styles.errorText}>{blockedMessage}</Text>}
+        {people.length > 0 && (
+          // Scrolls horizontally rather than wrapping: the footer's height has
+          // to stay fixed, and a party of eight would otherwise push the
+          // Continue button off-screen.
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.totalsStrip}>
+            {people.map((person, personIndex) => (
+              <View key={personIndex} style={styles.totalsEntry}>
+                <Text style={styles.totalsName}>{person.name}</Text>
+                <Text style={styles.totalsValue}>{formatPiastresAsEGP(personTotals[personIndex])}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        )}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Continue to review"
+          style={buttonStyles.primary}
+          onPress={handleContinue}
+        >
           <Text style={buttonStyles.primaryText}>Continue</Text>
         </Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel="Back to tax and service" style={buttonStyles.secondary} onPress={handleBack}>
-          <Text style={buttonStyles.secondaryText}>Back</Text>
-        </Pressable>
       </View>
-    </ScrollView>
+    </View>
   );
 }
