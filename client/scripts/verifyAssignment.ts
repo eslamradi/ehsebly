@@ -16,6 +16,8 @@ import {
   areAllItemsAssigned,
   calculatePersonSubtotals,
   calculatePersonTotals,
+  describePersonItems,
+  hasUnevenWeights,
   splitItemAmongWeights,
 } from '../app/domain/assignment';
 import { calculateSplitTotals } from '../app/domain/splitCalculation';
@@ -50,6 +52,14 @@ function assertArrayEqual(label: string, actual: number[], expected: number[]): 
   if (!matches) {
     failures++;
     console.error(`FAIL: ${label} — expected [${expected}], got [${actual}]`);
+  }
+}
+
+function assertTextEqual(label: string, actual: string, expected: string): void {
+  checks++;
+  if (actual !== expected) {
+    failures++;
+    console.error(`FAIL: ${label} — expected "${expected}", got "${actual}"`);
   }
 }
 
@@ -246,6 +256,74 @@ function checkAreAllItemsAssigned(): void {
   }
 }
 
+/**
+ * `describePersonItems` must only print "×N" when the assignees' weights
+ * genuinely differ. Equal weights mean the line was shared, and the raw weight
+ * describes nothing real: two people on a "Water ×10" at weight 1 each pay for
+ * five waters apiece, so the old unconditional suffix rendered that as
+ * "Water ×1" — a summary line contradicting the amount charged (UX review,
+ * 2026-08-07).
+ */
+function checkDescribePersonItems(): void {
+  const water = [{ name: 'Water', quantity: 10 }];
+
+  // Shared evenly at weight 1 each — the case that used to print "×1".
+  const evenlyShared = { 0: { 0: 1, 1: 1 } };
+  assertTextEqual('shared ×10, weight 1 — person 0', describePersonItems(0, water, evenlyShared), 'Water');
+  assertTextEqual('shared ×10, weight 1 — person 1', describePersonItems(1, water, evenlyShared), 'Water');
+
+  // Equal but larger weights are still "shared", not per-unit counts.
+  assertTextEqual(
+    'shared ×10, weight 3 each',
+    describePersonItems(0, water, { 0: { 0: 3, 1: 3 } }),
+    'Water',
+  );
+
+  // Genuinely uneven — here the number does describe a real split, so keep it.
+  const uneven = { 0: { 0: 3, 1: 7 } };
+  assertTextEqual('uneven ×10 — person 0', describePersonItems(0, water, uneven), 'Water ×3');
+  assertTextEqual('uneven ×10 — person 1', describePersonItems(1, water, uneven), 'Water ×7');
+
+  // A sole assignee has nothing to be uneven against.
+  assertTextEqual('sole assignee on ×10', describePersonItems(0, water, { 0: { 0: 4 } }), 'Water');
+
+  // Quantity-1 items never carry a count, whatever the weights.
+  const koshary = [{ name: 'Koshary', quantity: 1 }];
+  assertTextEqual('quantity-1 item', describePersonItems(0, koshary, { 0: { 0: 1, 1: 1 } }), 'Koshary');
+
+  assertTextEqual('unassigned person', describePersonItems(1, water, { 0: { 0: 1 } }), 'No items assigned');
+
+  // Multiple items join in receipt order, mixing shared and uneven lines.
+  const mixed = [
+    { name: 'Koshary', quantity: 1 },
+    { name: 'Water', quantity: 10 },
+  ];
+  assertTextEqual(
+    'mixed shared + uneven',
+    describePersonItems(0, mixed, { 0: { 0: 1, 1: 1 }, 1: { 0: 2, 1: 8 } }),
+    'Koshary, Water ×2',
+  );
+}
+
+/** Backs the count badge on ItemAssignmentScreen's chips — same rule, same source. */
+function checkHasUnevenWeights(): void {
+  const cases: Array<[string, Record<number, number>, boolean]> = [
+    ['empty', {}, false],
+    ['single assignee', { 0: 5 }, false],
+    ['equal weights', { 0: 2, 1: 2, 2: 2 }, false],
+    ['uneven weights', { 0: 3, 1: 7 }, true],
+    ['zero weights ignored', { 0: 2, 1: 0, 2: 2 }, false],
+    ['zero ignored, rest uneven', { 0: 1, 1: 0, 2: 4 }, true],
+  ];
+  for (const [label, weights, expected] of cases) {
+    checks++;
+    if (hasUnevenWeights(weights) !== expected) {
+      failures++;
+      console.error(`FAIL: hasUnevenWeights ${label} — expected ${expected}`);
+    }
+  }
+}
+
 // --- run everything ------------------------------------------------------
 
 checkSplitItemAmongWeights();
@@ -253,6 +331,8 @@ checkPersonSubtotals();
 checkPersonTotals();
 checkPersonTotalsOtherServiceSplitsProportionally();
 checkAreAllItemsAssigned();
+checkDescribePersonItems();
+checkHasUnevenWeights();
 
 if (failures > 0) {
   console.error(`\n${failures} of ${checks} checks FAILED.`);

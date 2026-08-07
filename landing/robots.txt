@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ehsebly.eslamradi.com/sitemap.xml

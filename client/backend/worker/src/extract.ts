@@ -175,6 +175,30 @@ type ExtractReceiptToolInput = {
   image_mismatch_note: string | null;
 };
 
+// Shared extraction rules — single source of truth so the single-image and
+// multi-image prompt variants below can't drift from each other the way the
+// old two independent template strings did.
+const RECEIPT_RULES = `Rules:
+- Extract every charged line item. Skip anything shown as removed, cancelled, or refunded.
+- Receipts may be in Arabic, English, or mixed. Keep item names exactly as printed — do not translate.
+- Convert Eastern Arabic numerals (٠١٢٣٤٥٦٧٨٩) to Western digits. Output amounts as plain numbers, stripping currency symbols/words (EGP, LE, ج.م, جنيه).
+- price_egp_text is always the line's total, never a per-unit price — even when a unit price is printed alongside the quantity (e.g. "2x Pepsi @ 20.00" → record "40.00", not "20.00"). The only time arithmetic is required: if a line shows a per-unit price and quantity with no total printed anywhere for that line, multiply unit price × quantity yourself to get the total.
+- Fold priced add-ons/modifiers (e.g. "+ Extra cheese 15.00") into their parent item's line total and append them to the item name.
+- Capture explicit tax or service-charge percentage lines, and every flat named fee line (delivery fee, service fee, preparation fee, tip, donation/round-up, etc.).
+- Only report tax lines that are literally printed as separate charges. Egyptian delivery apps usually show VAT-inclusive prices — never infer or compute a tax line that is not printed.
+- Check line by line for a "Discount", "Coupon", or "Promo" line near Subtotal / fees / Total — these are easy to skim past but change the total. Report it in discount_line whenever one is printed, even faintly or in a different color/highlight than the surrounding text.
+- Sanity-check: items + fees + printed taxes − discounts should equal the printed total (allow ±0.05 rounding). If it doesn't, re-examine the image for misread digits (1/7, 0/8, 5/6) and fix only what the image visibly supports. If it still doesn't reconcile, keep every value exactly as printed — never adjust numbers just to force the math to work.
+- Use the extract_receipt tool.`;
+
+const SINGLE_IMAGE_INTRO =
+  "This is a photo of a restaurant or store receipt, or a screenshot of a food/grocery delivery app's order-summary screen.";
+
+const multiImageIntro = (n: number) =>
+  `These ${n} images may be multiple photos or screenshots of ONE order — e.g. a long paper receipt photographed in parts, or scrolling screenshots of a single order-summary screen.
+1. Verify they belong to the same single order: same restaurant/store, same order ID if visible, consistent amounts.
+2. If they match, merge every unique charged line item across all images. A line repeated across two images at their overlap is ONE line — count it once. Identical lines within a single image are genuinely separate items — keep both. Use item order and running amounts to align overlapping regions.
+3. If they do NOT match (different merchants, different orders, unrelated items), set image_mismatch to true and briefly explain why in image_mismatch_note — then extract every field as normal from the single most complete image, preferring the one that shows the grand total, exactly as if it were the only image provided. Never leave items/totals empty because of a mismatch; leave them empty only if no image contains a legible order at all.`;
+
 /**
  * Calls the vision-LLM API with the receipt photo and returns one of the
  * three AD-4 shapes. Never throws — every failure path (timeout, non-2xx,
@@ -206,8 +230,8 @@ async function callSonnetForExtraction(
 
   const promptText =
     imagesBytes.length > 1
-      ? `These ${imagesBytes.length} images may be multiple photos or screenshots of the SAME single restaurant receipt or delivery-app order — e.g. several photos of one long paper receipt, or multiple screenshots taken while scrolling through one order-summary screen. First check whether they actually do belong to the same single order (same restaurant/store, same order ID if visible, consistent totals). If they do belong together, merge every unique charged line item across all images into a single list, don't double-count a line that appears in more than one image due to overlapping screenshots, and extract any explicit tax/service percentage lines and any flat named fee lines. Always check carefully, line by line, for a "Discount", "Coupon", or "Promo" line near Subtotal/Delivery fee/Service fee/Total — these are easy to skim past but change the total, so report it in discount_line whenever one is printed, even faintly or in a different color/highlight than the surrounding text. If they do NOT belong together (different merchants, different orders, unrelated items), set image_mismatch to true and briefly explain why in image_mismatch_note — but still extract every field as normal from whichever single image represents one complete, coherent order (prefer the one with more legible detail), exactly as if that were the only image provided. Never leave items/totals empty just because of a mismatch — only leave them empty if no image contains a legible order at all. Skip anything shown as removed/cancelled/refunded. Use the extract_receipt tool.`
-      : 'This is a photo of a restaurant receipt, or a screenshot of a food/grocery delivery app\'s order-summary screen. Extract every charged line item (skipping anything shown as removed/cancelled/refunded), any explicit tax/service percentage lines, and any flat named fee lines (delivery fee, service fee, preparation fee, etc.) using the extract_receipt tool. Always check carefully, line by line, for a "Discount", "Coupon", or "Promo" line near Subtotal/Delivery fee/Service fee/Total — these are easy to skim past but change the total, so report it in discount_line whenever one is printed, even faintly or in a different color/highlight than the surrounding text.';
+      ? `${multiImageIntro(imagesBytes.length)}\n\n${RECEIPT_RULES}`
+      : `${SINGLE_IMAGE_INTRO}\n\n${RECEIPT_RULES}`;
 
   const controller = new AbortController();
   const timeoutMs = imagesBytes.length > 1 ? VISION_LLM_TIMEOUT_MS_MULTI_IMAGE : VISION_LLM_TIMEOUT_MS;

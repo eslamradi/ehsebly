@@ -105,12 +105,20 @@ export function calculatePersonTotals(
 }
 
 /**
- * "Koshary, Water ×2" — every item this person holds a nonzero weight in.
- * A multi-quantity item shows how many units of it were theirs; a
- * quantity-1 item (the common case, plain tap-to-toggle chips on
- * ItemAssignmentScreen) just shows its name, since "×1" would be noise.
- * Shared between SplitSummary's on-screen display and the share-text
- * builder — both need the identical per-person item breakdown.
+ * "Koshary, Water ×3" — every item this person holds a nonzero weight in.
+ *
+ * A weight is only rendered as "×N" when the assignees' weights actually
+ * differ from each other, because only then does N describe a real per-person
+ * count. When every assignee carries the same weight the item was shared
+ * evenly, and printing the raw weight actively misleads: two people splitting
+ * "Water ×10" at weight 1 each pay for five waters apiece, so the old
+ * unconditional `×${weight}` rendered that as "Water ×1" — a line item
+ * claiming they had one water while being charged for five. Equal weights now
+ * render as the bare item name, matching how ItemAssignmentScreen presents the
+ * same state ("Shared evenly", no count badge on the chip).
+ *
+ * Shared between SplitSummary's on-screen display and the share-text builder —
+ * both need the identical per-person item breakdown.
  */
 export function describePersonItems(
   personIndex: number,
@@ -119,14 +127,29 @@ export function describePersonItems(
 ): string {
   const parts = items
     .map((item, itemIndex) => {
-      const weight = itemAssignments[itemIndex]?.[personIndex] ?? 0;
+      const weights = itemAssignments[itemIndex] ?? {};
+      const weight = weights[personIndex] ?? 0;
       if (weight <= 0) {
         return null;
       }
-      return item.quantity > 1 ? `${item.name} ×${weight}` : item.name;
+      if (item.quantity <= 1 || !hasUnevenWeights(weights)) {
+        return item.name;
+      }
+      return `${item.name} ×${weight}`;
     })
     .filter((part): part is string => part !== null);
   return parts.length > 0 ? parts.join(', ') : 'No items assigned';
+}
+
+/**
+ * True when the item's assignees don't all carry the same weight — i.e. it was
+ * divided unevenly rather than shared. Drives both the "×N" suffix above and
+ * the count badge on ItemAssignmentScreen's chips, so the two always agree on
+ * whether a per-person number is meaningful enough to show.
+ */
+export function hasUnevenWeights(weights: Record<number, number>): boolean {
+  const active = Object.values(weights).filter((weight) => weight > 0);
+  return active.some((weight) => weight !== active[0]);
 }
 
 /** True only if every item has at least one person with a nonzero weight (Story 1.5 AC #3). */

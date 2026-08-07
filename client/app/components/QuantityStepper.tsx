@@ -10,6 +10,13 @@ type QuantityStepperProps = {
   max?: number;
 };
 
+// The buttons render at 32×32 to keep the stepper compact inside a row, which
+// is under the 44pt minimum touch target both platforms' guidelines ask for.
+// Rather than grow the visual button (three screens lay out around its current
+// size), 6pt of hitSlop on every edge brings the *touchable* area to 44×44
+// while leaving the drawn control unchanged.
+const HIT_SLOP = { top: 6, bottom: 6, left: 6, right: 6 } as const;
+
 /** A plain +/- counter, shared by ExtractedItemsScreen (an item's total quantity) and ItemAssignmentScreen (a person's allocated units of an item). */
 export function QuantityStepper({ value, onChange, accessibilityLabel, min = 0, max = Infinity }: QuantityStepperProps) {
   const { colors } = useTheme();
@@ -43,7 +50,9 @@ export function QuantityStepper({ value, onChange, accessibilityLabel, min = 0, 
   return (
     <View style={styles.row}>
       <Pressable
+        accessibilityRole="button"
         accessibilityLabel={`Decrease ${accessibilityLabel}`}
+        hitSlop={HIT_SLOP}
         style={[styles.button, !canDecrease && styles.buttonDisabled]}
         disabled={!canDecrease}
         onPress={() => onChange(value - 1)}
@@ -52,7 +61,9 @@ export function QuantityStepper({ value, onChange, accessibilityLabel, min = 0, 
       </Pressable>
       <Text style={styles.value}>{value}</Text>
       <Pressable
+        accessibilityRole="button"
         accessibilityLabel={`Increase ${accessibilityLabel}`}
+        hitSlop={HIT_SLOP}
         style={[styles.button, !canIncrease && styles.buttonDisabled]}
         disabled={!canIncrease}
         onPress={() => onChange(value + 1)}

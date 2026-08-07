@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { EXTRACTION_ENDPOINT } from './extractionEndpoint';
 import type { ExtractionResult } from './types';
 
@@ -36,22 +37,35 @@ export async function extractReceipt(photoUris: string[]): Promise<ExtractionRes
   const timeout = setTimeout(() => controller.abort(), CLIENT_TIMEOUT_MS);
   try {
     const formData = new FormData();
-    photoUris.forEach((uri, index) => {
-      // React Native's FormData has a special file-upload extension: an
-      // object shaped {uri, name, type} tells the native networking layer
-      // to stream the file directly from that URI when building the
-      // multipart body. This is NOT the same as appending a real `Blob` —
-      // a Blob obtained via `fetch(uri).then(r => r.blob())` looked correct
-      // client-side (right size, right type) but serialized as an empty
-      // 0-byte part once it reached the Worker, a real RN FormData/Blob gap
-      // found via the Worker's own request logs. The {uri, name, type} form
-      // is React Native's documented, actually-working idiom for this.
-      formData.append('images', {
-        uri,
-        name: `receipt-${index}.jpg`,
-        type: 'image/jpeg',
-      } as unknown as Blob);
-    });
+    await Promise.all(
+      photoUris.map(async (uri, index) => {
+        // React Native's FormData has a special file-upload extension: an
+        // object shaped {uri, name, type} tells the native networking layer
+        // to stream the file directly from that URI when building the
+        // multipart body. This is NOT the same as appending a real `Blob` —
+        // a Blob obtained via `fetch(uri).then(r => r.blob())` looked correct
+        // client-side (right size, right type) but serialized as an empty
+        // 0-byte part once it reached the Worker, a real RN FormData/Blob gap
+        // found via the Worker's own request logs. The {uri, name, type} form
+        // is React Native's documented, actually-working idiom for this — but
+        // on web, `FormData` is the browser's real implementation, which has
+        // no such extension: that same object serializes as an empty part
+        // (Worker logs showed "image files: 0" for every web request). Web
+        // needs an actual Blob instead, fetched from the picker's uri
+        // (a blob: or data: URL there, always same-origin/local, so a plain
+        // fetch works with no CORS concern).
+        if (Platform.OS === 'web') {
+          const blob = await (await fetch(uri)).blob();
+          formData.append('images', blob, `receipt-${index}.jpg`);
+        } else {
+          formData.append('images', {
+            uri,
+            name: `receipt-${index}.jpg`,
+            type: 'image/jpeg',
+          } as unknown as Blob);
+        }
+      }),
+    );
 
     const workerResponse = await fetch(EXTRACTION_ENDPOINT, {
       method: 'POST',
