@@ -2,7 +2,8 @@
 
 **Date:** 2026-08-09
 **Trigger:** "the screens until the final split are too much" — target shape: 1 photos → 2 confirm → 3 assign → 4 final split.
-**Status:** planned, not started. No code written.
+**Status:** steps 1–3 shipped, steps 4–5 remain. See §10 for per-step state
+and §11 for where to pick up.
 
 Informed by a UX review pass; every code claim below was verified against the
 source at the line references given, not taken from the review.
@@ -336,15 +337,75 @@ group path is actively under-protected.
 
 Each step stands alone, ships independently, and de-risks the next.
 
-| # | Step | Why here |
-|---|---|---|
-| 1 | **Global "split evenly"** on the assignment screen | Largest felt improvement, smallest change, touches nothing structural (§9) |
-| 2 | **Retarget the commit ceremony** — relabel CTA, add group commit sheet, remove Back from FinalSplit | The safety fix; independent of the merge; prerequisite for step 5 (§3, §7) |
-| 3 | **Compress within the existing screens** — one-row items; fuse editor + preview | Both screens improve *as separate screens* (§5) |
-| 4 | **Merge** 2+3 into Check | By now mostly deleting a component boundary |
-| 5 | **Delete Review**; move `review.*` → `reconcile.*`; add reconciliation to FinalSplit + ShareableSplit | (§4, §6, §8) |
+| # | Step | State | Commit |
+|---|---|---|---|
+| 1 | **Global "split evenly"** on the assignment screen | ✅ shipped | `29cabef` |
+| 2 | **Retarget the commit ceremony** | ✅ shipped | `bb72b89` |
+| 3a | **One-row items** — quantity row → inline `×N` badge | ✅ shipped | `db8b299` |
+| 3b | **Fuse rate editors into the totals panel** | ✅ shipped | `27a3c6d` |
+| 4 | **Merge** Extracted Items + Tax & Service into Check | ⬜ **next** | — |
+| 5 | **Delete Review**; `review.*` → `reconcile.*`; reconciliation on FinalSplit + ShareableSplit | ⬜ | — |
 
 If step 5 never ships, the thing that was actually broken is still fixed.
+
+### What shipped differed from the plan in two places
+
+- Step 2 turned up a worse problem than described: a failed group submission
+  was swallowed by `.catch(() => {})`, so a dropped request left the table
+  looking at a finished breakdown — with a green COMPLETE stamp — that the
+  ledger never received. It now reports the failure and offers a retry, and
+  the COMPLETE pill is suppressed while a post has failed. The plan only
+  called for relabelling the CTA and adding a sheet.
+- The **group commit sheet** (§7) was *not* built. Review still exists and
+  still shows per-person amounts, reconciliation and a commit button, so the
+  ceremony is adequate for now. The sheet becomes necessary in step 5, at the
+  moment Review is deleted — building it earlier would have duplicated Review.
+
+---
+
+## 11. Picking up at step 4
+
+Everything below is unstarted. The two screens were compressed in step 3
+specifically so that concatenating them fits: before 3a/3b a 30-line grocery
+receipt put roughly five screens of items ahead of the first rate control;
+it is now about three, with a ~200pt ledger tail.
+
+Order of work:
+
+1. **Extract the ledger from `TaxServiceScreen` into a `ChargesLedger`
+   component** owning its own drafts, error flags and commit handlers. This is
+   the bulk of the step — five draft fields, four error flags, six
+   commit-on-blur handlers, three toggle handlers, plus the discount's
+   two-mode logic. Doing it as a component rather than inlining into the items
+   screen keeps the diff reviewable and the state boundary intact.
+2. **Render it below the item list** on `ExtractedItemsScreen`; rename the
+   screen to **"Check the receipt"** (verdict-first, per §5).
+3. **Move tax/service seeding to extraction completion in Capture**, right
+   after `setExtractionResult`. The merged screen renders rate editors on
+   mount and cannot wait for a Continue press to seed them. **Keep the
+   `if (!session.taxService)` guard** — it is what stops a retake-then-return
+   from clobbering hand-edited rates (§8).
+4. **Rewire navigation:** `ExtractedItems → ItemAssignment` directly; remove
+   the `TaxService` route from `RootStackParamList` and `App.tsx`; delete
+   `TaxServiceScreen`; retarget `ItemAssignmentScreen`'s Back.
+5. **Add the photo thumbnail strip** (§5). Highest value-per-point addition in
+   the redesign: the screen's whole job is comparing the transcript against
+   the paper, and today the paper disappears the moment extraction returns.
+6. **Update `CORE_FILES`** in `client/scripts/verifyNoHardcodedCopy.ts` as
+   screens are added and removed, or the copy guard silently stops covering
+   them.
+
+Verification to run after: `npx tsc --noEmit`, then
+`verifyNoHardcodedCopy`, `verifyTranslations`, `verifyAssignment`,
+`verifyExtraction`, `verifySplitCalculation`, `verifyGroupBalances`.
+Then drive the screen — toggle every charge off and on, confirm rates are
+retained across a toggle, and confirm the totals recompute — because this is
+the screen the money comes from.
+
+Note the app has no test framework; the `client/scripts/verify*.ts` files are
+plain re-runnable scripts, and a dev seed placed temporarily in
+`SplitSessionProvider` plus `initialRouteName` in `App.tsx` is how these
+screens have been driven in isolation. Both must be reverted before commit.
 
 ---
 
