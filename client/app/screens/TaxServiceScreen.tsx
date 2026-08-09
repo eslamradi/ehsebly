@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { formatPiastresAsEGP, parseEGPToPiastres, parsePercentInput } from '../domain/money';
 import { calculateSplitTotals, calculateSubtotalPiastres } from '../domain/splitCalculation';
 import { useSplitSession } from '../domain/session';
-import { fonts, radii, spacing, useTheme, type Theme } from '../theme';
+import { fonts, radii, spacing, useTheme, type Theme, textAlignEnd } from '../theme';
 import { useI18n } from '../i18n';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -13,27 +13,48 @@ type Props = NativeStackScreenProps<RootStackParamList, 'TaxService'>;
 function makeStyles(theme: Theme) {
   const { colors } = theme;
   return StyleSheet.create({
-        rateCard: {
+        // One ledger card: the charge rows and the totals are the same object
+        // now, so a row's amount sits on the row that produces it.
+        ledger: {
           backgroundColor: colors.paperRaised,
           borderRadius: radii.md,
           padding: spacing.lg,
-          gap: spacing.sm,
+          gap: spacing.md,
           ...theme.cardShadow,
         },
-        rateLabel: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-        rateName: { fontFamily: theme.fonts.sansSemiBold, fontSize: 16, color: colors.ink },
-        rateInputWrapper: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-        rateInput: {
-          flex: 1,
+        ledgerLine: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 44 },
+        ledgerLabel: { flex: 1, minWidth: 0, fontFamily: theme.fonts.sansRegular, fontSize: 14, color: colors.inkSoft },
+        ledgerLabelEmphasis: { flex: 1, minWidth: 0, fontFamily: theme.fonts.sansBold, fontSize: 15, color: colors.ink },
+        ledgerValue: { minWidth: 72, textAlign: textAlignEnd, fontSize: 14, color: colors.ink },
+        ledgerValueEmphasis: { minWidth: 72, textAlign: textAlignEnd, fontFamily: theme.fonts.monoSemiBold, fontSize: 15, color: colors.ink },
+        ledgerDivider: { height: 1, backgroundColor: colors.line },
+        rateFieldWrapper: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+        valueInput: {
+          minWidth: 54,
           borderWidth: 1,
           borderColor: colors.line,
           borderRadius: radii.sm,
-          paddingVertical: 8,
-          paddingHorizontal: spacing.md,
+          paddingVertical: 6,
+          paddingHorizontal: spacing.sm,
+          textAlign: 'center',
           fontFamily: theme.fonts.monoRegular,
+          fontSize: 14,
           color: colors.ink,
         },
-        rateInputDisabled: { backgroundColor: colors.paper, color: colors.inkFaint },
+        offText: { fontFamily: theme.fonts.sansRegular, fontSize: 13, color: colors.inkFaint },
+        // `✕`/`+` rather than a Switch: the row has to hold a label, a rate,
+        // an amount and a control on one line, and "remove this charge" is
+        // what the action means.
+        chargeToggle: {
+          width: 44,
+          height: 44,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        chargeToggleText: { fontFamily: theme.fonts.sansSemiBold, fontSize: 16, color: colors.accent },
+        modeText: { fontFamily: theme.fonts.sansSemiBold, fontSize: 12, color: colors.inkSoft },
+        modeTextActive: { color: colors.accentInk },
+
         inputError: { borderColor: colors.critical },
         errorText: { fontFamily: theme.fonts.sansRegular, color: colors.critical, fontSize: 12 },
         percentSign: { fontFamily: theme.fonts.sansRegular, fontSize: 16, color: colors.inkSoft },
@@ -46,20 +67,6 @@ function makeStyles(theme: Theme) {
           borderColor: colors.line,
         },
         modeButtonActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-        modeButtonText: { fontFamily: theme.fonts.sansSemiBold, fontSize: 13, color: colors.inkSoft },
-        modeButtonTextActive: { color: colors.accentInk },
-        previewPanel: {
-          backgroundColor: colors.paperRaised,
-          borderRadius: radii.md,
-          padding: spacing.lg,
-          gap: spacing.sm,
-          ...theme.cardShadow,
-        },
-        previewLine: { flexDirection: 'row', justifyContent: 'space-between' },
-        previewLabel: { fontFamily: theme.fonts.sansRegular, fontSize: 14, color: colors.inkSoft },
-        previewValue: { fontSize: 14, color: colors.ink },
-        previewLabelEmphasis: { fontFamily: theme.fonts.sansBold, fontSize: 16, color: colors.ink },
-        previewValueEmphasis: { fontFamily: theme.fonts.monoBold, fontSize: 16, color: colors.ink },
     mono: theme.screenStyles.mono,
     actions: { gap: spacing.md },
   });
@@ -281,195 +288,154 @@ export default function TaxServiceScreen({ navigation }: Props) {
     <ScrollView style={screenStyles.container} contentContainerStyle={screenStyles.content}>
       <Text style={screenStyles.heading}>{t('taxService.title')}</Text>
 
-      <View style={styles.rateCard}>
-        <View style={styles.rateLabel}>
-          <Text style={styles.rateName}>{t('taxService.discount')}</Text>
-          <Switch
+      {/* The four charge rows ARE the totals panel. They used to be four
+          editor cards followed, about a hundred points lower, by a preview
+          panel restating the same four numbers — the screen contained a
+          duplicate of itself, and the two copies had already drifted apart in
+          how they rendered a rate. Editing in place also means the figure you
+          are changing and the figure you are checking are the same one. */}
+      <View style={styles.ledger}>
+        <View style={styles.ledgerLine}>
+          <Text style={styles.ledgerLabel}>{t('taxService.subtotal')}</Text>
+          <Text style={[styles.mono, styles.ledgerValue]}>{formatPiastresAsEGP(totals.subtotalPiastres)}</Text>
+        </View>
+
+        {/* Discount is its own row rather than a ChargeRow: its value is
+            either a percentage or a flat amount, so it carries a mode
+            selector the others have no use for. */}
+        <View style={styles.ledgerLine}>
+          <Text style={styles.ledgerLabel}>{t('taxService.discount')}</Text>
+          {taxService.discountEnabled ? (
+            <>
+              <View style={styles.modeRow}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: taxService.discountMode === 'percent' }}
+                  accessibilityLabel={t('taxService.a11yDiscountPercentMode')}
+                  style={[styles.modeButton, taxService.discountMode === 'percent' && styles.modeButtonActive]}
+                  onPress={() => handleDiscountModeChange('percent')}
+                >
+                  <Text style={[styles.modeText, taxService.discountMode === 'percent' && styles.modeTextActive]}>%</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: taxService.discountMode === 'flat' }}
+                  accessibilityLabel={t('taxService.a11yDiscountFlatMode')}
+                  style={[styles.modeButton, taxService.discountMode === 'flat' && styles.modeButtonActive]}
+                  onPress={() => handleDiscountModeChange('flat')}
+                >
+                  <Text style={[styles.modeText, taxService.discountMode === 'flat' && styles.modeTextActive]}>
+                    {t('common.egp')}
+                  </Text>
+                </Pressable>
+              </View>
+              {taxService.discountMode === 'percent' ? (
+                <TextInput
+                  accessibilityLabel={t('taxService.a11yDiscountRate')}
+                  style={[styles.valueInput, discountError && styles.inputError]}
+                  keyboardType="decimal-pad"
+                  value={discountPercentDraft ?? String(taxService.discountRatePercent)}
+                  onChangeText={(text) => {
+                    setDiscountPercentDraft(text);
+                    setDiscountError(false);
+                  }}
+                  onBlur={commitDiscountPercentDraft}
+                />
+              ) : (
+                <TextInput
+                  accessibilityLabel={t('taxService.a11yDiscountFlat')}
+                  style={[styles.valueInput, discountError && styles.inputError]}
+                  keyboardType="decimal-pad"
+                  value={discountFlatDraft ?? formatPiastresAsEGP(taxService.discountFlatPiastres)}
+                  onChangeText={(text) => {
+                    setDiscountFlatDraft(text);
+                    setDiscountError(false);
+                  }}
+                  onBlur={commitDiscountFlatDraft}
+                />
+              )}
+              <Text style={[styles.mono, styles.ledgerValue]}>-{formatPiastresAsEGP(totals.discountPiastres)}</Text>
+            </>
+          ) : (
+            <Text style={styles.offText}>{t('taxService.off')}</Text>
+          )}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ selected: taxService.discountEnabled }}
             accessibilityLabel={t('taxService.a11yDiscountToggle')}
-            value={taxService.discountEnabled}
-            onValueChange={handleDiscountToggle}
-            trackColor={{ false: colors.line, true: colors.accent }}
-            thumbColor={colors.paperRaised}
-          />
-        </View>
-        <View style={styles.modeRow}>
-          <Pressable
-            accessibilityLabel={t('taxService.a11yDiscountPercentMode')}
-            style={[styles.modeButton, taxService.discountMode === 'percent' && styles.modeButtonActive]}
-            onPress={() => handleDiscountModeChange('percent')}
+            style={styles.chargeToggle}
+            onPress={() => handleDiscountToggle(!taxService.discountEnabled)}
           >
-            <Text style={[styles.modeButtonText, taxService.discountMode === 'percent' && styles.modeButtonTextActive]}>
-              %
-            </Text>
-          </Pressable>
-          <Pressable
-            accessibilityLabel={t('taxService.a11yDiscountFlatMode')}
-            style={[styles.modeButton, taxService.discountMode === 'flat' && styles.modeButtonActive]}
-            onPress={() => handleDiscountModeChange('flat')}
-          >
-            <Text style={[styles.modeButtonText, taxService.discountMode === 'flat' && styles.modeButtonTextActive]}>
-              EGP
-            </Text>
+            <Text style={styles.chargeToggleText}>{taxService.discountEnabled ? '✕' : '+'}</Text>
           </Pressable>
         </View>
-        {taxService.discountMode === 'percent' ? (
-          <View style={styles.rateInputWrapper}>
-            <TextInput
-              accessibilityLabel={t('taxService.a11yDiscountRate')}
-              style={[styles.rateInput, !taxService.discountEnabled && styles.rateInputDisabled, discountError && styles.inputError]}
-              keyboardType="decimal-pad"
-              editable={taxService.discountEnabled}
-              value={discountPercentDraft ?? String(taxService.discountRatePercent)}
-              onChangeText={(text) => {
-                setDiscountPercentDraft(text);
-                setDiscountError(false);
-              }}
-              onBlur={commitDiscountPercentDraft}
-            />
-            <Text style={styles.percentSign}>%</Text>
-          </View>
-        ) : (
-          <View style={styles.rateInputWrapper}>
-            <TextInput
-              accessibilityLabel={t('taxService.a11yDiscountFlat')}
-              style={[styles.rateInput, !taxService.discountEnabled && styles.rateInputDisabled, discountError && styles.inputError]}
-              keyboardType="decimal-pad"
-              editable={taxService.discountEnabled}
-              value={discountFlatDraft ?? formatPiastresAsEGP(taxService.discountFlatPiastres)}
-              onChangeText={(text) => {
-                setDiscountFlatDraft(text);
-                setDiscountError(false);
-              }}
-              onBlur={commitDiscountFlatDraft}
-            />
-          </View>
-        )}
         {discountError && <Text style={styles.errorText}>{t('taxService.valueUnreadable')}</Text>}
-      </View>
 
-      <View style={styles.rateCard}>
-        <View style={styles.rateLabel}>
-          <Text style={styles.rateName}>{t('taxService.tax')}</Text>
-          <Switch
-            accessibilityLabel={t('taxService.a11yTaxToggle')}
-            value={taxService.taxEnabled}
-            onValueChange={handleTaxToggle}
-            trackColor={{ false: colors.line, true: colors.accent }}
-            thumbColor={colors.paperRaised}
-          />
-        </View>
-        <View style={styles.rateInputWrapper}>
-          <TextInput
-            accessibilityLabel={t('taxService.a11yTaxRate')}
-            style={[styles.rateInput, !taxService.taxEnabled && styles.rateInputDisabled, taxRateError && styles.inputError]}
-            keyboardType="decimal-pad"
-            editable={taxService.taxEnabled}
-            value={taxRateDraft ?? String(taxService.taxRatePercent)}
-            onChangeText={(text) => {
-              setTaxRateDraft(text);
-              setTaxRateError(false);
-            }}
-            onBlur={commitTaxRateDraft}
-          />
-          <Text style={styles.percentSign}>%</Text>
-        </View>
-        {taxRateError && <Text style={styles.errorText}>{t('taxService.rateUnreadable')}</Text>}
-      </View>
-
-      <View style={styles.rateCard}>
-        <View style={styles.rateLabel}>
-          <Text style={styles.rateName}>{t('taxService.service')}</Text>
-          <Switch
-            accessibilityLabel={t('taxService.a11yServiceToggle')}
-            value={taxService.serviceEnabled}
-            onValueChange={handleServiceToggle}
-            trackColor={{ false: colors.line, true: colors.accent }}
-            thumbColor={colors.paperRaised}
-          />
-        </View>
-        <View style={styles.rateInputWrapper}>
-          <TextInput
-            accessibilityLabel={t('taxService.a11yServiceRate')}
-            style={[
-              styles.rateInput,
-              !taxService.serviceEnabled && styles.rateInputDisabled,
-              serviceRateError && styles.inputError,
-            ]}
-            keyboardType="decimal-pad"
-            editable={taxService.serviceEnabled}
-            value={serviceRateDraft ?? String(taxService.serviceRatePercent)}
-            onChangeText={(text) => {
-              setServiceRateDraft(text);
-              setServiceRateError(false);
-            }}
-            onBlur={commitServiceRateDraft}
-          />
-          <Text style={styles.percentSign}>%</Text>
-        </View>
-        {serviceRateError && <Text style={styles.errorText}>{t('taxService.rateUnreadable')}</Text>}
-      </View>
-
-      <View style={styles.rateCard}>
-        <View style={styles.rateLabel}>
-          <Text style={styles.rateName}>{t('taxService.otherService')}</Text>
-          <Switch
-            accessibilityLabel={t('taxService.a11yOtherServiceToggle')}
-            value={taxService.otherServiceEnabled}
-            onValueChange={handleOtherServiceToggle}
-            trackColor={{ false: colors.line, true: colors.accent }}
-            thumbColor={colors.paperRaised}
-          />
-        </View>
-        <View style={styles.rateInputWrapper}>
-          <TextInput
-            accessibilityLabel={t('taxService.a11yOtherServiceRate')}
-            style={[
-              styles.rateInput,
-              !taxService.otherServiceEnabled && styles.rateInputDisabled,
-              otherServiceRateError && styles.inputError,
-            ]}
-            keyboardType="decimal-pad"
-            editable={taxService.otherServiceEnabled}
-            value={otherServiceRateDraft ?? String(taxService.otherServiceRatePercent)}
-            onChangeText={(text) => {
-              setOtherServiceRateDraft(text);
-              setOtherServiceRateError(false);
-            }}
-            onBlur={commitOtherServiceRateDraft}
-          />
-          <Text style={styles.percentSign}>%</Text>
-        </View>
-        {otherServiceRateError && (
-          <Text style={styles.errorText}>{t('taxService.rateUnreadable')}</Text>
-        )}
-      </View>
-
-      <View style={styles.previewPanel}>
-        <PreviewLine styles={styles} label={t('taxService.subtotal')} piastres={totals.subtotalPiastres} />
-        <PreviewLine
+        <ChargeRow
           styles={styles}
-          label={
-            taxService.discountEnabled && taxService.discountMode === 'percent'
-              ? t('summary.withRate', { label: t('taxService.discount'), rate: taxService.discountRatePercent })
-              : t('taxService.discount')
-          }
-          piastres={-totals.discountPiastres}
+          label={t('taxService.service')}
+          enabled={taxService.serviceEnabled}
+          ratePercent={taxService.serviceRatePercent}
+          rateDraft={serviceRateDraft}
+          onRateChange={(text) => {
+            setServiceRateDraft(text);
+            setServiceRateError(false);
+          }}
+          onRateBlur={commitServiceRateDraft}
+          onToggle={() => handleServiceToggle(!taxService.serviceEnabled)}
+          amountPiastres={totals.servicePiastres}
+          hasError={serviceRateError}
+          errorText={t('taxService.rateUnreadable')}
+          offLabel={t('taxService.off')}
+          a11yToggle={t('taxService.a11yServiceToggle')}
+          a11yRate={t('taxService.a11yServiceRate')}
         />
-        <PreviewLine styles={styles} label={t('taxService.service')} piastres={totals.servicePiastres} />
-        <PreviewLine
+
+        <ChargeRow
           styles={styles}
-          label={
-            taxService.otherServiceEnabled
-              ? t('summary.withRate', {
-                  label: t('taxService.otherService'),
-                  rate: taxService.otherServiceRatePercent,
-                })
-              : t('summary.disabled', { label: t('taxService.otherService') })
-          }
-          piastres={totals.otherServicePiastres}
+          label={t('taxService.otherService')}
+          enabled={taxService.otherServiceEnabled}
+          ratePercent={taxService.otherServiceRatePercent}
+          rateDraft={otherServiceRateDraft}
+          onRateChange={(text) => {
+            setOtherServiceRateDraft(text);
+            setOtherServiceRateError(false);
+          }}
+          onRateBlur={commitOtherServiceRateDraft}
+          onToggle={() => handleOtherServiceToggle(!taxService.otherServiceEnabled)}
+          amountPiastres={totals.otherServicePiastres}
+          hasError={otherServiceRateError}
+          errorText={t('taxService.rateUnreadable')}
+          offLabel={t('taxService.off')}
+          a11yToggle={t('taxService.a11yOtherServiceToggle')}
+          a11yRate={t('taxService.a11yOtherServiceRate')}
         />
-        <PreviewLine styles={styles} label={t('taxService.tax')} piastres={totals.taxPiastres} />
-        <PreviewLine styles={styles} label={t('taxService.total')} piastres={totals.totalPiastres} emphasize />
+
+        <ChargeRow
+          styles={styles}
+          label={t('taxService.tax')}
+          enabled={taxService.taxEnabled}
+          ratePercent={taxService.taxRatePercent}
+          rateDraft={taxRateDraft}
+          onRateChange={(text) => {
+            setTaxRateDraft(text);
+            setTaxRateError(false);
+          }}
+          onRateBlur={commitTaxRateDraft}
+          onToggle={() => handleTaxToggle(!taxService.taxEnabled)}
+          amountPiastres={totals.taxPiastres}
+          hasError={taxRateError}
+          errorText={t('taxService.rateUnreadable')}
+          offLabel={t('taxService.off')}
+          a11yToggle={t('taxService.a11yTaxToggle')}
+          a11yRate={t('taxService.a11yTaxRate')}
+        />
+
+        <View style={styles.ledgerDivider} />
+        <View style={styles.ledgerLine}>
+          <Text style={styles.ledgerLabelEmphasis}>{t('taxService.total')}</Text>
+          <Text style={[styles.mono, styles.ledgerValueEmphasis]}>{formatPiastresAsEGP(totals.totalPiastres)}</Text>
+        </View>
       </View>
 
       <View style={styles.actions}>
@@ -488,23 +454,80 @@ export default function TaxServiceScreen({ navigation }: Props) {
   );
 }
 
-function PreviewLine({
+/**
+ * One percentage-based charge, rendered as a single ledger row that is also
+ * its own editor: `Service · 12%    +39.24  ✕`.
+ *
+ * Switched off it reads `Service    off  +` and keeps the rate it was last
+ * set to, so turning it back on restores what the receipt said rather than
+ * zeroing it. The toggle is a `✕`/`+` rather than a Switch because the row
+ * has to fit a label, a rate field, an amount and a control on one line, and
+ * because "remove this charge" is what the action actually means here.
+ */
+function ChargeRow({
   styles,
   label,
-  piastres,
-  emphasize,
+  enabled,
+  ratePercent,
+  rateDraft,
+  onRateChange,
+  onRateBlur,
+  onToggle,
+  amountPiastres,
+  hasError,
+  errorText,
+  offLabel,
+  a11yToggle,
+  a11yRate,
 }: {
   styles: ReturnType<typeof makeStyles>;
   label: string;
-  piastres: number;
-  emphasize?: boolean;
+  enabled: boolean;
+  ratePercent: number;
+  rateDraft: string | null;
+  onRateChange: (text: string) => void;
+  onRateBlur: () => void;
+  onToggle: () => void;
+  amountPiastres: number;
+  hasError: boolean;
+  errorText: string;
+  offLabel: string;
+  a11yToggle: string;
+  a11yRate: string;
 }) {
   return (
-    <View style={styles.previewLine}>
-      <Text style={emphasize ? styles.previewLabelEmphasis : styles.previewLabel}>{label}</Text>
-      <Text style={[styles.mono, emphasize ? styles.previewValueEmphasis : styles.previewValue]}>
-        {formatPiastresAsEGP(piastres)} EGP
-      </Text>
-    </View>
+    <>
+      <View style={styles.ledgerLine}>
+        <Text style={styles.ledgerLabel}>{label}</Text>
+        {enabled ? (
+          <>
+            <View style={styles.rateFieldWrapper}>
+              <TextInput
+                accessibilityLabel={a11yRate}
+                style={[styles.valueInput, hasError && styles.inputError]}
+                keyboardType="decimal-pad"
+                value={rateDraft ?? String(ratePercent)}
+                onChangeText={onRateChange}
+                onBlur={onRateBlur}
+              />
+              <Text style={styles.percentSign}>%</Text>
+            </View>
+            <Text style={[styles.mono, styles.ledgerValue]}>{formatPiastresAsEGP(amountPiastres)}</Text>
+          </>
+        ) : (
+          <Text style={styles.offText}>{offLabel}</Text>
+        )}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ selected: enabled }}
+          accessibilityLabel={a11yToggle}
+          style={styles.chargeToggle}
+          onPress={onToggle}
+        >
+          <Text style={styles.chargeToggleText}>{enabled ? '✕' : '+'}</Text>
+        </Pressable>
+      </View>
+      {hasError && <Text style={styles.errorText}>{errorText}</Text>}
+    </>
   );
 }
