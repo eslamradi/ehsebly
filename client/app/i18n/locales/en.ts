@@ -139,6 +139,8 @@ export const en = {
   assignment: {
     title: 'Who had what?',
     addPersonPlaceholder: 'Add a person',
+    everyoneHadEverything: 'Everyone had everything',
+    a11yEveryoneHadEverything: 'Assign every item to everyone',
     everyone: 'Everyone',
     unassigned: 'Unassigned',
     addPersonFirst: 'Add a person above to assign this item.',

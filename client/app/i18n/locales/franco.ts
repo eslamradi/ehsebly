@@ -162,6 +162,8 @@ export const franco: Translations = {
   assignment: {
     title: 'Meen akal eh?',
     addPersonPlaceholder: 'Dayef 7ad',
+    everyoneHadEverything: 'El kol akal kol 7aga',
+    a11yEveryoneHadEverything: 'Wazza3 kol el asnaf 3ala el kol',
     everyone: 'El kol',
     unassigned: 'Lessa',
     addPersonFirst: 'Dayef 7ad fo2 el awel 3ashan tewazza3 el senf da.',

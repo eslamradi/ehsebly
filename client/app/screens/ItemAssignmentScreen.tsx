@@ -169,6 +169,19 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
         },
         filterToggleActive: { backgroundColor: colors.accentSoft, borderColor: colors.accent },
         filterToggleText: { fontFamily: theme.fonts.sansSemiBold, fontSize: 12, color: colors.inkSoft },
+        // Accent-outlined rather than solid: it's a shortcut, not the primary
+        // path, and a filled button here would compete with Continue.
+        bulkAssignButton: {
+          alignSelf: 'flex-start',
+          minHeight: 44,
+          justifyContent: 'center',
+          borderWidth: 1,
+          borderColor: colors.accent,
+          borderRadius: radii.pill,
+          paddingVertical: spacing.sm,
+          paddingHorizontal: spacing.lg,
+        },
+        bulkAssignText: { fontFamily: theme.fonts.sansSemiBold, fontSize: 14, color: colors.accent },
         filterToggleTextActive: { color: colors.accent },
         footer: {
           backgroundColor: colors.paperRaised,
@@ -187,7 +200,7 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
     [theme, colors],
   );
 
-  const { session, addPerson, setItemAllocations, setPaidByMemberId } = useSplitSession();
+  const { session, addPerson, setItemAllocations, setAllItemAllocations, setPaidByMemberId } = useSplitSession();
   const { extractionResult, taxService, people, itemAssignments, group } = session;
 
   const [newPersonName, setNewPersonName] = useState('');
@@ -253,6 +266,34 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
       delete next[personIndex];
     }
     setItemAllocations(itemIndex, next);
+    setBlockedMessage(null);
+  };
+
+  /**
+   * The whole-receipt shortcut: everyone on every item, at weight 1 each,
+   * which is an even share of every line. Splitting a 30-line grocery run
+   * between two flatmates otherwise costs a tap per item, since the Everyone
+   * chip only ever covered one line.
+   *
+   * Offered only while nothing is assigned yet, so it can never overwrite
+   * assignments someone has already made by hand — a stray tap after five
+   * minutes of careful work would be unrecoverable, and there is no undo.
+   * Once the roster has been touched, the per-item chips take over.
+   *
+   * Deliberately not a default: auto-assigning on arrival would produce
+   * plausible-looking wrong bills and would neuter `areAllItemsAssigned`,
+   * which is the one gate that forces a human to look at every line.
+   */
+  const assignEverythingToEveryone = () => {
+    const everyone: Record<number, number> = {};
+    people.forEach((_person, personIndex) => {
+      everyone[personIndex] = 1;
+    });
+    const next: Record<number, Record<number, number>> = {};
+    items.forEach((_item, itemIndex) => {
+      next[itemIndex] = { ...everyone };
+    });
+    setAllItemAllocations(next);
     setBlockedMessage(null);
   };
 
@@ -344,6 +385,19 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
             </Pressable>
           )}
         </View>
+      )}
+
+      {/* Whole-receipt shortcut. Only while the roster is untouched — see
+          assignEverythingToEveryone for why it must never overwrite. */}
+      {people.length > 1 && assignedCount === 0 && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('assignment.a11yEveryoneHadEverything')}
+          style={styles.bulkAssignButton}
+          onPress={assignEverythingToEveryone}
+        >
+          <Text style={styles.bulkAssignText}>{t('assignment.everyoneHadEverything')}</Text>
+        </Pressable>
       )}
 
       {group ? (

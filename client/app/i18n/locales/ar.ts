@@ -158,6 +158,8 @@ export const ar: Translations = {
   assignment: {
     title: 'مين اكل ايه؟',
     addPersonPlaceholder: 'ضيف حد',
+    everyoneHadEverything: 'الكل اكل كل حاجة',
+    a11yEveryoneHadEverything: 'وزّع كل الأصناف على الكل',
     everyone: 'الكل',
     unassigned: 'لسه',
     addPersonFirst: 'ضيف حد فوق الأول علشان توزّع الصنف ده.',

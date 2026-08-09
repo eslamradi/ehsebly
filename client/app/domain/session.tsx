@@ -50,6 +50,13 @@ type SplitSessionContextValue = {
   setTaxService: (settings: TaxServiceSettings | ((previous: TaxServiceSettings) => TaxServiceSettings)) => void;
   addPerson: (name: string) => void;
   setItemAllocations: (itemIndex: number, allocations: Record<number, number>) => void;
+  /**
+   * Replaces the whole assignment map in one write. Bulk actions on the
+   * assignment screen would otherwise loop `setItemAllocations`, firing a
+   * separate state update per item — thirty of them on a grocery receipt,
+   * each spreading the previous map.
+   */
+  setAllItemAllocations: (allocations: ItemAssignments) => void;
   // Seeds `people` from a group's member roster and marks this session as
   // logging a group expense rather than a solo split — the existing
   // Capture -> ExtractedItems -> TaxService -> ItemAssignment -> Review flow
@@ -126,6 +133,10 @@ export function SplitSessionProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const setAllItemAllocations = (allocations: ItemAssignments) => {
+    setSession((previous) => ({ ...previous, itemAssignments: allocations }));
+  };
+
   const beginGroupExpense = (groupId: string, members: Array<{ id: string; displayName: string }>) => {
     const memberIdByPersonIndex: Record<number, string> = {};
     members.forEach((member, index) => {
@@ -154,6 +165,7 @@ export function SplitSessionProvider({ children }: { children: ReactNode }) {
       setTaxService,
       addPerson,
       setItemAllocations,
+      setAllItemAllocations,
       beginGroupExpense,
       setPaidByMemberId,
     }),
