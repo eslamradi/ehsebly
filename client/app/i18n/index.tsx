@@ -15,7 +15,14 @@ const TABLES: Record<LocaleCode, Translations> = { en, ar, franco };
 /** Only Arabic is right-to-left — Franco is Egyptian Arabic in Latin script, so it reads LTR. */
 export const RTL_LOCALES: readonly LocaleCode[] = ['ar'];
 
-export const LOCALE_ORDER: readonly LocaleCode[] = ['en', 'ar', 'franco'];
+/**
+ * The locales the picker offers. Franco is deliberately absent for now
+ * (2026-08-09) — everything behind it stays in place: the table, the Arabic
+ * plural rules it shares, and its coverage in verifyTranslations, so it can
+ * be re-enabled by putting it back in this array and nothing will have
+ * rotted in the meantime.
+ */
+export const LOCALE_ORDER: readonly LocaleCode[] = ['en', 'ar'];
 
 const STORAGE_KEY = 'ehsebly.locale';
 
@@ -81,7 +88,11 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       let resolved: LocaleCode;
       try {
         const stored = (await AsyncStorage.getItem(STORAGE_KEY)) as LocaleCode | null;
-        resolved = stored && stored in TABLES ? stored : detectDeviceLocale();
+        // Checked against what the picker currently offers, not against every
+        // table that exists: a tester who had already chosen Franco before it
+        // was hidden would otherwise land in a language the picker can't show
+        // as selected, which reads as a broken control.
+        resolved = stored && LOCALE_ORDER.includes(stored) ? stored : detectDeviceLocale();
       } catch {
         // A storage read failure must not block the app behind a blank screen.
         resolved = detectDeviceLocale();
