@@ -25,6 +25,8 @@ export type ItemAssignments = Record<number, Record<number, number>>;
 // branch reads `household` to decide where the finished split goes.
 export type GroupExpenseContext = {
   groupId: string;
+  /** Carried purely so the commit action can name what it's posting to. */
+  groupName: string;
   memberIdByPersonIndex: Record<number, string>;
   paidByMemberId: string | null;
 };
@@ -61,7 +63,11 @@ type SplitSessionContextValue = {
   // logging a group expense rather than a solo split — the existing
   // Capture -> ExtractedItems -> TaxService -> ItemAssignment -> Review flow
   // is reused verbatim; only FinalSplitScreen branches on `session.group`.
-  beginGroupExpense: (groupId: string, members: Array<{ id: string; displayName: string }>) => void;
+  beginGroupExpense: (
+    groupId: string,
+    groupName: string,
+    members: Array<{ id: string; displayName: string }>,
+  ) => void;
   setPaidByMemberId: (memberId: string) => void;
 };
 
@@ -137,7 +143,11 @@ export function SplitSessionProvider({ children }: { children: ReactNode }) {
     setSession((previous) => ({ ...previous, itemAssignments: allocations }));
   };
 
-  const beginGroupExpense = (groupId: string, members: Array<{ id: string; displayName: string }>) => {
+  const beginGroupExpense = (
+    groupId: string,
+    groupName: string,
+    members: Array<{ id: string; displayName: string }>,
+  ) => {
     const memberIdByPersonIndex: Record<number, string> = {};
     members.forEach((member, index) => {
       memberIdByPersonIndex[index] = member.id;
@@ -145,7 +155,7 @@ export function SplitSessionProvider({ children }: { children: ReactNode }) {
     setSession((previous) => ({
       ...previous,
       people: members.map((member) => ({ name: member.displayName })),
-      group: { groupId, memberIdByPersonIndex, paidByMemberId: null },
+      group: { groupId, groupName, memberIdByPersonIndex, paidByMemberId: null },
     }));
   };
 

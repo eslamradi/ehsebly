@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ShareableSplit, type ShareableSplitHandle } from '../components/ShareableSplit';
@@ -33,46 +33,59 @@ export default function FinalSplitScreen({ navigation }: Props) {
   // effect dependency alone isn't enough; this ref makes the guard explicit
   // regardless of render timing (same pattern as CaptureScreen's
   // confirmingRef, Story 1.2 code review finding).
-  const savedToHistoryRef = useRef(false);
+  // Guards the *automatic* save against running twice for one session —
+  // native-stack keeps this screen mounted and re-focuses rather than
+  // remounting, so an effect dependency alone isn't enough (same pattern as
+  // CaptureScreen's confirmingRef, Story 1.2 code review). Retrying a failed
+  // group post deliberately bypasses it: nothing was written, so there is
+  // nothing to double up.
+  const autoSaveRanRef = useRef(false);
   const shareRef = useRef<ShareableSplitHandle>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  useEffect(() => {
-    if (savedToHistoryRef.current) {
-      return;
-    }
-    if (!extractionResult || extractionResult.status !== 'ok' || !taxService) {
-      return;
-    }
-    savedToHistoryRef.current = true;
+  const [submitting, setSubmitting] = useState(false);
+  const groupName = session.group?.groupName ?? '';
 
-    if (session.group && session.group.paidByMemberId) {
-      if (!token) {
-        // Explicit error over silent loss (Story 2.4 code review, 2026-07-30):
-        // this was meant to go to the group ledger — falling through to a
-        // local-only save instead would look identical to success while the
-        // group never sees it. Nothing is saved anywhere; the fronter must
-        // sign in again and re-enter this expense.
-        setSubmitError(t('final.sessionExpired'));
-        return;
-      }
-      // Logging a group expense (household/trip) instead of a solo split —
-      // submit to the group's server-side ledger rather than saving to
-      // local History. This is the only place that decision is made; every
-      // screen upstream (Capture through Review) is unchanged either way.
-      const subtotalPiastres = calculateSubtotalPiastres(extractionResult.items);
-      const totals = calculateSplitTotals({ subtotalPiastres, ...taxService });
-      const itemAssignmentsByMemberId: Record<number, Record<string, number>> = {};
-      for (const [itemIndexText, weightsByPersonIndex] of Object.entries(itemAssignments)) {
-        const weightsByMemberId: Record<string, number> = {};
-        for (const [personIndexText, weight] of Object.entries(weightsByPersonIndex)) {
-          const memberId = session.group.memberIdByPersonIndex[Number(personIndexText)];
-          if (memberId) {
-            weightsByMemberId[memberId] = weight;
-          }
+  /**
+   * Posts the finished expense to the group's shared ledger.
+   *
+   * A failure here used to be swallowed by `.catch(() => {})`, carrying the
+   * same "best-effort, never block the fronter" comment as the local history
+   * save below. That reasoning does not transfer: local history is the
+   * fronter's own copy and losing it costs them a record they can rebuild,
+   * whereas this write is what the rest of the group settles against. A
+   * dropped request left everyone looking at a finished breakdown that the
+   * group ledger never received, with nothing on screen to say so. It now
+   * reports the failure and offers a retry.
+   */
+  const postToGroup = useCallback(async () => {
+    if (!extractionResult || extractionResult.status !== 'ok' || !taxService || !session.group?.paidByMemberId) {
+      return;
+    }
+    if (!token) {
+      // Explicit error over silent loss (Story 2.4 code review, 2026-07-30):
+      // this was meant to go to the group ledger — falling through to a
+      // local-only save instead would look identical to success while the
+      // group never sees it.
+      setSubmitError(t('final.sessionExpired'));
+      return;
+    }
+    const subtotalPiastres = calculateSubtotalPiastres(extractionResult.items);
+    const totals = calculateSplitTotals({ subtotalPiastres, ...taxService });
+    const itemAssignmentsByMemberId: Record<number, Record<string, number>> = {};
+    for (const [itemIndexText, weightsByPersonIndex] of Object.entries(itemAssignments)) {
+      const weightsByMemberId: Record<string, number> = {};
+      for (const [personIndexText, weight] of Object.entries(weightsByPersonIndex)) {
+        const memberId = session.group.memberIdByPersonIndex[Number(personIndexText)];
+        if (memberId) {
+          weightsByMemberId[memberId] = weight;
         }
-        itemAssignmentsByMemberId[Number(itemIndexText)] = weightsByMemberId;
       }
-      submitGroupExpense(token, session.group.groupId, {
+      itemAssignmentsByMemberId[Number(itemIndexText)] = weightsByMemberId;
+    }
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await submitGroupExpense(token, session.group.groupId, {
         description: 'Expense breakdown',
         paid_by_member_id: session.group.paidByMemberId,
         subtotal_piastres: totals.subtotalPiastres,
@@ -97,11 +110,25 @@ export default function FinalSplitScreen({ navigation }: Props) {
           is_shared: item.shared ?? false,
         })),
         item_assignments: itemAssignmentsByMemberId,
-      }).catch(() => {
-        // Best-effort — a failed submission must never block the fronter
-        // from seeing the split they just finished, same as the local
-        // History save below.
       });
+    } catch {
+      setSubmitError(t('final.submitFailed', { group: groupName }));
+    } finally {
+      setSubmitting(false);
+    }
+  }, [extractionResult, taxService, itemAssignments, session.group, token, t, groupName]);
+
+  useEffect(() => {
+    if (autoSaveRanRef.current) {
+      return;
+    }
+    if (!extractionResult || extractionResult.status !== 'ok' || !taxService) {
+      return;
+    }
+    autoSaveRanRef.current = true;
+
+    if (session.group && session.group.paidByMemberId) {
+      void postToGroup();
       return;
     }
 
@@ -112,12 +139,20 @@ export default function FinalSplitScreen({ navigation }: Props) {
       people,
       itemAssignments,
     }).catch(() => {
-      // Best-effort — a failed history save must never block the fronter
-      // from seeing the split they just finished.
+      // Best-effort, and here that genuinely holds: History is the fronter's
+      // own local copy, not something anyone else settles against.
     });
-  }, [extractionResult, taxService, people, itemAssignments, session.photoUris, session.group, token]);
+  }, [extractionResult, taxService, people, itemAssignments, session.photoUris, session.group, postToGroup]);
 
-  const handleBack = () => {
+  /**
+   * Only reachable from the defensive "nothing to show" guard below, where no
+   * save has happened. The finished view deliberately has no Back: by then the
+   * expense is already written, `autoSaveRanRef` blocks a second save, and
+   * native-stack re-focuses rather than remounting — so editing after backing
+   * out would look like it worked and silently never persist. Corrections go
+   * through History or the group's expense detail instead.
+   */
+  const handleBackFromEmptyState = () => {
     navigation.navigate('Review');
   };
 
@@ -146,7 +181,7 @@ export default function FinalSplitScreen({ navigation }: Props) {
     return (
       <View style={screenStyles.center}>
         <Text style={screenStyles.message}>{t('final.nothingToShow')}</Text>
-        <Pressable accessibilityLabel={t('final.a11yBackToReview')} style={buttonStyles.primary} onPress={handleBack}>
+        <Pressable accessibilityLabel={t('final.a11yBackToReview')} style={buttonStyles.primary} onPress={handleBackFromEmptyState}>
           <Text style={buttonStyles.primaryText}>{t('common.back')}</Text>
         </Pressable>
       </View>
@@ -161,12 +196,36 @@ export default function FinalSplitScreen({ navigation }: Props) {
     <ScrollView style={screenStyles.container} contentContainerStyle={screenStyles.content}>
       <View style={styles.headerRow}>
         <Text style={screenStyles.heading}>{t('final.title')}</Text>
-        <View style={pillStyle('positive')}>
-          <Text style={pillTextStyle('positive')}>{t('final.complete')}</Text>
-        </View>
+        {/* Not shown while a post has failed. The breakdown itself is finished,
+            but nothing reached the group ledger — a green COMPLETE stamp
+            directly above "nothing was saved" is the screen contradicting
+            itself, and COMPLETE is the half people believe. */}
+        {!submitError && (
+          <View style={pillStyle('positive')}>
+            <Text style={pillTextStyle('positive')}>{t('final.complete')}</Text>
+          </View>
+        )}
       </View>
 
-      {submitError && <Text style={pillTextStyle('critical')}>{submitError}</Text>}
+      {submitError && (
+        <View style={{ gap: spacing.sm }}>
+          <Text style={pillTextStyle('critical')}>{submitError}</Text>
+          {/* Without this the fronter is told the post failed and given no way
+              to act on it. Retry bypasses autoSaveRanRef deliberately —
+              nothing reached the ledger, so there is nothing to duplicate. */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('final.submitRetry')}
+            disabled={submitting}
+            style={[buttonStyles.secondary, submitting && buttonStyles.disabled]}
+            onPress={() => void postToGroup()}
+          >
+            <Text style={buttonStyles.secondaryText}>
+              {submitting ? t('final.submitting') : t('final.submitRetry')}
+            </Text>
+          </Pressable>
+        </View>
+      )}
 
       <ShareableSplit
         ref={shareRef}
@@ -183,9 +242,6 @@ export default function FinalSplitScreen({ navigation }: Props) {
         </Pressable>
         <Pressable accessibilityLabel={t('final.a11yStartNew')} style={buttonStyles.secondary} onPress={handleStartNewSplit}>
           <Text style={buttonStyles.secondaryText}>{t('final.startNew')}</Text>
-        </Pressable>
-        <Pressable accessibilityLabel={t('final.a11yBackToReview')} style={buttonStyles.secondary} onPress={handleBack}>
-          <Text style={buttonStyles.secondaryText}>{t('common.back')}</Text>
         </Pressable>
       </View>
     </ScrollView>

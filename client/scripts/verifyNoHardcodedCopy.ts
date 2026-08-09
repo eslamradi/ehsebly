@@ -86,7 +86,9 @@ for (const relative of CORE_FILES) {
       if (trimmed.includes('*/')) inBlockComment = false;
       return;
     }
-    if (trimmed.startsWith('/*')) {
+    // `{/*` as well as `/*` — a multi-line JSX comment is still a comment, and
+    // prose inside one was being reported as hardcoded copy.
+    if (trimmed.startsWith('/*') || trimmed.startsWith('{/*')) {
       if (!trimmed.includes('*/')) inBlockComment = true;
       return;
     }

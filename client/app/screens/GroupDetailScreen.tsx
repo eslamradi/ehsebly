@@ -102,6 +102,7 @@ export default function GroupDetailScreen({ navigation, route }: Props) {
     setLogExpenseMessage(null);
     beginGroupExpense(
       groupId,
+      group?.name ?? '',
       members.map((member) => ({ id: member.id, displayName: member.displayName })),
     );
     navigation.navigate('Capture', openGalleryOnMount ? { openGalleryOnMount: true } : undefined);

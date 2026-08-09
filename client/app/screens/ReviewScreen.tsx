@@ -180,6 +180,13 @@ export default function ReviewScreen({ navigation }: Props) {
   const totals = calculateSplitTotals({ subtotalPiastres, ...taxService });
   const personSubtotals = calculatePersonSubtotals(items, itemAssignments, people.length);
   const personTotals = calculatePersonTotals(personSubtotals, totals);
+  // A group expense writes to a ledger other people settle against, so the
+  // button says so instead of the generic "Confirm breakdown" — the commit is
+  // the moment worth naming.
+  const commitLabel = session.group
+    ? t('final.postToGroup', { group: session.group.groupName })
+    : t('review.confirm');
+
   const reconciliation = reconcileWithPrintedTotal(
     totals.totalPiastres,
     extractionResult.printedTotalPiastres,
@@ -289,8 +296,8 @@ export default function ReviewScreen({ navigation }: Props) {
       </View>
 
       <View style={styles.actions}>
-        <Pressable accessibilityLabel={t('review.a11yConfirm')} style={buttonStyles.primary} onPress={handleConfirm}>
-          <Text style={buttonStyles.primaryText}>{t('review.confirm')}</Text>
+        <Pressable accessibilityLabel={commitLabel} style={buttonStyles.primary} onPress={handleConfirm}>
+          <Text style={buttonStyles.primaryText}>{commitLabel}</Text>
         </Pressable>
         <Pressable accessibilityLabel={t('review.a11yBackToAssignment')} style={buttonStyles.secondary} onPress={handleBack}>
           <Text style={buttonStyles.secondaryText}>{t('common.back')}</Text>
