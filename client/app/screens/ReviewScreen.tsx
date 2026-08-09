@@ -11,6 +11,7 @@ import { calculateSplitTotals, calculateSubtotalPiastres } from '../domain/split
 import { useSplitSession, type Person } from '../domain/session';
 import { fonts, radii, spacing, useTheme, type Theme, textAlignEnd } from '../theme';
 import { useI18n } from '../i18n';
+import { chargeLabel } from '../i18n/chargeLabel';
 import type { Translate } from '../domain/share';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -201,7 +202,7 @@ export default function ReviewScreen({ navigation }: Props) {
           <View key={index} style={styles.itemCard}>
             <View style={styles.itemRow}>
               <TextInput
-                accessibilityLabel={`Item ${index + 1} name`}
+                accessibilityLabel={t('review.a11yItemName', { index: index + 1 })}
                 style={[styles.nameInput, nameErrors[index] && styles.inputError]}
                 value={nameDrafts[index] ?? item.name}
                 onChangeText={(text) => {
@@ -211,7 +212,7 @@ export default function ReviewScreen({ navigation }: Props) {
                 onBlur={() => commitNameDraft(index)}
               />
               <TextInput
-                accessibilityLabel={`Item ${index + 1} price in Egyptian pounds`}
+                accessibilityLabel={t('review.a11yItemPrice', { index: index + 1 })}
                 style={[styles.priceInput, styles.mono, priceErrors[index] && styles.inputError]}
                 keyboardType="decimal-pad"
                 value={priceDrafts[index] ?? formatPiastresAsEGP(item.pricePiastres)}
@@ -238,22 +239,32 @@ export default function ReviewScreen({ navigation }: Props) {
         <SummaryLine styles={styles} label={t('taxService.subtotal')} piastres={totals.subtotalPiastres} />
         <SummaryLine
           styles={styles}
-          label={`Discount${taxService.discountEnabled && taxService.discountMode === 'percent' ? ` (${taxService.discountRatePercent}%)` : taxService.discountEnabled ? '' : ' (off)'}`}
+          label={chargeLabel(
+            t,
+            t('taxService.discount'),
+            taxService.discountEnabled,
+            taxService.discountMode === 'percent' ? taxService.discountRatePercent : null,
+          )}
           piastres={-totals.discountPiastres}
         />
         <SummaryLine
           styles={styles}
-          label={`Service${taxService.serviceEnabled ? ` (${taxService.serviceRatePercent}%)` : ' (off)'}`}
+          label={chargeLabel(t, t('taxService.service'), taxService.serviceEnabled, taxService.serviceRatePercent)}
           piastres={totals.servicePiastres}
         />
         <SummaryLine
           styles={styles}
-          label={`Other service${taxService.otherServiceEnabled ? ` (${taxService.otherServiceRatePercent}%)` : ' (off)'}`}
+          label={chargeLabel(
+            t,
+            t('taxService.otherService'),
+            taxService.otherServiceEnabled,
+            taxService.otherServiceRatePercent,
+          )}
           piastres={totals.otherServicePiastres}
         />
         <SummaryLine
           styles={styles}
-          label={`Tax${taxService.taxEnabled ? ` (${taxService.taxRatePercent}%)` : ' (off)'}`}
+          label={chargeLabel(t, t('taxService.tax'), taxService.taxEnabled, taxService.taxRatePercent)}
           piastres={totals.taxPiastres}
         />
         <View style={styles.divider} />

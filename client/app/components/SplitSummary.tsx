@@ -6,6 +6,7 @@ import { calculateSplitTotals, calculateSubtotalPiastres } from '../domain/split
 import type { ItemAssignments, Person, TaxServiceSettings } from '../domain/session';
 import type { Translate } from '../domain/share';
 import { useI18n } from '../i18n';
+import { chargeLabel } from '../i18n/chargeLabel';
 import { fonts, radii, spacing, useTheme, type Theme, userTextStyle } from '../theme';
 
 type SplitSummaryProps = {
@@ -145,18 +146,6 @@ function ReceiptLine({
  * both be off — the SEA SOUL spike finding, now extended to other service).
  * Only describes charges that are actually enabled for this receipt.
  */
-/**
- * Composes a charge row's label with its rate, or marks it off. Kept as one
- * helper so the punctuation between label and rate lives in the string table
- * (`summary.withRate`) and a locale can move or drop it, rather than being
- * hardcoded at five separate call sites.
- */
-function chargeLabel(t: Translate, label: string, enabled: boolean, ratePercent: number | null): string {
-  if (!enabled) {
-    return t('summary.disabled', { label });
-  }
-  return ratePercent === null ? label : t('summary.withRate', { label, rate: ratePercent });
-}
 
 function describeIncludedCharges(taxService: TaxServiceSettings, t: Translate): string | null {
   const parts: string[] = [];

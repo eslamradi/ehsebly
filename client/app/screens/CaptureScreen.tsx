@@ -146,7 +146,7 @@ export default function CaptureScreen({ navigation, route }: Props) {
       return;
     }
     if (pendingUris.length >= MAX_PHOTOS) {
-      setError({ message: `Up to ${MAX_PHOTOS} photos per receipt.`, showSettingsLink: false });
+      setError({ message: t('capture.maxPhotos', { max: MAX_PHOTOS }), showSettingsLink: false });
       return;
     }
     setCapturing(true);
@@ -157,10 +157,10 @@ export default function CaptureScreen({ navigation, route }: Props) {
         setPendingUris((previous) => [...previous, photo.uri]);
         setShowingCamera(false);
       } else {
-        setError({ message: "Couldn't capture that photo — try again.", showSettingsLink: false });
+        setError({ message: t('capture.captureFailed'), showSettingsLink: false });
       }
     } catch {
-      setError({ message: "Couldn't capture that photo — try again.", showSettingsLink: false });
+      setError({ message: t('capture.captureFailed'), showSettingsLink: false });
     } finally {
       setCapturing(false);
     }
@@ -176,7 +176,7 @@ export default function CaptureScreen({ navigation, route }: Props) {
     // this one picker visit, so combining camera + gallery photos can't
     // exceed the Worker's own per-request limit.
     if (pendingUris.length >= MAX_PHOTOS) {
-      setError({ message: `Up to ${MAX_PHOTOS} photos per receipt.`, showSettingsLink: false });
+      setError({ message: t('capture.maxPhotos', { max: MAX_PHOTOS }), showSettingsLink: false });
       return;
     }
     setPickingFromGallery(true);
@@ -239,7 +239,7 @@ export default function CaptureScreen({ navigation, route }: Props) {
         clearPhoto();
         navigation.goBack();
       } else {
-        setError({ message: "Couldn't open your photos — try again.", showSettingsLink: false });
+        setError({ message: t('capture.openPhotosFailed'), showSettingsLink: false });
       }
     } finally {
       setPickingFromGallery(false);
@@ -385,7 +385,7 @@ export default function CaptureScreen({ navigation, route }: Props) {
         {error && <Text style={[screenStyles.message, { color: colors.critical }]}>{error.message}</Text>}
         <View style={styles.column}>
           <Pressable accessibilityLabel={t('capture.a11yUsePhotos')} style={buttonStyles.primary} onPress={handleUseThesePhotos}>
-            <Text style={buttonStyles.primaryText}>Use These Photos ({pendingUris.length})</Text>
+            <Text style={buttonStyles.primaryText}>{t('capture.usePhotos', { count: pendingUris.length })}</Text>
           </Pressable>
           <Pressable accessibilityLabel={t('capture.a11yAddAnotherCamera')} style={buttonStyles.secondary} onPress={handleAddAnother}>
             <Text style={buttonStyles.secondaryText}>{t('capture.addAnotherCamera')}</Text>
@@ -454,7 +454,7 @@ function PhotoPreview({ uris, styles: photoStyles }: { uris: string[]; styles: t
       {uris.map((uri, index) => (
         <Image
           key={uri}
-          accessibilityLabel={`Captured receipt photo ${index + 1} of ${uris.length}`}
+          accessibilityLabel={t('capture.a11yCapturedPhotoIndexed', { index: index + 1, total: uris.length })}
           source={{ uri }}
           style={photoStyles.thumb}
         />

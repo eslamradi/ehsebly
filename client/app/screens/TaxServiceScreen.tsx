@@ -481,7 +481,7 @@ export default function TaxServiceScreen({ navigation }: Props) {
           <Text style={buttonStyles.primaryText}>{t('common.continue')}</Text>
         </Pressable>
         <Pressable accessibilityLabel={t('taxService.a11yBackToExtracted')} style={buttonStyles.secondary} onPress={handleBack}>
-          <Text style={buttonStyles.secondaryText}>Back</Text>
+          <Text style={buttonStyles.secondaryText}>{t('common.back')}</Text>
         </Pressable>
       </View>
     </ScrollView>

@@ -7,6 +7,7 @@ import { computeInitialTaxServiceSettings } from '../domain/splitCalculation';
 import { useSplitSession } from '../domain/session';
 import { fonts, radii, spacing, useTheme, textAlignEnd } from '../theme';
 import { useI18n } from '../i18n';
+import type { Translate } from '../domain/share';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ExtractedItems'>;
@@ -173,7 +174,7 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
     }
     const parsedPrice = parseEGPToPiastres(newItemPriceDraft);
     if (parsedPrice === null) {
-      setAddItemError("Couldn't read that price.");
+      setAddItemError(t('extracted.priceUnreadableShort'));
       return;
     }
     const items = [...result.items, { name: trimmedName, pricePiastres: parsedPrice, quantity: 1, shared: true }];
@@ -183,7 +184,7 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
     setAddItemError(null);
   };
 
-  const rateNote = describeDetectedRates(result.taxRatePercent, result.serviceRatePercent);
+  const rateNote = describeDetectedRates(result.taxRatePercent, result.serviceRatePercent, t);
 
   const handleContinue = () => {
     flushAllPriceDrafts();
@@ -214,13 +215,13 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
         <View key={index} style={styles.itemCard}>
           <View style={styles.itemRow}>
             <TextInput
-              accessibilityLabel={`Item ${index + 1} name`}
+              accessibilityLabel={t('extracted.a11yItemName', { index: index + 1 })}
               style={styles.nameInput}
               value={item.name}
               onChangeText={(text) => updateItemName(index, text)}
             />
             <TextInput
-              accessibilityLabel={`Item ${index + 1} price in Egyptian pounds`}
+              accessibilityLabel={t('extracted.a11yItemPrice', { index: index + 1 })}
               style={[styles.priceInput, priceErrors[index] && styles.inputError]}
               keyboardType="decimal-pad"
               value={priceDrafts[index] ?? formatPiastresAsEGP(item.pricePiastres)}
@@ -234,7 +235,7 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
           <View style={styles.quantityRow}>
             <Text style={styles.quantityLabel}>{t('extracted.quantity')}</Text>
             <QuantityStepper
-              accessibilityLabel={`${item.name} quantity`}
+              accessibilityLabel={t('extracted.a11yItemQuantity', { item: item.name })}
               value={item.quantity}
               min={1}
               onChange={(next) => updateItemQuantity(index, next)}
@@ -291,19 +292,21 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
   );
 }
 
+/** `t` is injected — plain helper, no hook available here. */
 function describeDetectedRates(
   taxRatePercent: number | undefined,
   serviceRatePercent: number | undefined,
+  t: Translate,
 ): string | null {
   if (taxRatePercent === undefined && serviceRatePercent === undefined) {
     return null;
   }
   const parts: string[] = [];
   if (taxRatePercent !== undefined) {
-    parts.push(`${taxRatePercent}% tax`);
+    parts.push(t('extracted.detectedTax', { rate: taxRatePercent }));
   }
   if (serviceRatePercent !== undefined) {
-    parts.push(`${serviceRatePercent}% service`);
+    parts.push(t('extracted.detectedService', { rate: serviceRatePercent }));
   }
-  return `Detected ${parts.join(' and ')} on the receipt — you'll confirm this next.`;
+  return t('extracted.detectedNote', { rates: parts.join(` ${t('summary.listAnd')} `) });
 }
