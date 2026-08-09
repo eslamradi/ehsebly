@@ -112,6 +112,7 @@ export const ar: Translations = {
     addedItemsNote: 'الحاجات اللي بتضيفها (زي التوصيل) بتتقسم بالتساوي على الكل.',
     a11yItemName: 'اسم الصنف {index}',
     a11yItemPrice: 'سعر الصنف {index} بالجنيه',
+    a11yQuantityToggle: 'غيّر عدد {item}',
     a11yItemQuantity: 'عدد {item}',
     priceUnreadableShort: 'مقدرناش نقرا السعر ده.',
     detectedTax: 'ضريبة {rate}%',

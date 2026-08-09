@@ -34,6 +34,23 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
         },
         itemRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
         quantityRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+        // The stepper used to occupy a permanent second row on every card —
+        // ~44pt each, rendered thirty times on a grocery receipt to serve the
+        // handful of lines that aren't quantity 1. It's now behind this badge,
+        // which shows the count and opens the stepper when tapped.
+        quantityBadge: {
+          minWidth: 44,
+          minHeight: 44,
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingHorizontal: spacing.sm,
+          borderRadius: radii.sm,
+          borderWidth: 1,
+          borderColor: theme.colors.line,
+        },
+        quantityBadgeActive: { borderColor: theme.colors.accent, backgroundColor: theme.colors.accentSoft },
+        quantityBadgeText: { fontFamily: theme.fonts.monoRegular, fontSize: 13, color: theme.colors.inkFaint },
+        quantityBadgeTextActive: { color: theme.colors.accent },
         quantityLabel: { fontFamily: theme.fonts.sansRegular, fontSize: 14, color: theme.colors.inkSoft },
         nameInput: {
           flex: 1,
@@ -105,6 +122,10 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
   const [newItemName, setNewItemName] = useState('');
   const [newItemPriceDraft, setNewItemPriceDraft] = useState('');
   const [addItemError, setAddItemError] = useState<string | null>(null);
+  // One stepper open at a time, so a long list can't be pushed around by
+  // several expanded rows at once (same rule as the assignment screen's
+  // amounts panel).
+  const [openQuantityIndex, setOpenQuantityIndex] = useState<number | null>(null);
 
   const handleBackToCamera = () => {
     clearPhoto();
@@ -220,6 +241,17 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
               value={item.name}
               onChangeText={(text) => updateItemName(index, text)}
             />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ expanded: openQuantityIndex === index }}
+              accessibilityLabel={t('extracted.a11yQuantityToggle', { item: item.name })}
+              style={[styles.quantityBadge, item.quantity > 1 && styles.quantityBadgeActive]}
+              onPress={() => setOpenQuantityIndex((previous) => (previous === index ? null : index))}
+            >
+              <Text style={[styles.quantityBadgeText, item.quantity > 1 && styles.quantityBadgeTextActive]}>
+                ×{item.quantity}
+              </Text>
+            </Pressable>
             <TextInput
               accessibilityLabel={t('extracted.a11yItemPrice', { index: index + 1 })}
               style={[styles.priceInput, priceErrors[index] && styles.inputError]}
@@ -232,15 +264,17 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
               onBlur={() => commitPriceDraft(index)}
             />
           </View>
-          <View style={styles.quantityRow}>
-            <Text style={styles.quantityLabel}>{t('extracted.quantity')}</Text>
-            <QuantityStepper
-              accessibilityLabel={t('extracted.a11yItemQuantity', { item: item.name })}
-              value={item.quantity}
-              min={1}
-              onChange={(next) => updateItemQuantity(index, next)}
-            />
-          </View>
+          {openQuantityIndex === index && (
+            <View style={styles.quantityRow}>
+              <Text style={styles.quantityLabel}>{t('extracted.quantity')}</Text>
+              <QuantityStepper
+                accessibilityLabel={t('extracted.a11yItemQuantity', { item: item.name })}
+                value={item.quantity}
+                min={1}
+                onChange={(next) => updateItemQuantity(index, next)}
+              />
+            </View>
+          )}
           {priceErrors[index] && (
             <Text style={styles.errorText}>{t('extracted.priceUnreadable')}</Text>
           )}

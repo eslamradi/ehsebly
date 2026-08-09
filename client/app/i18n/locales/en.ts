@@ -93,6 +93,7 @@ export const en = {
     addedItemsNote: 'Added items (like a delivery fee) are divided equally among everyone.',
     a11yItemName: 'Item {index} name',
     a11yItemPrice: 'Item {index} price in Egyptian pounds',
+    a11yQuantityToggle: 'Change quantity for {item}',
     a11yItemQuantity: '{item} quantity',
     priceUnreadableShort: "Couldn't read that price.",
     detectedTax: '{rate}% tax',

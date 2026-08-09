@@ -116,6 +116,7 @@ export const franco: Translations = {
     addedItemsNote: 'El 7agat elly betdayefha (zay el delivery) betetesem bel tasawi 3ala el kol.',
     a11yItemName: 'Esm el senf {index}',
     a11yItemPrice: 'Se3r el senf {index} bel geneh',
+    a11yQuantityToggle: 'Ghayar 3adad {item}',
     a11yItemQuantity: '3adad {item}',
     priceUnreadableShort: 'Ma2derneesh ne2ra el se3r da.',
     detectedTax: '{rate}% dareeba',
