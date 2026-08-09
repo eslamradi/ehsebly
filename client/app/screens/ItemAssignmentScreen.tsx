@@ -216,7 +216,7 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
   const [onlyUnassigned, setOnlyUnassigned] = useState(false);
 
   const handleBack = () => {
-    navigation.navigate('TaxService');
+    navigation.navigate('ExtractedItems');
   };
 
   if (!extractionResult || extractionResult.status !== 'ok' || !taxService) {

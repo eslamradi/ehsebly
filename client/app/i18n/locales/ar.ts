@@ -103,8 +103,8 @@ export const ar: Translations = {
   },
 
   extracted: {
-    title: 'الأصناف',
-    subtitle: 'دوس على أي اسم أو سعر لو القراءة غلط.',
+    title: 'راجع الفاتورة',
+    subtitle: 'دوس على أي حاجة شكلها غلط.',
     checkYourPhotos: 'راجع صورك',
     quantity: 'العدد',
     addItemPlaceholder: 'توصيل، إلخ',
@@ -115,9 +115,6 @@ export const ar: Translations = {
     a11yQuantityToggle: 'غيّر عدد {item}',
     a11yItemQuantity: 'عدد {item}',
     priceUnreadableShort: 'مقدرناش نقرا السعر ده.',
-    detectedTax: 'ضريبة {rate}%',
-    detectedService: 'خدمة {rate}%',
-    detectedNote: 'لقينا {rates} على الفاتورة — هتأكدها في الخطوة الجاية.',
     backToCamera: 'رجوع للكاميرا',
     noExtractedItems: 'مفيش أصناف نعرضها.',
     priceUnreadable: 'مقدرناش نقرا السعر ده — سبنا القيمة القديمة.',
@@ -125,12 +122,13 @@ export const ar: Translations = {
     a11yNewItemName: 'اسم الصنف الجديد',
     a11yNewItemPrice: 'سعر الصنف الجديد بالجنيه',
     a11yAddItem: 'ضيف صنف',
-    a11yContinueTax: 'كمّل للضريبة والخدمة',
+    a11yContinueAssignment: 'كمّل للتوزيع',
+    a11yReceiptPhoto: 'صورة الفاتورة {index}',
     a11yBackToCamera: 'رجوع للكاميرا',
   },
 
   taxService: {
-    title: 'الضريبة والخدمة',
+
     discount: 'خصم',
     tax: 'ضريبة',
     service: 'خدمة',
@@ -138,7 +136,6 @@ export const ar: Translations = {
     subtotal: 'المجموع',
     total: 'الإجمالي',
     off: 'مقفول',
-    nothingToConfirm: 'مفيش حاجة تأكدها لسه.',
     valueUnreadable: 'مقدرناش نقرا ده — سبنا القيمة القديمة.',
     rateUnreadable: 'مقدرناش نقرا النسبة دي — سبنا القيمة القديمة.',
     a11yDiscountToggle: 'فيه خصم على الفاتورة دي',
@@ -152,8 +149,6 @@ export const ar: Translations = {
     a11yServiceRate: 'نسبة الخدمة',
     a11yOtherServiceToggle: 'فيه خدمة تانية على الفاتورة دي',
     a11yOtherServiceRate: 'نسبة الخدمة التانية',
-    a11yContinueAssignment: 'كمّل لتوزيع الأصناف',
-    a11yBackToExtracted: 'رجوع للأصناف',
   },
 
   assignment: {

@@ -5,7 +5,6 @@ export type RootStackParamList = {
   ExtractedItems: undefined;
   ExtractionFailed: undefined;
   ManualEntry: undefined;
-  TaxService: undefined;
   ItemAssignment: undefined;
   Review: undefined;
   FinalSplit: undefined;

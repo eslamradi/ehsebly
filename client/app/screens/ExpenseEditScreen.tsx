@@ -30,7 +30,7 @@ type EditableItem = {
  * creator. The server independently re-checks this (requireGroupAdmin) —
  * this screen's own gating is a UX nicety, not the real enforcement.
  *
- * Deliberately simpler than TaxServiceScreen/ItemAssignmentScreen's
+ * Deliberately simpler than ChargesLedger/ItemAssignmentScreen's
  * draft-then-commit-on-blur pattern: those exist because session.tsx is
  * shared global state multiple screens touch across an async flow. This
  * screen's whole draft lives in one local `items` array with no other

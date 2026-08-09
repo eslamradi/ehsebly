@@ -1,22 +1,28 @@
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useMemo, useRef, useState } from 'react';
+import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { QuantityStepper } from '../components/QuantityStepper';
 import { formatPiastresAsEGP, parseEGPToPiastres } from '../domain/money';
-import { computeInitialTaxServiceSettings } from '../domain/splitCalculation';
+import { calculateSubtotalPiastres, calculateSplitTotals } from '../domain/splitCalculation';
+import { ChargesLedger, type ChargesLedgerHandle } from '../components/ChargesLedger';
 import { useSplitSession } from '../domain/session';
 import { fonts, radii, spacing, useTheme, textAlignEnd } from '../theme';
 import { useI18n } from '../i18n';
-import type { Translate } from '../domain/share';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ExtractedItems'>;
 
 /**
- * Shown once extraction succeeds. Presents the items as an editable list —
- * not auto-committed (Story 1.2 AC #3). The full review-and-reconcile
- * experience (FR-9) is Story 1.6's scope; this screen only needs to make
- * clear the list isn't locked-in yet.
+ * "Check the receipt" — the single confirmation step between the photo and
+ * assignment. Items are an editable list (Story 1.2 AC #3, not
+ * auto-committed) and the charges ledger sits directly beneath them.
+ *
+ * Items and charges were two screens until the flow consolidation of
+ * 2026-08-09. They were split because each was too tall to share a screen;
+ * compressing both (one row per item, and fusing the rate editors into the
+ * totals panel they duplicated) is what made one screen fit. They belong
+ * together because they answer one question — does this match the paper? —
+ * and answering it used to cost a screen transition in the middle.
  */
 export default function ExtractedItemsScreen({ navigation }: Props) {
   const theme = useTheme();
@@ -96,6 +102,8 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
           borderRadius: radii.sm,
           justifyContent: 'center',
         },
+        photoStrip: { gap: spacing.sm, paddingVertical: spacing.xs },
+        photoThumb: { width: 64, height: 84, borderRadius: radii.sm, backgroundColor: theme.colors.paperRaised },
         actions: { gap: spacing.md },
       }),
     [theme],
@@ -103,6 +111,7 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
 
   const { session, clearPhoto, setExtractionResult, setTaxService } = useSplitSession();
   const result = session.extractionResult;
+  const { taxService } = session;
 
   // Draft text per row index, only while that row's price field has focus.
   // Committing (parsing + writing to session) happens on blur, not on
@@ -126,6 +135,9 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
   // several expanded rows at once (same rule as the assignment screen's
   // amounts panel).
   const [openQuantityIndex, setOpenQuantityIndex] = useState<number | null>(null);
+  // The charges ledger owns its own drafts and error flags; this is how
+  // Continue makes it commit them before we navigate.
+  const ledgerRef = useRef<ChargesLedgerHandle>(null);
 
   const handleBackToCamera = () => {
     clearPhoto();
@@ -180,7 +192,7 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
   };
 
   // Commits every row still mid-edit. Called before navigating away so
-  // TaxServiceScreen's subtotal always reflects the latest typed prices,
+  // the charges ledger's subtotal always reflects the latest typed prices,
   // rather than relying solely on blur having already fired (code review
   // finding, Story 1.3).
   const flushAllPriceDrafts = () => {
@@ -205,24 +217,35 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
     setAddItemError(null);
   };
 
-  const rateNote = describeDetectedRates(result.taxRatePercent, result.serviceRatePercent, t);
-
   const handleContinue = () => {
     flushAllPriceDrafts();
-    // Only seed tax/service defaults the first time — if the fronter has
-    // already confirmed/edited them and came back here (e.g. to fix an
-    // item price), tapping Continue again must not wipe those edits back
-    // to the extraction-detected defaults.
-    if (!session.taxService) {
-      setTaxService(computeInitialTaxServiceSettings(result));
+    // Stay put if a charge field holds an unreadable draft, so the fronter
+    // can see the error instead of navigating away in the tick it was raised.
+    if (ledgerRef.current && !ledgerRef.current.commitAll()) {
+      return;
     }
-    navigation.navigate('TaxService');
+    navigation.navigate('ItemAssignment');
   };
 
   return (
     <ScrollView style={screenStyles.container} contentContainerStyle={screenStyles.content}>
       <Text style={screenStyles.heading}>{t('extracted.title')}</Text>
       <Text style={screenStyles.subheading}>{t('extracted.subtitle')}</Text>
+      {/* The screen's whole job is comparing this transcript against the
+          paper, and until now the paper vanished the moment extraction
+          returned. */}
+      {session.photoUris.length > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoStrip}>
+          {session.photoUris.map((uri, index) => (
+            <Image
+              key={uri}
+              accessibilityLabel={t('extracted.a11yReceiptPhoto', { index: index + 1 })}
+              source={{ uri }}
+              style={styles.photoThumb}
+            />
+          ))}
+        </ScrollView>
+      )}
       {result.imageMismatchWarning && (
         <View style={styles.mismatchBanner}>
           <Text style={styles.mismatchBannerTitle}>{t('extracted.checkYourPhotos')}</Text>
@@ -312,10 +335,18 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
       {addItemError && <Text style={styles.errorText}>{addItemError}</Text>}
       <Text style={styles.note}>{t('extracted.addedItemsNote')}</Text>
 
-      {rateNote && <Text style={styles.note}>{rateNote}</Text>}
-      {result.discountNote && <Text style={styles.note}>{result.discountNote}</Text>}
+      {taxService && (
+        <ChargesLedger
+          ref={ledgerRef}
+          taxService={taxService}
+          setTaxService={setTaxService}
+          subtotalPiastres={calculateSubtotalPiastres(result.items)}
+          discountNote={result.discountNote}
+        />
+      )}
+
       <View style={styles.actions}>
-        <Pressable accessibilityLabel={t('extracted.a11yContinueTax')} style={buttonStyles.primary} onPress={handleContinue}>
+        <Pressable accessibilityLabel={t('extracted.a11yContinueAssignment')} style={buttonStyles.primary} onPress={handleContinue}>
           <Text style={buttonStyles.primaryText}>{t('common.continue')}</Text>
         </Pressable>
         <Pressable accessibilityLabel={t('extracted.a11yBackToCamera')} style={buttonStyles.secondary} onPress={handleBackToCamera}>
@@ -324,23 +355,4 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
       </View>
     </ScrollView>
   );
-}
-
-/** `t` is injected — plain helper, no hook available here. */
-function describeDetectedRates(
-  taxRatePercent: number | undefined,
-  serviceRatePercent: number | undefined,
-  t: Translate,
-): string | null {
-  if (taxRatePercent === undefined && serviceRatePercent === undefined) {
-    return null;
-  }
-  const parts: string[] = [];
-  if (taxRatePercent !== undefined) {
-    parts.push(t('extracted.detectedTax', { rate: taxRatePercent }));
-  }
-  if (serviceRatePercent !== undefined) {
-    parts.push(t('extracted.detectedService', { rate: serviceRatePercent }));
-  }
-  return t('extracted.detectedNote', { rates: parts.join(` ${t('summary.listAnd')} `) });
 }

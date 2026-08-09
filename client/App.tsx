@@ -47,7 +47,6 @@ import ManualEntryScreen from './app/screens/ManualEntryScreen';
 import OtpVerifyScreen from './app/screens/OtpVerifyScreen';
 import ReviewScreen from './app/screens/ReviewScreen';
 import SettleUpScreen from './app/screens/SettleUpScreen';
-import TaxServiceScreen from './app/screens/TaxServiceScreen';
 
 export type { RootStackParamList };
 
@@ -129,7 +128,6 @@ function AppContent() {
             <Stack.Screen name="ExtractedItems" component={ExtractedItemsScreen} />
             <Stack.Screen name="ExtractionFailed" component={ExtractionFailedScreen} />
             <Stack.Screen name="ManualEntry" component={ManualEntryScreen} />
-            <Stack.Screen name="TaxService" component={TaxServiceScreen} />
             <Stack.Screen name="ItemAssignment" component={ItemAssignmentScreen} />
             <Stack.Screen name="Review" component={ReviewScreen} />
             <Stack.Screen name="FinalSplit" component={FinalSplitScreen} />

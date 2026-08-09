@@ -164,7 +164,7 @@ export default function FinalSplitScreen({ navigation }: Props) {
     const groupId = session.group?.groupId;
     clearPhoto();
     // navigation.reset (not navigate) so the whole in-progress stack —
-    // Capture/ExtractedItems/TaxService/ItemAssignment/Review/FinalSplit — is
+    // Capture/ExtractedItems/ItemAssignment/Review/FinalSplit — is
     // discarded rather than left behind for Back to return into with a
     // freshly-cleared session underneath it.
     if (groupId) {

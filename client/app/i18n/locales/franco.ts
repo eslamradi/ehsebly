@@ -107,8 +107,8 @@ export const franco: Translations = {
   },
 
   extracted: {
-    title: 'El asnaf',
-    subtitle: 'Dos 3ala ay esm aw se3r law el 2eraaya ghalat.',
+    title: 'Raga3 el fatura',
+    subtitle: 'Dos 3ala ay 7aga shaklaha ghalat.',
     checkYourPhotos: 'Raga3 soarak',
     quantity: 'El 3adad',
     addItemPlaceholder: 'Delivery, elakh',
@@ -119,9 +119,6 @@ export const franco: Translations = {
     a11yQuantityToggle: 'Ghayar 3adad {item}',
     a11yItemQuantity: '3adad {item}',
     priceUnreadableShort: 'Ma2derneesh ne2ra el se3r da.',
-    detectedTax: '{rate}% dareeba',
-    detectedService: '{rate}% khedma',
-    detectedNote: 'La2ena {rates} 3ala el fatoura — hat2akedha fel khatwa el gaya.',
     backToCamera: 'Rago3 lel kamera',
     noExtractedItems: 'Mafeesh asnaf ne3redha.',
     priceUnreadable: 'Ma2derneesh ne2ra el se3r da — sebna el 2eema el 2adeema.',
@@ -129,12 +126,13 @@ export const franco: Translations = {
     a11yNewItemName: 'Esm el senf el gedeed',
     a11yNewItemPrice: 'Se3r el senf el gedeed bel geneh',
     a11yAddItem: 'Dayef senf',
-    a11yContinueTax: 'Kammel lel dareeba wel khedma',
+    a11yContinueAssignment: 'Kammel lel tawzee3',
+    a11yReceiptPhoto: 'Soret el fatura {index}',
     a11yBackToCamera: 'Rago3 lel kamera',
   },
 
   taxService: {
-    title: 'Dareeba w Khedma',
+
     discount: 'Khasm',
     tax: 'Dareeba',
     service: 'Khedma',
@@ -142,7 +140,6 @@ export const franco: Translations = {
     subtotal: 'El maghmou3',
     total: 'El egmaly',
     off: 'ma2foul',
-    nothingToConfirm: 'Mafeesh 7aga te2akedha lessa.',
     valueUnreadable: 'Ma2derneesh ne2ra da — sebna el 2eema el 2adeema.',
     rateUnreadable: 'Ma2derneesh ne2ra el nesba di — sebna el 2eema el 2adeema.',
     a11yDiscountToggle: 'Feeh khasm 3ala el fatoura di',
@@ -156,8 +153,6 @@ export const franco: Translations = {
     a11yServiceRate: 'Nesbet el khedma',
     a11yOtherServiceToggle: 'Feeh khedma tanya 3ala el fatoura di',
     a11yOtherServiceRate: 'Nesbet el khedma el tanya',
-    a11yContinueAssignment: 'Kammel le tawzee3 el asnaf',
-    a11yBackToExtracted: 'Rago3 lel asnaf',
   },
 
   assignment: {

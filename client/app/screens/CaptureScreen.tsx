@@ -23,6 +23,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { extractReceipt } from '../api/extractReceipt';
 import { useSplitSession } from '../domain/session';
+import { computeInitialTaxServiceSettings } from '../domain/splitCalculation';
 import { fonts, radii, spacing, useTheme } from '../theme';
 import { useI18n } from '../i18n';
 import { MAX_PHOTOS } from '../api/limits';
@@ -95,7 +96,7 @@ export default function CaptureScreen({ navigation, route }: Props) {
   // button — a ref mutates immediately and closes that window regardless of
   // render timing (code review finding, Story 1.2).
   const confirmingRef = useRef(false);
-  const { session, setPhotos, clearPhoto, setExtractionResult } = useSplitSession();
+  const { session, setPhotos, clearPhoto, setExtractionResult, setTaxService } = useSplitSession();
 
   useEffect(() => {
     setFreshPermission(permission);
@@ -293,6 +294,14 @@ export default function CaptureScreen({ navigation, route }: Props) {
       setExtracting(false);
 
       if (result.status === 'ok') {
+        // Seed the charge rates here rather than on the next screen's
+        // Continue press: since the flow consolidation the check screen
+        // renders the rate editors on mount, so they have to be populated
+        // before it opens. The guard is what stops a retake-and-return from
+        // clobbering rates the fronter has already hand-edited.
+        if (!session.taxService) {
+          setTaxService(computeInitialTaxServiceSettings(result));
+        }
         navigation.navigate('ExtractedItems');
       } else {
         navigation.navigate('ExtractionFailed');
@@ -300,7 +309,11 @@ export default function CaptureScreen({ navigation, route }: Props) {
     } finally {
       confirmingRef.current = false;
     }
-  }, [pendingUris, navigation, setExtractionResult, setPhotos]);
+    // `session.taxService` is a real dependency, not decoration: without it
+    // this closure keeps whatever value it saw when it was created, so a
+    // retake-and-return would read a stale `undefined` and re-seed over
+    // rates the fronter had already edited.
+  }, [pendingUris, navigation, setExtractionResult, setPhotos, session.taxService, setTaxService]);
 
   // Camera permission is only required when we actually intend to show the
   // camera — a gallery-only entry (openGalleryOnMount) must never be

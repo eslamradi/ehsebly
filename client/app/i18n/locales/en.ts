@@ -84,8 +84,8 @@ export const en = {
   },
 
   extracted: {
-    title: 'Extracted items',
-    subtitle: 'Tap any name or price to fix an OCR misread.',
+    title: 'Check the receipt',
+    subtitle: 'Tap anything that looks wrong.',
     checkYourPhotos: 'Check your photos',
     quantity: 'Quantity',
     addItemPlaceholder: 'Delivery, etc.',
@@ -96,9 +96,6 @@ export const en = {
     a11yQuantityToggle: 'Change quantity for {item}',
     a11yItemQuantity: '{item} quantity',
     priceUnreadableShort: "Couldn't read that price.",
-    detectedTax: '{rate}% tax',
-    detectedService: '{rate}% service',
-    detectedNote: "Detected {rates} on the receipt — you'll confirm this next.",
     backToCamera: 'Back to Camera',
     noExtractedItems: 'No extracted items to show.',
     priceUnreadable: "Couldn't read that price — kept the previous value.",
@@ -106,12 +103,13 @@ export const en = {
     a11yNewItemName: 'New item name',
     a11yNewItemPrice: 'New item price in Egyptian pounds',
     a11yAddItem: 'Add item',
-    a11yContinueTax: 'Continue to tax and service',
+    a11yContinueAssignment: 'Continue to assignment',
+    a11yReceiptPhoto: 'Receipt photo {index}',
     a11yBackToCamera: 'Back to camera',
   },
 
   taxService: {
-    title: 'Tax & Service',
+
     discount: 'Discount',
     tax: 'Tax',
     service: 'Service',
@@ -119,7 +117,6 @@ export const en = {
     subtotal: 'Subtotal',
     total: 'Total',
     off: 'off',
-    nothingToConfirm: 'Nothing to confirm yet.',
     valueUnreadable: "Couldn't read that — kept the previous value.",
     rateUnreadable: "Couldn't read that rate — kept the previous value.",
     a11yDiscountToggle: 'Discount applies to this receipt',
@@ -133,8 +130,6 @@ export const en = {
     a11yServiceRate: 'Service rate percent',
     a11yOtherServiceToggle: 'Other service applies to this receipt',
     a11yOtherServiceRate: 'Other service rate percent',
-    a11yContinueAssignment: 'Continue to item assignment',
-    a11yBackToExtracted: 'Back to extracted items',
   },
 
   assignment: {
