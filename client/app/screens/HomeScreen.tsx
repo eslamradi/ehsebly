@@ -6,6 +6,7 @@ import { LanguagePicker } from '../components/LanguagePicker';
 import { useI18n } from '../i18n';
 import { fonts, radii, spacing, useTheme } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
+import { GROUPS_ENABLED } from '../featureFlags';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -87,14 +88,16 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.sectionTitleCasual}>{t('home.casualTitle')}</Text>
           <Text style={styles.sectionSubtitleCasual}>{t('home.casualSubtitle')}</Text>
         </Pressable>
-        <Pressable
-          accessibilityLabel={t('home.groupsTitle')}
-          style={[styles.sectionButton, styles.sectionButtonGroups]}
-          onPress={() => navigation.navigate(account ? 'GroupList' : 'EmailEntry')}
-        >
-          <Text style={styles.sectionTitleGroups}>{t('home.groupsTitle')}</Text>
-          <Text style={styles.sectionSubtitleGroups}>{t('home.groupsSubtitle')}</Text>
-        </Pressable>
+        {GROUPS_ENABLED ? (
+          <Pressable
+            accessibilityLabel={t('home.groupsTitle')}
+            style={[styles.sectionButton, styles.sectionButtonGroups]}
+            onPress={() => navigation.navigate(account ? 'GroupList' : 'EmailEntry')}
+          >
+            <Text style={styles.sectionTitleGroups}>{t('home.groupsTitle')}</Text>
+            <Text style={styles.sectionSubtitleGroups}>{t('home.groupsSubtitle')}</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <LanguagePicker />
