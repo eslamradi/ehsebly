@@ -17,7 +17,7 @@ import { ar } from '../app/i18n/locales/ar';
 import { franco } from '../app/i18n/locales/franco';
 import { pluralCategory, type LocaleCode, type PluralForms } from '../app/i18n/plural';
 import { containsArabicScript } from '../app/i18n/script';
-import { LOCALIZED_ERROR_CODES } from '../app/i18n/errorCode';
+import { LOCALIZED_ERROR_CODES, KEY_BY_CODE } from '../app/i18n/errorCode';
 import { ERROR_MESSAGES } from '../../client/backend/worker/src/errors';
 
 let checks = 0;
@@ -242,10 +242,21 @@ function checkArabicScriptDetection(): void {
  */
 function checkErrorCodeCoverage(): void {
   const workerCodes = new Set(Object.keys(ERROR_MESSAGES));
+  const knownKeys = new Set(englishEntries.map(([key]) => key));
+
   for (const code of LOCALIZED_ERROR_CODES) {
     checks++;
     if (!workerCodes.has(code)) {
       fail(`errorCode.ts maps "${code}", which the Worker no longer returns`);
+    }
+
+    // The code existing is only half of it: the key it maps to has to
+    // resolve too, or t() hands back the raw key and the user reads
+    // "errors.noImage".
+    const key = KEY_BY_CODE[code];
+    checks++;
+    if (!knownKeys.has(key)) {
+      fail(`errorCode.ts maps "${code}" to "${key}", which no locale defines`);
     }
   }
 }

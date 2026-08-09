@@ -13,7 +13,7 @@ import type { Translate } from '../domain/share';
  * doesn't know, which is what keeps a newer Worker safe to deploy against an
  * older app: an unrecognised code degrades to English rather than to blank.
  */
-const KEY_BY_CODE: Record<string, string> = {
+export const KEY_BY_CODE: Record<string, string> = {
   extractionUnreachable: 'errors.unreachable',
   extractionUnreadable: 'errors.unreadableResponse',
   extractionUpstreamError: 'errors.upstream',
