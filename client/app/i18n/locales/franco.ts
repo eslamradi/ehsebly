@@ -210,21 +210,11 @@ export const franco: Translations = {
     a11yContinueReview: 'Kammel lel moraga3a',
   },
 
-  review: {
-    title: 'Moraga3a',
-    subtitle: 'Dos 3ala ay esm aw se3r law el 2eraaya ghalat.',
-    confirm: 'Akked el 7esab',
-    nothingToReview: 'Mafeesh 7aga terage3ha lessa.',
-    unassigned: 'Lessa',
-    nameBlank: 'El esm mayenfa3sh yeb2a fady — sebna el 2eema el 2adeema.',
-    priceUnreadable: 'Ma2derneesh ne2ra el se3r da — sebna el 2eema el 2adeema.',
+  reconcile: {
     matchesReceipt: 'Matabe2 lel fatoura',
     doesntMatchReceipt: 'Mesh matabe2 lel fatoura',
     reconciliationDetail: '7asabna {computed} EGP wel maktoub {printed} EGP (far2 {diff} EGP).',
-    a11yItemName: 'Esm el senf {index}',
-    a11yItemPrice: 'Se3r el senf {index} bel geneh',
-    a11yConfirm: 'Akked el 7esab',
-    a11yBackToAssignment: 'Rago3 le tawzee3 el asnaf',
+    noPrintedTotal: 'Mafish egmaly maktoub 3ala el fatoura — mesh han2dar nraga3 3aleh automatic.',
   },
 
   final: {

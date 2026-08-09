@@ -6,7 +6,6 @@ export type RootStackParamList = {
   ExtractionFailed: undefined;
   ManualEntry: undefined;
   ItemAssignment: undefined;
-  Review: undefined;
   FinalSplit: undefined;
   History: undefined;
   HistoryDetail: { entryId: string };

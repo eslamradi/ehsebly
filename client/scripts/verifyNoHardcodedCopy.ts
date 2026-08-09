@@ -22,7 +22,7 @@ const CORE_FILES = [
   'screens/ExtractedItemsScreen.tsx',
   'components/ChargesLedger.tsx',
   'screens/ItemAssignmentScreen.tsx',
-  'screens/ReviewScreen.tsx',
+  'components/ReconciliationBanner.tsx',
   'screens/FinalSplitScreen.tsx',
   'screens/ExtractionFailedScreen.tsx',
   'screens/ManualEntryScreen.tsx',
@@ -36,7 +36,7 @@ const CORE_FILES = [
 /** react-navigation route names — identifiers, never shown to anyone. */
 const ROUTE_NAMES = new Set([
   'Home', 'CasualSplit', 'Capture', 'ExtractedItems', 'ExtractionFailed', 'ManualEntry',
-  'ItemAssignment', 'Review', 'FinalSplit', 'History', 'HistoryDetail', 'EmailEntry', 'OtpVerify',
+  'ItemAssignment', 'FinalSplit', 'History', 'HistoryDetail', 'EmailEntry', 'OtpVerify',
   'GroupList', 'Account', 'CreateGroup', 'GroupDetail', 'ExpenseDetail', 'ExpenseEdit', 'InviteMember', 'SettleUp',
 ]);
 

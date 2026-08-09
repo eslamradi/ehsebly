@@ -181,21 +181,11 @@ export const en = {
     a11yContinueReview: 'Continue to review',
   },
 
-  review: {
-    title: 'Review',
-    subtitle: 'Tap any name or price to fix an OCR misread.',
-    confirm: 'Confirm breakdown',
-    nothingToReview: 'Nothing to review yet.',
-    unassigned: 'Unassigned',
-    nameBlank: "Name can't be blank — kept the previous value.",
-    priceUnreadable: "Couldn't read that price — kept the previous value.",
+  reconcile: {
     matchesReceipt: 'Matches receipt',
     doesntMatchReceipt: "Doesn't match receipt",
     reconciliationDetail: 'Computed {computed} EGP vs printed {printed} EGP (off by {diff} EGP).',
-    a11yItemName: 'Item {index} name',
-    a11yItemPrice: 'Item {index} price in Egyptian pounds',
-    a11yConfirm: 'Confirm breakdown',
-    a11yBackToAssignment: 'Back to item assignment',
+    noPrintedTotal: "No printed total detected on this receipt — can't check against it automatically.",
   },
 
   final: {

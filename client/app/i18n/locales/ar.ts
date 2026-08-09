@@ -206,21 +206,11 @@ export const ar: Translations = {
     a11yContinueReview: 'كمّل للمراجعة',
   },
 
-  review: {
-    title: 'مراجعة',
-    subtitle: 'دوس على أي اسم أو سعر لو القراءة غلط.',
-    confirm: 'أكّد الحساب',
-    nothingToReview: 'مفيش حاجة تراجعها لسه.',
-    unassigned: 'لسه',
-    nameBlank: 'الاسم ماينفعش يبقى فاضي — سبنا القيمة القديمة.',
-    priceUnreadable: 'مقدرناش نقرا السعر ده — سبنا القيمة القديمة.',
+  reconcile: {
     matchesReceipt: 'مطابق للفاتورة',
     doesntMatchReceipt: 'مش مطابق للفاتورة',
     reconciliationDetail: 'حسبنا {computed} ج.م والمكتوب {printed} ج.م (فرق {diff} ج.م).',
-    a11yItemName: 'اسم الصنف {index}',
-    a11yItemPrice: 'سعر الصنف {index} بالجنيه',
-    a11yConfirm: 'أكّد الحساب',
-    a11yBackToAssignment: 'رجوع لتوزيع الأصناف',
+    noPrintedTotal: 'مفيش إجمالي مكتوب على الفاتورة — مش هنقدر نراجع عليه أوتوماتيك.',
   },
 
   final: {

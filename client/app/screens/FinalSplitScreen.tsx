@@ -7,6 +7,7 @@ import { useAccount } from '../domain/account';
 import { saveSplitToHistory } from '../domain/history';
 import { useSplitSession } from '../domain/session';
 import { calculateSplitTotals, calculateSubtotalPiastres } from '../domain/splitCalculation';
+import { ReconciliationBanner } from '../components/ReconciliationBanner';
 import { spacing, useTheme } from '../theme';
 import { useI18n } from '../i18n';
 import type { RootStackParamList } from '../navigation/types';
@@ -127,6 +128,12 @@ export default function FinalSplitScreen({ navigation }: Props) {
     }
     autoSaveRanRef.current = true;
 
+    // Deleting Review removed the deliberate press that used to sit in front
+    // of this write, so a group expense now posts on arrival. That is a gap,
+    // not a decision: the plan's answer is a commit sheet on the assignment
+    // screen. It is not built yet because Groups is currently hidden
+    // (GROUPS_ENABLED in app/featureFlags.ts), so this branch is unreachable
+    // — build the sheet before that flag goes back to true.
     if (session.group && session.group.paidByMemberId) {
       void postToGroup();
       return;
@@ -153,7 +160,7 @@ export default function FinalSplitScreen({ navigation }: Props) {
    * through History or the group's expense detail instead.
    */
   const handleBackFromEmptyState = () => {
-    navigation.navigate('Review');
+    navigation.navigate('ItemAssignment');
   };
 
   const handleStartNewSplit = () => {
@@ -164,7 +171,7 @@ export default function FinalSplitScreen({ navigation }: Props) {
     const groupId = session.group?.groupId;
     clearPhoto();
     // navigation.reset (not navigate) so the whole in-progress stack —
-    // Capture/ExtractedItems/ItemAssignment/Review/FinalSplit — is
+    // Capture/ExtractedItems/ItemAssignment/FinalSplit — is
     // discarded rather than left behind for Back to return into with a
     // freshly-cleared session underneath it.
     if (groupId) {
@@ -226,6 +233,17 @@ export default function FinalSplitScreen({ navigation }: Props) {
           </Pressable>
         </View>
       )}
+
+      {/* The check that says whether to trust these numbers. It was the last
+          thing Review showed before this screen; with Review gone it belongs
+          next to the figures it is a verdict on. */}
+      <ReconciliationBanner
+        computedTotalPiastres={calculateSplitTotals({
+          subtotalPiastres: calculateSubtotalPiastres(extractionResult.items),
+          ...taxService,
+        }).totalPiastres}
+        printedTotalPiastres={extractionResult.printedTotalPiastres}
+      />
 
       <ShareableSplit
         ref={shareRef}

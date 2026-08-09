@@ -45,7 +45,6 @@ import InviteMemberScreen from './app/screens/InviteMemberScreen';
 import ItemAssignmentScreen from './app/screens/ItemAssignmentScreen';
 import ManualEntryScreen from './app/screens/ManualEntryScreen';
 import OtpVerifyScreen from './app/screens/OtpVerifyScreen';
-import ReviewScreen from './app/screens/ReviewScreen';
 import SettleUpScreen from './app/screens/SettleUpScreen';
 
 export type { RootStackParamList };
@@ -129,7 +128,6 @@ function AppContent() {
             <Stack.Screen name="ExtractionFailed" component={ExtractionFailedScreen} />
             <Stack.Screen name="ManualEntry" component={ManualEntryScreen} />
             <Stack.Screen name="ItemAssignment" component={ItemAssignmentScreen} />
-            <Stack.Screen name="Review" component={ReviewScreen} />
             <Stack.Screen name="FinalSplit" component={FinalSplitScreen} />
             <Stack.Screen name="History" component={HistoryScreen} />
             <Stack.Screen name="HistoryDetail" component={HistoryDetailScreen} />

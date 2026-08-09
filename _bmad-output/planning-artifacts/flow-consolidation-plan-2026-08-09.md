@@ -343,8 +343,14 @@ Each step stands alone, ships independently, and de-risks the next.
 | 2 | **Retarget the commit ceremony** | ✅ shipped | `bb72b89` |
 | 3a | **One-row items** — quantity row → inline `×N` badge | ✅ shipped | `db8b299` |
 | 3b | **Fuse rate editors into the totals panel** | ✅ shipped | `27a3c6d` |
-| 4 | **Merge** Extracted Items + Tax & Service into Check | ⬜ **next** | — |
-| 5 | **Delete Review**; `review.*` → `reconcile.*`; reconciliation on FinalSplit + ShareableSplit | ⬜ | — |
+| 4 | **Merge** Extracted Items + Tax & Service into Check | ✅ shipped | `fdefc66` |
+| 5 | **Delete Review**; `review.*` → `reconcile.*`; reconciliation on FinalSplit | ✅ shipped | (this commit) |
+
+**Outstanding from step 5:** the group commit sheet (§7) is still not built.
+Deleting Review removed the deliberate press in front of the group ledger
+write, so `FinalSplitScreen` now posts on arrival. Unreachable today —
+Groups is hidden behind `GROUPS_ENABLED` — but it must be built before that
+flag returns to true.
 
 If step 5 never ships, the thing that was actually broken is still fixed.
 

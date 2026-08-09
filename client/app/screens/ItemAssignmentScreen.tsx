@@ -331,7 +331,7 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
       return;
     }
     setBlockedMessage(null);
-    navigation.navigate('Review');
+    navigation.navigate('FinalSplit');
   };
 
   const subtotalPiastres = calculateSubtotalPiastres(items);
