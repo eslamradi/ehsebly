@@ -7,22 +7,23 @@ import { createAuthSession } from '../db/authSessions';
 import { activatePendingMembershipsForEmail } from '../db/groups';
 import { sendOtpEmail } from '../brevo';
 import type { RouteHandler } from '../router';
+import { errorResponse } from '../errors';
 
 export const requestOtp: RouteHandler<Env> = async (request, env) => {
   const body = await readJsonBody<{ email?: unknown }>(request);
   if (!body || typeof body.email !== 'string' || !isValidEmail(body.email)) {
-    return jsonResponse({ status: 'error', message: 'A valid email address is required.' }, 400);
+    return errorResponse('emailRequired', 400);
   }
   const email = normalizeEmail(body.email);
 
   if (await isRateLimited(env, email)) {
-    return jsonResponse({ status: 'error', message: 'Too many codes requested — try again later.' }, 429);
+    return errorResponse('tooManyCodes', 429);
   }
 
   const code = await createOtpCode(env, email);
   const sendResult = await sendOtpEmail(env, email, code);
   if (!sendResult.ok) {
-    return jsonResponse({ status: 'error', message: 'Could not send the verification code.' }, 502);
+    return errorResponse('codeSendFailed', 502);
   }
   return jsonResponse({ status: 'sent' });
 };
@@ -37,7 +38,7 @@ const VERIFY_ERROR_MESSAGES: Record<Exclude<VerifyOtpResult, 'ok'>, string> = {
 export const verifyOtp: RouteHandler<Env> = async (request, env) => {
   const body = await readJsonBody<{ email?: unknown; code?: unknown }>(request);
   if (!body || typeof body.email !== 'string' || typeof body.code !== 'string') {
-    return jsonResponse({ status: 'error', message: 'Email and code are required.' }, 400);
+    return errorResponse('emailAndCodeRequired', 400);
   }
   const email = normalizeEmail(body.email);
 

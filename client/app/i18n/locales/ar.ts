@@ -289,6 +289,9 @@ export const ar: Translations = {
   },
 
   errors: {
+    unreadableResponse: 'خدمة القراءة بعتت حاجة مش مفهومة.',
+    upstream: 'حصلت مشكلة في خدمة القراءة — جرّب تاني.',
+    unreadablePrice: 'فيه سعر في الفاتورة مقدرناش نقراه.',
     unreachable: 'مقدرناش نوصل لخدمة القراءة.',
     malformed: 'رد خدمة القراءة مش مفهوم.',
     truncated: 'القراءة اتقطعت — يمكن الفاتورة فيها أصناف كتير.',

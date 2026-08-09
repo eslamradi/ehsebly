@@ -5,6 +5,8 @@ import { useSplitSession } from '../domain/session';
 import { useTheme } from '../theme';
 import { useI18n } from '../i18n';
 import type { Translate } from '../domain/share';
+import { errorMessageForCode } from '../i18n/errorCode';
+import { MAX_PHOTOS } from '../api/limits';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ExtractionFailed'>;
@@ -59,7 +61,9 @@ export default function ExtractionFailedScreen({ navigation }: Props) {
 /** `t` is injected — this is a plain helper, not a component, so it can't hold a hook. */
 function describeFailure(result: ExtractionResult | null, t: Translate): string {
   if (result?.status === 'error') {
-    return result.message;
+    // Prefer the localized string for the Worker's code; its English
+    // `message` is the fallback for a code this build doesn't know.
+    return errorMessageForCode(t, result.code, result.message, { max: MAX_PHOTOS });
   }
   if (result?.status === 'ok') {
     // Defensive: this screen is only navigated to on a non-'ok' result, but

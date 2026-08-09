@@ -2,6 +2,7 @@ import { parsePrintedPriceToPiastres, roundHalfUp } from './money';
 import type { ExtractedItem, ExtractionResponse, FlatFeeLine } from './types';
 import type { Env } from './env';
 import { extractReceiptViaGemini, type GeminiExtractToolInput, type TokenUsage } from './geminiExtract';
+import { errorBody } from './errors';
 
 const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
@@ -270,7 +271,7 @@ async function callSonnetForExtraction(
     // Network failure or AbortController timeout — both collapse to the
     // same error shape the client already handles (AC #5).
     console.error('extractReceiptViaVisionLLM: fetch to vision-LLM API failed', error);
-    return { result: { status: 'error', message: 'Could not reach the extraction service.' }, usage: null };
+    return { result: errorBody('extractionUnreachable'), usage: null };
   } finally {
     clearTimeout(timeout);
   }
@@ -282,7 +283,9 @@ async function callSonnetForExtraction(
     // the real reason (e.g. Anthropic's `error.message`), which the status
     // code alone doesn't explain when this needs debugging later.
     console.error('extractReceiptViaVisionLLM: vision-LLM API returned', response.status, responseText);
-    return { result: { status: 'error', message: `Extraction service returned ${response.status}.` }, usage: null };
+    // The upstream status is diagnostic, not copy — it goes to the log, and
+    // the client shows a localized message for the code.
+    return { result: errorBody('extractionUpstreamError'), usage: null };
   }
 
   let body: unknown;
@@ -290,7 +293,7 @@ async function callSonnetForExtraction(
     body = JSON.parse(responseText);
   } catch (error) {
     console.error('extractReceiptViaVisionLLM: response body was not valid JSON', error, responseText);
-    return { result: { status: 'error', message: 'Extraction service returned an unreadable response.' }, usage: null };
+    return { result: errorBody('extractionUnreadable'), usage: null };
   }
 
   const usage = extractSonnetUsage(body);
@@ -298,7 +301,7 @@ async function callSonnetForExtraction(
   if (isTruncatedResponse(body)) {
     console.error('extractReceiptViaVisionLLM: response was truncated (stop_reason: max_tokens)');
     return {
-      result: { status: 'error', message: 'Extraction was truncated — the receipt may have too many items.' },
+      result: errorBody('extractionTruncated'),
       usage,
     };
   }
@@ -306,7 +309,7 @@ async function callSonnetForExtraction(
   const toolInput = extractToolInput(body);
   if (!toolInput) {
     console.error('extractReceiptViaVisionLLM: tool call input did not match the expected shape');
-    return { result: { status: 'error', message: 'Extraction service response was malformed.' }, usage };
+    return { result: errorBody('extractionMalformed'), usage };
   }
 
   return { result: buildExtractionResponse(toolInput, 'extractReceiptViaVisionLLM'), usage };
@@ -384,7 +387,7 @@ function buildExtractionResponse(toolInput: ExtractReceiptToolInput, sourceLabel
   const parsed = parseItems(toolInput.items);
   if (parsed === null) {
     console.error(`${sourceLabel}: unparseable price or discount text among items`);
-    return { status: 'error', message: 'Extraction service returned an unreadable price.' };
+    return errorBody('extractionUnreadablePrice');
   }
   const { items, discountedItemCount } = parsed;
 

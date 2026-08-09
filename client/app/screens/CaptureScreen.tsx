@@ -25,6 +25,7 @@ import { extractReceipt } from '../api/extractReceipt';
 import { useSplitSession } from '../domain/session';
 import { fonts, radii, spacing, useTheme } from '../theme';
 import { useI18n } from '../i18n';
+import { MAX_PHOTOS } from '../api/limits';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Capture'>;
@@ -33,7 +34,7 @@ const GALLERY_PHOTO_MAX_WIDTH = 2000;
 // Mirrors the Worker's own MAX_IMAGES cap (index.ts) — stopping here means
 // the fronter sees a clear "up to 8" limit instead of tapping past it and
 // only finding out from a 400 after the whole batch uploads.
-const MAX_PHOTOS = 8;
+
 
 /**
  * Reached from HomeScreen — either "Take Photo" (opens straight to the live

@@ -24,7 +24,17 @@ export type WorkerResponseBody =
       image_mismatch_note?: string;
     }
   | { status: 'no_items_found' }
-  | { status: 'error'; message: string };
+  | {
+      status: 'error';
+      /**
+       * Stable machine code from the Worker (src/errors.ts), localized by
+       * `errorMessageForCode`. Optional because a Worker deployed before
+       * codes existed — or any future one returning a code this build hasn't
+       * heard of — still sends `message` as English fallback.
+       */
+      code?: string;
+      message: string;
+    };
 
 export function toExtractionResult(body: WorkerResponseBody): ExtractionResult {
   if (body.status === 'ok') {

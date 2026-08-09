@@ -1,6 +1,7 @@
 import type { Env } from './env';
 import { jsonResponse } from './http';
 import { getUserIdByToken } from './db/authSessions';
+import { errorResponse } from './errors';
 
 export type AuthContext = { userId: string };
 
@@ -15,11 +16,11 @@ export async function requireAuth(request: Request, env: Env): Promise<AuthConte
   const header = request.headers.get('authorization');
   const token = header?.startsWith('Bearer ') ? header.slice('Bearer '.length) : null;
   if (!token) {
-    return jsonResponse({ status: 'error', message: 'Sign-in required.' }, 401);
+    return errorResponse('signInRequired', 401);
   }
   const userId = await getUserIdByToken(env, token);
   if (!userId) {
-    return jsonResponse({ status: 'error', message: 'Sign-in required.' }, 401);
+    return errorResponse('signInRequired', 401);
   }
   return { userId };
 }
@@ -29,7 +30,7 @@ export async function requireGroupMember(env: Env, groupId: string, userId: stri
     .bind(groupId, userId)
     .first<{ id: string }>();
   if (!row) {
-    return jsonResponse({ status: 'error', message: 'Not a member of this group.' }, 403);
+    return errorResponse('notGroupMember', 403);
   }
   return { memberId: row.id };
 }
@@ -43,7 +44,7 @@ export async function requireGroupMember(env: Env, groupId: string, userId: stri
 export async function requireGroupAdmin(env: Env, groupId: string, userId: string): Promise<Record<string, never> | Response> {
   const row = await env.DB.prepare('SELECT id FROM groups WHERE id = ? AND created_by_user_id = ?').bind(groupId, userId).first<{ id: string }>();
   if (!row) {
-    return jsonResponse({ status: 'error', message: 'Only the group creator can do this.' }, 403);
+    return errorResponse('groupAdminOnly', 403);
   }
   return {};
 }

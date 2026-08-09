@@ -17,6 +17,8 @@ import { ar } from '../app/i18n/locales/ar';
 import { franco } from '../app/i18n/locales/franco';
 import { pluralCategory, type LocaleCode, type PluralForms } from '../app/i18n/plural';
 import { containsArabicScript } from '../app/i18n/script';
+import { LOCALIZED_ERROR_CODES } from '../app/i18n/errorCode';
+import { ERROR_MESSAGES } from '../../client/backend/worker/src/errors';
 
 let checks = 0;
 let failures = 0;
@@ -232,6 +234,23 @@ function checkArabicScriptDetection(): void {
   }
 }
 
+/**
+ * Every code the client claims to localize must (a) still exist in the
+ * Worker, and (b) resolve to a real string in all three tables. A renamed
+ * code would otherwise degrade silently to the Worker's English, which looks
+ * like working software.
+ */
+function checkErrorCodeCoverage(): void {
+  const workerCodes = new Set(Object.keys(ERROR_MESSAGES));
+  for (const code of LOCALIZED_ERROR_CODES) {
+    checks++;
+    if (!workerCodes.has(code)) {
+      fail(`errorCode.ts maps "${code}", which the Worker no longer returns`);
+    }
+  }
+}
+
+checkErrorCodeCoverage();
 checkArabicScriptDetection();
 checkPlaceholderParity();
 checkPluralCompleteness();

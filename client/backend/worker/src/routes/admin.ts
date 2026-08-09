@@ -1,6 +1,7 @@
 import type { Env } from '../env';
 import { jsonResponse } from '../http';
 import type { RouteHandler } from '../router';
+import { errorResponse } from '../errors';
 
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) {
@@ -76,7 +77,7 @@ const PERIOD_STATS_COLUMNS = `
  */
 export const getAdminStatsRoute: RouteHandler<Env> = async (request, env) => {
   if (!isAuthorized(request, env)) {
-    return jsonResponse({ status: 'error', message: 'Unauthorized.' }, 401);
+    return errorResponse('unauthorized', 401);
   }
 
   const [overall, last24h, last7d, daily, recent] = await Promise.all([

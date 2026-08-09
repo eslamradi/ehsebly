@@ -270,6 +270,9 @@ export const en = {
     // The Worker replies with a stable machine code rather than English prose,
     // so a new language never means redeploying the backend. `unknown` is the
     // fallback for a code this client build hasn't heard of yet.
+    unreadableResponse: 'The extraction service sent something we could not read.',
+    upstream: 'The extraction service had a problem — try again.',
+    unreadablePrice: 'A price on this receipt could not be read.',
     unreachable: 'Could not reach the extraction service.',
     malformed: 'Extraction service response was malformed.',
     truncated: 'Extraction was truncated — the receipt may have too many items.',

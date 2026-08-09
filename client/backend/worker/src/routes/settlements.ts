@@ -3,6 +3,7 @@ import { jsonResponse, readJsonBody } from '../http';
 import { requireAuth, requireGroupMember } from '../authMiddleware';
 import { insertSettlement } from '../db/settlements';
 import type { RouteHandler } from '../router';
+import { errorResponse } from '../errors';
 
 export const recordSettlementRoute: RouteHandler<Env> = async (request, env, params) => {
   const auth = await requireAuth(request, env);
@@ -32,7 +33,7 @@ export const recordSettlementRoute: RouteHandler<Env> = async (request, env, par
     !Number.isInteger(amountPiastres) ||
     amountPiastres <= 0
   ) {
-    return jsonResponse({ status: 'error', message: 'A valid settlement payload is required.' }, 400);
+    return errorResponse('settlementPayloadInvalid', 400);
   }
 
   // Caller must be a party to the settlement they're recording — otherwise
@@ -40,7 +41,7 @@ export const recordSettlementRoute: RouteHandler<Env> = async (request, env, par
   // members and silently alter their balances (code review finding, high
   // severity, Story 2.6, 2026-07-30).
   if (membership.memberId !== fromMemberId && membership.memberId !== toMemberId) {
-    return jsonResponse({ status: 'error', message: 'You can only record a settlement you are a party to.' }, 403);
+    return errorResponse('settlementNotParty', 403);
   }
 
   // Both member ids must actually belong to this group, not just exist
@@ -67,7 +68,7 @@ export const recordSettlementRoute: RouteHandler<Env> = async (request, env, par
     .all<{ id: string }>();
   const matchedIds = new Set(matchingMembers.map((row) => row.id));
   if (!matchedIds.has(fromMemberId) || !matchedIds.has(toMemberId)) {
-    return jsonResponse({ status: 'error', message: 'Both members must belong to this group.' }, 400);
+    return errorResponse('settlementMembersInvalid', 400);
   }
 
   const settlementId = await insertSettlement(env, params.groupId, fromMemberId, toMemberId, amountPiastres, note, auth.userId);

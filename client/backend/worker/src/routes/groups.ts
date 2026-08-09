@@ -24,6 +24,7 @@ import {
 import { listGroupSettlements } from '../db/settlements';
 import { calculateExpenseTotals, EXPENSE_TOTALS_TOLERANCE_PIASTRES } from '../expenseCalc';
 import type { RouteHandler } from '../router';
+import { errorResponse } from '../errors';
 
 const VALID_GROUP_KINDS: GroupKind[] = ['household', 'trip', 'other'];
 // Matches this codebase's general free-text-field posture — bounded, but
@@ -39,14 +40,14 @@ export const createGroupRoute: RouteHandler<Env> = async (request, env) => {
   const body = await readJsonBody<{ name?: unknown; kind?: unknown }>(request);
   const name = typeof body?.name === 'string' ? body.name.trim() : '';
   if (name.length === 0) {
-    return jsonResponse({ status: 'error', message: 'A group name is required.' }, 400);
+    return errorResponse('groupNameRequired', 400);
   }
   // Missing kind defaults to 'household' (optional field); an explicitly-provided
   // but invalid kind is rejected rather than silently coerced, matching this
   // codebase's established pattern of rejecting malformed input outright
   // (Story 1.6's isValidRateLine fix) instead of guessing.
   if (body?.kind !== undefined && (typeof body.kind !== 'string' || !VALID_GROUP_KINDS.includes(body.kind as GroupKind))) {
-    return jsonResponse({ status: 'error', message: 'Invalid group kind.' }, 400);
+    return errorResponse('groupKindInvalid', 400);
   }
   const kind = typeof body?.kind === 'string' ? (body.kind as GroupKind) : 'household';
 
@@ -76,7 +77,7 @@ export const acceptGroupInviteRoute: RouteHandler<Env> = async (request, env, pa
 
   const member = await acceptGroupInvite(env, params.groupId, auth.userId);
   if (!member) {
-    return jsonResponse({ status: 'error', message: 'No pending invite found for this group.' }, 404);
+    return errorResponse('inviteNotFound', 404);
   }
   return jsonResponse({ status: 'ok', member });
 };
@@ -93,7 +94,7 @@ export const getGroupRoute: RouteHandler<Env> = async (request, env, params) => 
 
   const group = await getGroup(env, params.groupId);
   if (!group) {
-    return jsonResponse({ status: 'error', message: 'Group not found.' }, 404);
+    return errorResponse('groupNotFound', 404);
   }
   const members = await listGroupMembers(env, params.groupId);
   return jsonResponse({ status: 'ok', group, members });
@@ -113,15 +114,15 @@ export const inviteMemberRoute: RouteHandler<Env> = async (request, env, params)
   const email = typeof body?.email === 'string' ? normalizeEmail(body.email) : '';
   const displayName = typeof body?.display_name === 'string' ? body.display_name.trim() : '';
   if (!isValidEmail(email) || displayName.length === 0) {
-    return jsonResponse({ status: 'error', message: 'A valid email address and display name are required.' }, 400);
+    return errorResponse('inviteFieldsRequired', 400);
   }
   if (displayName.length > MAX_DISPLAY_NAME_LENGTH) {
-    return jsonResponse({ status: 'error', message: `Name must be ${MAX_DISPLAY_NAME_LENGTH} characters or fewer.` }, 400);
+    return errorResponse('nameLengthExceeded', 400);
   }
 
   const result = await inviteMember(env, params.groupId, email, displayName, auth.userId);
   if (result === 'already_active') {
-    return jsonResponse({ status: 'error', message: 'That email address is already a member.' }, 409);
+    return errorResponse('alreadyMember', 409);
   }
   if (result === 'already_pending') {
     return jsonResponse({ status: 'error', message: "That email address has already been invited and hasn't joined yet." }, 409);
@@ -240,7 +241,7 @@ export const submitExpenseRoute: RouteHandler<Env> = async (request, env, params
 
   const body = await readJsonBody<SubmitExpenseInput>(request);
   if (!isValidSubmitExpenseInput(body)) {
-    return jsonResponse({ status: 'error', message: 'Malformed expense payload.' }, 400);
+    return errorResponse('expensePayloadMalformed', 400);
   }
 
   const members = await listGroupMembers(env, params.groupId);
@@ -272,12 +273,12 @@ export const updateExpenseRoute: RouteHandler<Env> = async (request, env, params
 
   const existingGroupId = await getExpenseGroupId(env, params.expenseId);
   if (existingGroupId !== params.groupId) {
-    return jsonResponse({ status: 'error', message: 'Expense not found in this group.' }, 404);
+    return errorResponse('expenseNotFound', 404);
   }
 
   const body = await readJsonBody<SubmitExpenseInput>(request);
   if (!isValidSubmitExpenseInput(body)) {
-    return jsonResponse({ status: 'error', message: 'Malformed expense payload.' }, 400);
+    return errorResponse('expensePayloadMalformed', 400);
   }
 
   const members = await listGroupMembers(env, params.groupId);
@@ -308,7 +309,7 @@ export const deleteExpenseRoute: RouteHandler<Env> = async (request, env, params
 
   const existingGroupId = await getExpenseGroupId(env, params.expenseId);
   if (existingGroupId !== params.groupId) {
-    return jsonResponse({ status: 'error', message: 'Expense not found in this group.' }, 404);
+    return errorResponse('expenseNotFound', 404);
   }
 
   await deleteExpense(env, params.expenseId);

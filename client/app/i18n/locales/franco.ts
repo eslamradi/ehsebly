@@ -293,6 +293,9 @@ export const franco: Translations = {
   },
 
   errors: {
+    unreadableResponse: 'Khedmet el 2eraaya ba3atet 7aga mesh mafhouma.',
+    upstream: '7aslet moshkela fe khedmet el 2eraaya — garrab tany.',
+    unreadablePrice: 'Feeh se3r fel fatoura ma2derneesh ne2rah.',
     unreachable: 'Ma2derneesh newsal le khedmet el 2eraaya.',
     malformed: 'Rad khedmet el 2eraaya mesh mafhoum.',
     truncated: 'El 2eraaya et2ata3et — yemken el fatoura feeha asnaf keteer.',

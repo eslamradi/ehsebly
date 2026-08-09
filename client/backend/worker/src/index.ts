@@ -18,6 +18,7 @@ import {
 } from './routes/groups';
 import { recordSettlementRoute } from './routes/settlements';
 import { getAdminStatsRoute } from './routes/admin';
+import { errorResponse, errorBody } from './errors';
 
 export type { Env };
 
@@ -37,7 +38,7 @@ const MAX_IMAGES = 8;
 async function handleExtraction(request: Request, env: Env): Promise<Response> {
   if (!env.ANTHROPIC_API_KEY) {
     console.error('Worker fetch: ANTHROPIC_API_KEY is not configured');
-    return jsonResponse({ status: 'error', message: 'Extraction service is not configured.' }, 500);
+    return errorResponse('extractionNotConfigured', 500);
   }
 
   // The client posts one or more photos as multipart/form-data, all under
@@ -58,16 +59,16 @@ async function handleExtraction(request: Request, env: Env): Promise<Response> {
     );
   } catch (error) {
     console.error('Worker fetch: failed to read request body', error, 'content-type:', request.headers.get('content-type'));
-    return jsonResponse({ status: 'error', message: 'Could not read the uploaded photo(s).' }, 400);
+    return errorResponse('photoUnreadable', 400);
   }
 
   if (imagesBytes.length === 0 || imagesBytes.every((bytes) => bytes.byteLength === 0)) {
     console.error('Worker fetch: no non-empty images found', 'content-type:', request.headers.get('content-type'));
-    return jsonResponse({ status: 'error', message: 'No image received.' }, 400);
+    return errorResponse('photoMissing', 400);
   }
 
   if (imagesBytes.length > MAX_IMAGES) {
-    return jsonResponse({ status: 'error', message: `Too many photos — up to ${MAX_IMAGES} at once.` }, 400);
+    return errorResponse('tooManyPhotos', 400);
   }
 
   const result = await extractReceipt(imagesBytes, env);
@@ -133,6 +134,6 @@ export default {
       return withCors(routed);
     }
 
-    return withCors(genericJsonResponse({ status: 'error', message: 'Not found.' }, 404));
+    return withCors(genericJsonResponse(errorBody('notFound'), 404));
   },
 } satisfies ExportedHandler<Env>;
