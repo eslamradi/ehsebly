@@ -30,7 +30,7 @@ export default function FinalSplitScreen({ navigation }: Props) {
 
   // Guards against saving more than once for the same completed session —
   // native-stack keeps this screen instance mounted if the fronter navigates
-  // back to Review and forward again (re-focusing, not remounting), so an
+  // back to assignment and forward again (re-focusing, not remounting), so an
   // effect dependency alone isn't enough; this ref makes the guard explicit
   // regardless of render timing (same pattern as CaptureScreen's
   // confirmingRef, Story 1.2 code review finding).
@@ -188,7 +188,7 @@ export default function FinalSplitScreen({ navigation }: Props) {
     return (
       <View style={screenStyles.center}>
         <Text style={screenStyles.message}>{t('final.nothingToShow')}</Text>
-        <Pressable accessibilityLabel={t('final.a11yBackToReview')} style={buttonStyles.primary} onPress={handleBackFromEmptyState}>
+        <Pressable accessibilityLabel={t('final.a11yBackToAssignment')} style={buttonStyles.primary} onPress={handleBackFromEmptyState}>
           <Text style={buttonStyles.primaryText}>{t('common.back')}</Text>
         </Pressable>
       </View>

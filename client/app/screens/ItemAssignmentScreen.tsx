@@ -630,7 +630,7 @@ export default function ItemAssignmentScreen({ navigation }: Props) {
         )}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={t('assignment.a11yContinueReview')}
+          accessibilityLabel={t('assignment.a11yContinueBreakdown')}
           style={buttonStyles.primary}
           onPress={handleContinue}
         >

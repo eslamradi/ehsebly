@@ -9,7 +9,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'CasualSplit'>;
 
 /**
  * Casual Splitting's own home — the solo, no-account, single-receipt flow
- * (Epic 1: Capture → Extract → Tax/Service → Assign → Review → Split,
+ * (Epic 1: Capture → Check → Assign → Split,
  * saved to on-device History only). Split out from the top-level Home
  * screen (2026-07-30) so Casual Splitting and Groups read as two clearly
  * separate sections with their own data and screens, rather than a flat

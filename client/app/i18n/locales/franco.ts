@@ -207,7 +207,7 @@ export const franco: Translations = {
     a11yNewPersonName: 'Esm el shakhs el gedeed',
     a11yOnlyUnassigned: 'Warreeny elly lessa me7tag 7ad bas',
     a11yBackToTax: 'Rago3 lel dareeba wel khedma',
-    a11yContinueReview: 'Kammel lel moraga3a',
+    a11yContinueBreakdown: 'Kammel lel ta2seem el neha2y',
   },
 
   reconcile: {
@@ -234,7 +234,7 @@ export const franco: Translations = {
     sessionExpired: 'El session entahet 2abl ma da yeteh7efez fel group — sagel dokhool tany w edkhol el masrouf men el awel.',
     a11yShare: 'Eb3at el 7esab',
     a11yStartNew: 'Ebda2 7esab gedeed',
-    a11yBackToReview: 'Rago3 lel moraga3a',
+    a11yBackToAssignment: 'Rago3 le tawzee3 el asnaf',
   },
 
   summary: {

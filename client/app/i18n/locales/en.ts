@@ -178,7 +178,7 @@ export const en = {
     a11yNewPersonName: "New person's name",
     a11yOnlyUnassigned: 'Show only unassigned items',
     a11yBackToTax: 'Back to tax and service',
-    a11yContinueReview: 'Continue to review',
+    a11yContinueBreakdown: 'Continue to the breakdown',
   },
 
   reconcile: {
@@ -205,7 +205,7 @@ export const en = {
     sessionExpired: 'Your session expired before this could be saved to the group — sign in again, then re-enter this expense.',
     a11yShare: 'Share breakdown',
     a11yStartNew: 'Start new breakdown',
-    a11yBackToReview: 'Back to review',
+    a11yBackToAssignment: 'Back to item assignment',
   },
 
   summary: {

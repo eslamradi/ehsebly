@@ -203,7 +203,7 @@ export const ar: Translations = {
     a11yNewPersonName: 'اسم الشخص الجديد',
     a11yOnlyUnassigned: 'ورّيني اللي لسه محتاج حد بس',
     a11yBackToTax: 'رجوع للضريبة والخدمة',
-    a11yContinueReview: 'كمّل للمراجعة',
+    a11yContinueBreakdown: 'كمّل للتقسيم النهائي',
   },
 
   reconcile: {
@@ -230,7 +230,7 @@ export const ar: Translations = {
     sessionExpired: 'الجلسة انتهت قبل ما ده يتحفظ في المجموعة — سجّل دخول تاني وادخل المصروف من الأول.',
     a11yShare: 'ابعت الحساب',
     a11yStartNew: 'ابدأ حساب جديد',
-    a11yBackToReview: 'رجوع للمراجعة',
+    a11yBackToAssignment: 'رجوع لتوزيع الأصناف',
   },
 
   summary: {
