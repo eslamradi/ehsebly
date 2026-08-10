@@ -3,6 +3,7 @@ node_modules/
 .expo/
 .wrangler/
 .DS_Store
+competitor/
 
 # Store build artifacts — large binaries, downloadable from EAS
 builds/
