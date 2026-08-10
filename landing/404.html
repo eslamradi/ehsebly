@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Page not found — ehsebly</title>
+    <meta name="description" content="That page doesn't exist. Head back to ehsebly." />
+    <!-- Deliberately not indexed: this page exists so Pages can return a real
+         404 status instead of serving the homepage with a 200, which made
+         every mistyped URL look like a valid page to crawlers. -->
+    <meta name="robots" content="noindex, follow" />
+    <meta name="theme-color" content="#faf6ee" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#17181a" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="/assets/icon.png" />
+    <link rel="apple-touch-icon" href="/assets/icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Root-relative so the styling survives a 404 served at any depth. -->
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site">
+      <div class="wrap">
+        <a class="brand" href="/">
+          <img src="/assets/icon.png" alt="ehsebly logo" />
+          <span>ehsebly</span>
+        </a>
+        <nav class="site-nav">
+          <a href="/">Home</a>
+          <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
+        </nav>
+      </div>
+    </header>
+
+    <section>
+      <div class="wrap">
+        <p class="section-label">404</p>
+        <h2>That page isn&rsquo;t here.</h2>
+        <p class="lede">
+          The link may be out of date, or the address may have a typo in it. Nothing is broken on your end.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="/">Back to ehsebly</a>
+          <a class="btn btn-secondary" href="mailto:hi@eslamradi.com?subject=Broken%20link%20on%20ehsebly">Report a broken link</a>
+        </div>
+      </div>
+    </section>
+
+    <footer class="site">
+      <div class="wrap">
+        <span class="copyright">&copy; <span id="year"></span> ehsebly</span>
+        <nav>
+          <a href="/privacy">Privacy Policy</a>
+          <a href="/terms">Terms &amp; Conditions</a>
+          <a href="mailto:hi@eslamradi.com">Contact</a>
+        </nav>
+      </div>
+    </footer>
+
+    <script>
+      document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+  </body>
+</html>
