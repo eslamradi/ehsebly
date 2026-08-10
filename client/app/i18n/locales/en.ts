@@ -30,7 +30,7 @@ export const en = {
     arabic: 'العربية',
     franco: 'Franco',
     switching: 'Switching language…',
-    reopenPrompt: 'Reopen ehsebly to finish switching to Arabic.',
+    reopenPrompt: 'Reopen asemly to finish switching to Arabic.',
   },
 
   home: {
@@ -66,8 +66,8 @@ export const en = {
     a11yCapturedPhotoIndexed: 'Captured receipt photo {index} of {total}',
     captureFailed: "Couldn't capture that photo — try again.",
     openPhotosFailed: "Couldn't open your photos — try again.",
-    grantCamera: 'ehsebly needs your camera to photograph a receipt.',
-    photoPermission: 'ehsebly needs access to your photos to pick a receipt.',
+    grantCamera: 'asemly needs your camera to photograph a receipt.',
+    photoPermission: 'asemly needs access to your photos to pick a receipt.',
     grantCameraAction: 'Grant camera access',
     openSettings: 'Open Settings',
     photoAccessOff: 'Photo access is off. Turn it on in Settings to pick a receipt from your gallery.',
@@ -226,7 +226,7 @@ export const en = {
   },
 
   share: {
-    title: 'Breakdown — ehsebly',
+    title: 'Breakdown — asemly',
     dialogTitle: 'Share breakdown',
     personLine: '{name}: {amount} EGP ({items})',
     discountLine: 'Discount: -{amount} EGP',

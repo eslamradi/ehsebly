@@ -1,6 +1,6 @@
-# ehsebly
+# asemly
 
-Snap a photo of a receipt, let AI extract the line items, and split the bill fairly among friends — including tax, service charges, and discounts. ehsebly also supports ongoing groups (roommates, recurring trips) with a running ledger and settle-up flow.
+Snap a photo of a receipt, let AI extract the line items, and split the bill fairly among friends — including tax, service charges, and discounts. asemly also supports ongoing groups (roommates, recurring trips) with a running ledger and settle-up flow.
 
 - Landing page: https://ehsebly.eslamradi.com
 - Cost/usage dashboard: https://dash.ehsebly.eslamradi.com

@@ -24,7 +24,7 @@ export const RTL_LOCALES: readonly LocaleCode[] = ['ar'];
  */
 export const LOCALE_ORDER: readonly LocaleCode[] = ['en', 'ar'];
 
-const STORAGE_KEY = 'ehsebly.locale';
+const STORAGE_KEY = 'asemly.locale';
 
 /**
  * Dot-path into the string table: `t('assignment.title')`. Typed loosely on

@@ -20,14 +20,14 @@ type AccountContextValue = {
   updateDisplayName: (displayName: string) => Promise<void>;
 };
 
-const ACCOUNT_STORAGE_KEY = 'ehsebly:account';
+const ACCOUNT_STORAGE_KEY = 'asemly:account';
 // expo-secure-store keys must be alphanumeric plus ".", "-", "_" only (no
 // colon) — unlike AsyncStorage above, which has no such restriction. A
 // colon here throws "Invalid key provided to SecureStore" on every
 // platform, not just web (found via web-preview testing, confirmed to
 // also silently break sign-in on-device: it throws inside signIn() right
 // after a successful verify, before the screen navigates away).
-const TOKEN_SECURE_STORE_KEY = 'ehsebly_authToken';
+const TOKEN_SECURE_STORE_KEY = 'asemly_authToken';
 
 const AccountContext = createContext<AccountContextValue | undefined>(undefined);
 

@@ -85,8 +85,8 @@ export const ar: Translations = {
     a11yCapturedPhotoIndexed: 'صورة الفاتورة {index} من {total}',
     captureFailed: 'مقدرناش نصوّر — جرّب تاني.',
     openPhotosFailed: 'مقدرناش نفتح الصور — جرّب تاني.',
-    grantCamera: 'ehsebly محتاج الكاميرا علشان تصوّر الفاتورة.',
-    photoPermission: 'ehsebly محتاج يوصل لصورك علشان تختار فاتورة.',
+    grantCamera: 'asemly محتاج الكاميرا علشان تصوّر الفاتورة.',
+    photoPermission: 'asemly محتاج يوصل لصورك علشان تختار فاتورة.',
     grantCameraAction: 'اسمح بالكاميرا',
     openSettings: 'افتح الإعدادات',
     photoAccessOff: 'الوصول للصور مقفول. افتحه من الإعدادات علشان تختار فاتورة من الاستوديو.',
@@ -248,7 +248,7 @@ export const ar: Translations = {
   },
 
   share: {
-    title: 'الحساب — ehsebly',
+    title: 'الحساب — asemly',
     dialogTitle: 'ابعت الحساب',
     personLine: '{name}: {amount} ج.م ({items})',
     discountLine: 'خصم: -{amount} ج.م',

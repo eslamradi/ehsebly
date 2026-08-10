@@ -14,7 +14,7 @@ export type HistoryEntry = {
   itemAssignments: ItemAssignments;
 };
 
-const HISTORY_STORAGE_KEY = 'ehsebly:history';
+const HISTORY_STORAGE_KEY = 'asemly:history';
 
 function historyPhotosDirectory(): Directory {
   // Paths.document (not Paths.cache) — the original capture/pick URI lives in

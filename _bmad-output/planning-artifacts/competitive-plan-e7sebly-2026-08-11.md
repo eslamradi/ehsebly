@@ -4,7 +4,7 @@
 
 E7sebly is the same product, under the same name, nine months ahead.
 
-| | E7sebly | ehsebly |
+| | E7sebly | asemly |
 |---|---|---|
 | Live since | 29 Nov 2025 (iOS), Play updated 18 Jun 2026 | not released |
 | Traction | **10,000+ installs, 81 reviews, 4.8★** | 42 extractions, 7/day, closed testing |
@@ -19,21 +19,43 @@ work; 10,000 installs is not. Any plan that only closes feature gaps loses.
 
 ---
 
-## 1. Phase 0 — the name (blocks everything else)
+## 1. Phase 0 — the name — DONE, 2026-08-11
 
-Shipping as `ehsebly` means competing for your own name against an incumbent who
-owns it in search, plus real store-review exposure: both stores prohibit names
-confusable with an existing app, and **being second is the losing position**.
+Renamed **ehsebly → asemly** (قاسملي, "split it for me").
 
-- [ ] Decide: rename, or ship and accept the risk. **Default should be rename.**
-- [ ] If keeping the name, get a trademark opinion for Egypt from an agent. This is
-      a lawyer question, not an engineering one.
-- [ ] If renaming: new package id, new Play listing, new domain. Cheaper now than
-      after launch — you have zero users to migrate.
+Why the old name could not ship: `ehsebly` and `e7sebly` are the same word,
+احسبلي, transliterated two ways. Worse, the `e7seb` stem is contested by more
+than one party — `E7seb` (Meena Emad Shafik Ishak, Finance, Jun 2026) opens its
+own store description with "e7sebly (احسبلي)". Any name on the ح-س-ب root walks
+into a crowd.
 
-Nothing below matters if this goes the wrong way. Do it first.
+`asemly` moves to a different root entirely, ق-س-م (to divide), keeps the
+colloquial `-ly` ending that makes the name sound native, and says the more
+accurate verb: split, not calculate. Verified clear on the Egypt App Store;
+Play still to be confirmed.
 
----
+Rejected along the way, with reasons worth keeping:
+
+- `e7sebha` — 71% string similarity to the competitor, differing only in the
+  last two letters. Reads as a knockoff, and your own reels would send people
+  to their listing
+- `hesba` / `7esba` — the right word, but taken twice on the App Store and
+  three times on Play, all Finance, all Egypt
+- `wasl`, `sofra`, `tarabeza`, `taqseem` — the literal vocabulary for receipts
+  and tables is already occupied
+- `2asemly` — correct Egyptian pronunciation, but a digit in a name breaks the
+  channel that matters: nobody can say it aloud in a reel
+
+Consequences now in flight:
+
+- Android `applicationId` is `com.downdev.asemly`. Package segments cannot
+  begin with a digit, which is what ruled out `com.downdev.2asemly`
+- **A new applicationId is a new app on Play.** The closed-testing listing under
+  `com.downdev.ehsebly` cannot be renamed and is abandoned. versionCode restarts
+  at 1
+- The domain move to `asemly.eslamradi.com` needs a DNS record that the stored
+  Cloudflare token cannot write. Until it exists, the site stays on the old
+  domain with the new brand
 
 ## 2. Phase 1 — table stakes (what blocks a credible launch)
 

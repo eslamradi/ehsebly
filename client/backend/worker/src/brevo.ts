@@ -6,7 +6,7 @@ const BREVO_SEND_URL = 'https://api.brevo.com/v3/smtp/email';
 // contact address — reuse it rather than add another secret/var for a
 // single fixed sender.
 const SENDER_EMAIL = 'hi@eslamradi.com';
-const SENDER_NAME = 'ehsebly';
+const SENDER_NAME = 'asemly';
 
 /**
  * Sends the OTP over email via Brevo's transactional email REST API
@@ -40,9 +40,9 @@ export async function sendOtpEmail(env: Env, email: string, code: string): Promi
       body: JSON.stringify({
         sender: { email: SENDER_EMAIL, name: SENDER_NAME },
         to: [{ email }],
-        subject: `Your ehsebly code is ${code}`,
-        htmlContent: `<p>Your ehsebly verification code is <strong>${code}</strong>. It expires in 5 minutes.</p>`,
-        textContent: `Your ehsebly verification code is ${code}. It expires in 5 minutes.`,
+        subject: `Your asemly code is ${code}`,
+        htmlContent: `<p>Your asemly verification code is <strong>${code}</strong>. It expires in 5 minutes.</p>`,
+        textContent: `Your asemly verification code is ${code}. It expires in 5 minutes.`,
       }),
     });
     if (!response.ok) {

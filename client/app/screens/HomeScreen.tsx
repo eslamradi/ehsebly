@@ -22,7 +22,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
  * ledger and vice versa; FinalSplitScreen's `session.group` branch is the
  * only place that distinction is made.
  *
- * No separate "why ehsebly" pitch block (removed 2026-07-30, UI review) —
+ * No separate "why asemly" pitch block (removed 2026-07-30, UI review) —
  * this screen is seen on every app open, not just once, so permanent
  * marketing copy above the actual choices was pure friction for a
  * returning user. Its most concrete claims (Egyptian tax-on-service
@@ -74,8 +74,8 @@ export default function HomeScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.brand}>
-        <Image accessibilityLabel="ehsebly logo" source={require('../../assets/icon.png')} style={styles.logo} />
-        <Text style={styles.title}>ehsebly</Text>
+        <Image accessibilityLabel="asemly logo" source={require('../../assets/icon.png')} style={styles.logo} />
+        <Text style={styles.title}>asemly</Text>
         <Text style={styles.subtitle}>{t('home.tagline')}</Text>
       </View>
 

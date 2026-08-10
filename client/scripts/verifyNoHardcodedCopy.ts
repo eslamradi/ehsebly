@@ -53,9 +53,9 @@ const NON_COPY = new Set([
  * A bare string here is matched anywhere in the core set.
  */
 const ALLOWED: Array<[string, string]> = [
-  ['ehsebly logo', 'brand name, identical in every language'],
+  ['asemly logo', 'brand name, identical in every language'],
   ['Expense breakdown', 'stored on the group ledger — translating per sender would give members different text for one expense'],
-  ['ehsebly', 'brand name'],
+  ['asemly', 'brand name'],
 ];
 
 let failures = 0;

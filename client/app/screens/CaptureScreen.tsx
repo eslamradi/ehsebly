@@ -328,7 +328,7 @@ export default function CaptureScreen({ navigation, route }: Props) {
     if (freshPermission.canAskAgain) {
       return (
         <View style={screenStyles.center}>
-          <Text style={screenStyles.message}>ehsebly needs your camera to photograph a receipt.</Text>
+          <Text style={screenStyles.message}>asemly needs your camera to photograph a receipt.</Text>
           <Pressable accessibilityLabel={t('capture.grantCameraAction')} style={buttonStyles.primary} onPress={requestPermission}>
             <Text style={buttonStyles.primaryText}>{t('capture.grantCameraAction')}</Text>
           </Pressable>
@@ -338,7 +338,7 @@ export default function CaptureScreen({ navigation, route }: Props) {
     return (
       <View style={screenStyles.center}>
         <Text style={screenStyles.message}>
-          Camera access is off, so ehsebly can&apos;t photograph a receipt. Turn it on in
+          Camera access is off, so asemly can&apos;t photograph a receipt. Turn it on in
           Settings to continue.
         </Text>
         <Pressable accessibilityLabel={t('capture.a11yOpenSettings')} style={buttonStyles.primary} onPress={() => Linking.openSettings()}>

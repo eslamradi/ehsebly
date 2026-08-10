@@ -4,7 +4,7 @@ import type { Translations } from './en';
  * Franco (Arabizi) — the same Egyptian colloquial Arabic as `ar.ts`, written
  * in Latin script with digits standing in for sounds Latin letters don't
  * cover. This is how a large share of Egyptians actually type, and the app's
- * own name is already Franco: ehsebly = احسبلي.
+ * own name is already Franco: asemly = احسبلي.
  *
  * Conventions held consistently across this file, since Franco has no
  * standard orthography:
@@ -89,8 +89,8 @@ export const franco: Translations = {
     a11yCapturedPhotoIndexed: 'Sooret el fatoura {index} men {total}',
     captureFailed: 'Ma2derneesh nesawwar — garrab tany.',
     openPhotosFailed: 'Ma2derneesh neftah el soar — garrab tany.',
-    grantCamera: 'ehsebly me7tag el kamera 3ashan tesawwar el fatoura.',
-    photoPermission: 'ehsebly me7tag yewsal le soarak 3ashan tekhtar fatoura.',
+    grantCamera: 'asemly me7tag el kamera 3ashan tesawwar el fatoura.',
+    photoPermission: 'asemly me7tag yewsal le soarak 3ashan tekhtar fatoura.',
     grantCameraAction: 'Esma7 bel kamera',
     openSettings: 'Efta7 el settings',
     photoAccessOff: 'El wosool lel soar ma2foul. Efta7o men el settings 3ashan tekhtar fatoura men el studio.',
@@ -252,7 +252,7 @@ export const franco: Translations = {
   },
 
   share: {
-    title: 'El 7esab — ehsebly',
+    title: 'El 7esab — asemly',
     dialogTitle: 'Eb3at el 7esab',
     personLine: '{name}: {amount} EGP ({items})',
     discountLine: 'Khasm: -{amount} EGP',
