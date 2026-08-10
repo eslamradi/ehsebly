@@ -43,24 +43,22 @@
     <div class="wrap">
       <a class="back-link" href="index.html">&larr; Back to ehsebly</a>
       <h1>Privacy Policy</h1>
-      <p class="updated">Last updated: July 30, 2026</p>
+      <p class="updated">Last updated: August 10, 2026</p>
 
       <p>
         ehsebly ("ehsebly", "we", "us") is a small, personal-project app for breaking down restaurant bills, built and
         operated by Eslam Radi. This policy explains what information ehsebly collects, why, and what we do (and
-        don't do) with it. It's currently a private test build shared with friends and family, not a public product —
-        this policy will be revisited before any wider release.
+        don't do) with it. It's currently a private test build shared with friends and family, not a public product, and this policy will be revisited before any wider release.
       </p>
 
       <h2>1. The two ways ehsebly handles your data</h2>
       <p>
-        ehsebly has two separate modes, and they handle data differently — using one never sends data to the other.
+        ehsebly has two separate modes, and they handle data differently. Using one never sends data to the other.
       </p>
       <ul>
         <li>
           <strong>Casual Breakdown</strong> requires no sign-up and no account. When you photograph a receipt, the
-          photo is sent to our backend, which forwards it to our vision-AI provider (Anthropic) purely to read the
-          items and prices off it, and returns the result to your device. We do not store your receipt photos or the
+          photo is sent to our backend, which forwards it to a vision-AI provider purely to read the items and prices off it, then returns the result to your device. Every receipt goes to Google (Gemini) first. If that reading isn't confident enough, the same photo is also sent to Anthropic (Claude) for a second attempt. Neither provider receives your email address, your name, or any Groups data. We do not store your receipt photos or the
           resulting breakdown on our servers. Your breakdown history is saved only locally, on your own device.
         </li>
         <li>
@@ -74,30 +72,30 @@
 
       <h2>2. How sign-in works</h2>
       <p>
-        Groups sign-in uses a one-time code sent to your email address (through Brevo, our email provider) —
-        no password. We store a hashed version of that code and of your session token, not the plain values, so a
+        Groups sign-in uses a one-time code sent to your email address through Brevo, our email provider. There is no password. We store a hashed version of that code and of your session token, not the plain values, so a
         leaked database row on its own can't be used to sign in as you.
       </p>
 
       <h2>3. Who we share data with</h2>
       <p>Only the service providers needed to run ehsebly itself see any of your data, and only for that purpose:</p>
       <ul>
-        <li><strong>Anthropic</strong> — reads the text and prices off a receipt photo you submit in Casual Breakdown. It does not receive your email address, name, or any Groups data.</li>
-        <li><strong>Brevo</strong> — delivers the one-time sign-in code by email when you sign in to Groups.</li>
-        <li><strong>Cloudflare</strong> — hosts our backend and database (Groups data only; Casual Breakdown never touches this database).</li>
+        <li><strong>Google</strong> reads the text and prices off a receipt photo you submit in Casual Breakdown. This is the first and usually the only reading.</li>
+          <li><strong>Anthropic</strong> reads the same photo when Google's result isn't confident enough to use. Neither provider receives your email address, name, or any Groups data.</li>
+        <li><strong>Brevo</strong> delivers the one-time sign-in code by email when you sign in to Groups.</li>
+        <li><strong>Cloudflare</strong> hosts our backend and database (Groups data only; Casual Breakdown never touches this database).</li>
       </ul>
-      <p>We do not sell your data, and we do not use it for advertising — ehsebly has no ads and no analytics/tracking SDKs.</p>
+      <p>We do not sell your data, and we do not use it for advertising. ehsebly has no ads and no analytics or tracking SDKs.</p>
 
       <h2>4. What ehsebly never does</h2>
       <ul>
-        <li>ehsebly never moves, holds, or has access to your money. It only computes and displays a number — settling up happens outside the app (InstaPay, Vodafone Cash, cash, or however you already do it).</li>
-        <li>ehsebly does not request access to your contacts list broadly — inviting someone to a group uses your device's native contact picker, which only shares the one contact you explicitly select, and ehsebly never sees your full address book.</li>
+        <li>ehsebly never moves, holds, or has access to your money. It only computes and displays a number. Settling up happens outside the app, via InstaPay, Vodafone Cash, cash, or however you already do it.</li>
+        <li>ehsebly does not request broad access to your contacts list. Inviting someone to a group uses your device's native contact picker, which shares only the one contact you explicitly select, so ehsebly never sees your full address book.</li>
       </ul>
 
       <h2>5. Your choices</h2>
       <p>
         You can stop using Casual Breakdown at any time with nothing to delete server-side, since nothing is stored
-        there. For Groups, email us (below) to request that your account and associated data be deleted — we'll
+        there. For Groups, email us (below) to request that your account and associated data be deleted. We'll
         remove your email address, name, and membership records; a group's shared expense history may be retained for
         the other members unless the whole group is deleted.
       </p>
@@ -107,8 +105,7 @@
 
       <h2>7. Changes to this policy</h2>
       <p>
-        If this policy changes in a way that matters — especially before any wider release than friends and family —
-        we'll update the date above and, where practical, tell existing Groups users directly.
+        If this policy changes in a way that matters, especially before any wider release than friends and family, we'll update the date above and, where practical, tell existing Groups users directly.
       </p>
 
       <h2>8. Contact</h2>
