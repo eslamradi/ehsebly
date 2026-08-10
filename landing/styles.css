@@ -214,6 +214,10 @@ nav.site-nav a:hover {
 .phone-stack {
   display: flex;
   justify-content: center;
+  /* Without this the flex default (stretch) pulls the un-offset phone down to
+     match its offset neighbour, leaving bare frame below its screenshot —
+     invisible against a dark background, a white slab in light mode. */
+  align-items: flex-start;
   gap: 24px;
   position: relative;
 }
@@ -300,7 +304,7 @@ h2 {
 
 .steps-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   margin-top: 32px;
 }
