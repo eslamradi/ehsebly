@@ -36,17 +36,22 @@ export const ar: Translations = {
 
   home: {
     tagline: 'احسب الفاتورة في كام ضغطة — من غير آلة حاسبة ولا تخمين في الضريبة.',
+    casualTitle: 'حساب سريع',
+    casualSubtitle: 'من غير تسجيل — صوّر الفاتورة و 14% ضريبة هتتحسب صح على 12% خدمة، أوتوماتيك.',
     groupsTitle: 'مجموعات',
     groupsSubtitle: 'بيت أو رحلة — حساب ماشي معاك. سدّد بإنستاباي أو فودافون كاش أو كاش.',
   },
 
   casual: {
+    title: 'حساب سريع',
+    subtitle: 'احسب فاتورة واحدة في كام ضغطة — من غير تسجيل.',
     takePhoto: 'صوّر',
     chooseFromGallery: 'اختار من الصور',
     history: 'السجل',
     a11yTakePhoto: 'صوّر الفاتورة',
     a11yChooseFromGallery: 'اختار صورة من الاستوديو',
     a11yHistory: 'اعرض سجل الحسابات',
+    a11yBackHome: 'رجوع للرئيسية',
   },
 
   capture: {

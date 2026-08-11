@@ -17,6 +17,7 @@ import { join } from 'node:path';
 
 const CORE_FILES = [
   'screens/HomeScreen.tsx',
+  'screens/CasualSplitScreen.tsx',
   'screens/CaptureScreen.tsx',
   'screens/ExtractedItemsScreen.tsx',
   'components/ChargesLedger.tsx',
@@ -34,7 +35,7 @@ const CORE_FILES = [
 
 /** react-navigation route names — identifiers, never shown to anyone. */
 const ROUTE_NAMES = new Set([
-  'Home', 'Capture', 'ExtractedItems', 'ExtractionFailed', 'ManualEntry',
+  'Home', 'CasualSplit', 'Capture', 'ExtractedItems', 'ExtractionFailed', 'ManualEntry',
   'ItemAssignment', 'FinalSplit', 'History', 'HistoryDetail', 'EmailEntry', 'OtpVerify',
   'GroupList', 'Account', 'CreateGroup', 'GroupDetail', 'ExpenseDetail', 'ExpenseEdit', 'InviteMember', 'SettleUp',
 ]);

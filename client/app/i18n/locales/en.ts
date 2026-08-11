@@ -35,17 +35,22 @@ export const en = {
 
   home: {
     tagline: 'Break down a receipt in a few taps — no calculator, no guessing the tax.',
+    casualTitle: 'Casual Breakdown',
+    casualSubtitle: 'No sign-up — snap a receipt and 14% tax compounds correctly on 12% service, automatically.',
     groupsTitle: 'Groups',
     groupsSubtitle: 'Households and trips — a running ledger. Settle up via InstaPay, Vodafone Cash, or cash.',
   },
 
   casual: {
+    title: 'Casual Breakdown',
+    subtitle: 'Break down one receipt in a few taps — no sign-up.',
     takePhoto: 'Take Photo',
     chooseFromGallery: 'Choose from Gallery',
     history: 'History',
     a11yTakePhoto: 'Take a photo of a receipt',
     a11yChooseFromGallery: 'Choose photo from gallery',
     a11yHistory: 'View breakdown history',
+    a11yBackHome: 'Back to home',
   },
 
   capture: {

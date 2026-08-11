@@ -28,6 +28,7 @@ import { useTheme } from './app/theme';
 import type { RootStackParamList } from './app/navigation/types';
 import AccountScreen from './app/screens/AccountScreen';
 import CaptureScreen from './app/screens/CaptureScreen';
+import CasualSplitScreen from './app/screens/CasualSplitScreen';
 import CreateGroupScreen from './app/screens/CreateGroupScreen';
 import ExpenseDetailScreen from './app/screens/ExpenseDetailScreen';
 import ExpenseEditScreen from './app/screens/ExpenseEditScreen';
@@ -121,6 +122,7 @@ function AppContent() {
             screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.paper } }}
           >
             <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="CasualSplit" component={CasualSplitScreen} />
             <Stack.Screen name="Capture" component={CaptureScreen} />
             <Stack.Screen name="ExtractedItems" component={ExtractedItemsScreen} />
             <Stack.Screen name="ExtractionFailed" component={ExtractionFailedScreen} />

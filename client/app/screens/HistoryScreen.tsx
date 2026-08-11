@@ -69,7 +69,7 @@ export default function HistoryScreen({ navigation }: Props) {
     <ScrollView style={screenStyles.container} contentContainerStyle={screenStyles.content}>
       <View style={styles.headerRow}>
         <Text style={screenStyles.heading}>History</Text>
-        <Pressable accessibilityLabel="Back to home" style={styles.backButton} onPress={() => navigation.navigate('Home')}>
+        <Pressable accessibilityLabel="Back to Casual Breakdown" style={styles.backButton} onPress={() => navigation.navigate('CasualSplit')}>
           <Text style={theme.buttonStyles.secondaryText}>Back</Text>
         </Pressable>
       </View>
