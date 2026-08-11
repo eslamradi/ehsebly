@@ -307,6 +307,7 @@ export default function CaptureScreen({ navigation, route }: Props) {
             computeInitialTaxServiceSettings({
               ...result,
               subtotalPiastres: calculateSubtotalPiastres(result.items),
+              printedSubtotalPiastres: result.printedSubtotalPiastres,
             }),
           );
         }

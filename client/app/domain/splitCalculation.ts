@@ -213,6 +213,62 @@ function inferTaxBasis(detected: {
   return 'subtotalPlusService';
 }
 
+/**
+ * Works out a charge's rate when the receipt printed an amount but no
+ * percentage, by dividing that amount by what it was charged on.
+ *
+ * Drinkies (IMG_5916) prints `Subtotal 3,114.04`, `VAT 435.96`, no percentage
+ * anywhere. 435.96 / 3,114.04 is 13.9998%, so the rate is 14. Dividing by the
+ * total instead gives 12.28%, which looks plausibly like a service rate and
+ * is wrong — the base has to be the subtotal.
+ *
+ * Returns undefined rather than a guess when there is nothing to divide by,
+ * or when the result is not close enough to a sensible rate to trust.
+ */
+function deriveRatePercent(amountPiastres?: number, basePiastres?: number): number | undefined {
+  if (amountPiastres === undefined || !basePiastres) {
+    return undefined;
+  }
+  const rate = (amountPiastres / basePiastres) * 100;
+  if (rate <= 0 || rate > 100) {
+    return undefined;
+  }
+  // Printed rates in Egypt are whole percents, and printed amounts are
+  // rounded to the piastre, so a genuine rate lands very near a whole number.
+  // Anything else means the amount was not simply that rate applied to this
+  // base — Buffalo Burger's VAT covers its delivery fee too, and dividing it
+  // by the subtotal yields 14.93%, which is not a rate anyone charges. Better
+  // to report nothing than to show an invented one.
+  const nearestWhole = Math.round(rate);
+  return Math.abs(rate - nearestWhole) <= 0.1 ? nearestWhole : undefined;
+}
+
+/**
+ * True when the item lines already contain the tax the receipt lists
+ * separately.
+ *
+ * The test is rate-free, which matters because these receipts often print no
+ * percentage: if the items exceed the printed subtotal by exactly the printed
+ * tax, that tax is inside the item prices. Drinkies items sum to 3,550.00
+ * against a subtotal of 3,114.04, a gap of 435.96 — precisely the VAT line.
+ *
+ * Buffalo Burger (ec846673) fails this deliberately: its gap is 94.55 while
+ * its VAT is 100.86, because that VAT also covers the delivery fee. Not the
+ * same number, so not a clean inclusive case, and it stays flagged.
+ */
+function taxLooksIncludedInPrices(detected: {
+  taxAmountPiastres?: number;
+  subtotalPiastres?: number;
+  printedSubtotalPiastres?: number;
+}): boolean {
+  const { taxAmountPiastres, subtotalPiastres, printedSubtotalPiastres } = detected;
+  if (taxAmountPiastres === undefined || subtotalPiastres === undefined || printedSubtotalPiastres === undefined) {
+    return false;
+  }
+  const gap = subtotalPiastres - printedSubtotalPiastres;
+  return gap > 0 && Math.abs(gap - taxAmountPiastres) <= 2;
+}
+
 export function computeInitialTaxServiceSettings(detected: {
   taxRatePercent?: number;
   serviceRatePercent?: number;
@@ -222,21 +278,27 @@ export function computeInitialTaxServiceSettings(detected: {
   subtotalPiastres?: number;
   taxIncludedInPrices?: boolean;
   serviceIncludedInPrices?: boolean;
+  printedSubtotalPiastres?: number;
 }): TaxServiceSettings {
+  // A receipt that prints an amount but no percentage still tells us its rate.
+  const taxRatePercent =
+    detected.taxRatePercent ??
+    deriveRatePercent(detected.taxAmountPiastres, detected.printedSubtotalPiastres);
+  const taxIncludedInPrices = detected.taxIncludedInPrices || taxLooksIncludedInPrices(detected);
   const discountMode: 'flat' | 'percent' = detected.discountFlatPiastres !== undefined ? 'flat' : 'percent';
   return {
     discountEnabled: detected.discountFlatPiastres !== undefined || detected.discountRatePercent !== undefined,
     discountMode,
     discountRatePercent: detected.discountRatePercent ?? 0,
     discountFlatPiastres: detected.discountFlatPiastres ?? 0,
-    taxEnabled: detected.taxRatePercent !== undefined,
-    taxRatePercent: detected.taxRatePercent ?? DEFAULT_TAX_RATE_PERCENT,
+    taxEnabled: taxRatePercent !== undefined,
+    taxRatePercent: taxRatePercent ?? DEFAULT_TAX_RATE_PERCENT,
     serviceEnabled: detected.serviceRatePercent !== undefined,
     serviceRatePercent: detected.serviceRatePercent ?? DEFAULT_SERVICE_RATE_PERCENT,
     otherServiceEnabled: false,
     otherServiceRatePercent: 0,
-    taxBasis: inferTaxBasis(detected),
-    taxIncludedInPrices: detected.taxIncludedInPrices ?? false,
+    taxBasis: inferTaxBasis({ ...detected, taxRatePercent }),
+    taxIncludedInPrices,
     serviceIncludedInPrices: detected.serviceIncludedInPrices ?? false,
   };
 }

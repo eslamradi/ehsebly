@@ -498,6 +498,7 @@ function buildExtractionResponse(toolInput: ExtractReceiptToolInput, sourceLabel
   if (toolInput.printed_subtotal_text !== null) {
     const printedSubtotalPiastres = parsePrintedPriceToPiastres(toolInput.printed_subtotal_text);
     if (printedSubtotalPiastres !== null) {
+      result.printed_subtotal_piastres = printedSubtotalPiastres;
       const itemsSumPiastres = items.reduce((sum, item) => sum + item.price_piastres, 0);
       const differencePiastres = itemsSumPiastres - printedSubtotalPiastres;
       // A piastre either way is the receipt's own rounding, not a discrepancy.

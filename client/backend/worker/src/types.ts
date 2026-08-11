@@ -60,6 +60,14 @@ export type ExtractionResponse =
       discount_line?: DiscountLine;
       flat_fees?: FlatFeeLine[];
       printed_total_piastres?: number;
+      /**
+       * The receipt's own Subtotal line. Together with a charge's printed
+       * amount it yields the rate the receipt used, even when no percentage
+       * is printed anywhere — and it is what reveals tax-inclusive item
+       * pricing, where the item lines sum to the total rather than the
+       * subtotal.
+       */
+      printed_subtotal_piastres?: number;
       // Present only when at least one item had a printed per-item discount
       // (flat or percentage) applied — items[].price_piastres already
       // reflects the discounted amount; this is purely a display note so

@@ -70,5 +70,36 @@ const legacy = calculateSplitTotals({
 });
 eq('legacy entry unchanged', legacy.totalPiastres, 57456);
 
+// Drinkies (IMG_5916): item lines total 3,550.00, Subtotal 3,114.04, VAT
+// 435.96, Total 3,550.00, and no percentage printed anywhere. The tax is
+// already inside the item prices, and the rate is derivable from the amounts.
+const drinkiesItems = [
+  { name: 'Short Distance Deliver', pricePiastres: 3000, quantity: 1 },
+  { name: "Butler's Gin20 Lemon M", pricePiastres: 15000, quantity: 2 },
+  { name: 'Chateau de Granville R', pricePiastres: 105000, quantity: 2 },
+  { name: 'Meister Max Bottle 500', pricePiastres: 156000, quantity: 24 },
+  { name: 'CASTELLO DI TREVI Rose', pricePiastres: 76000, quantity: 2 },
+];
+const drinkiesSub = calculateSubtotalPiastres(drinkiesItems);
+eq('Drinkies item lines sum', drinkiesSub, 355000);
+const drinkies = computeInitialTaxServiceSettings({
+  taxAmountPiastres: 43596, subtotalPiastres: drinkiesSub, printedSubtotalPiastres: 311404,
+});
+console.log(`  derived rate: ${drinkies.taxRatePercent}%, inclusive: ${drinkies.taxIncludedInPrices}`);
+eq('Drinkies derived tax rate is 14%', drinkies.taxRatePercent * 100, 1400);
+if (!drinkies.taxIncludedInPrices) { fail++; console.log('  FAIL  Drinkies tax should be inclusive'); }
+eq(
+  'Drinkies total matches printed 3550.00',
+  calculateSplitTotals({ subtotalPiastres: drinkiesSub, ...drinkies }).totalPiastres,
+  355000,
+);
+
+// Buffalo Burger: gap 94.55 vs VAT 100.86 — not the same, so not inclusive.
+const buffalo = computeInitialTaxServiceSettings({
+  taxAmountPiastres: 10086, subtotalPiastres: 77000, printedSubtotalPiastres: 67545,
+});
+if (buffalo.taxIncludedInPrices) { fail++; console.log('  FAIL  Buffalo must not be treated as inclusive'); }
+else console.log('  PASS  Buffalo correctly not treated as inclusive');
+
 console.log(fail === 0 ? '\n  all basis checks passed' : `\n  ${fail} FAILED`);
 process.exit(fail === 0 ? 0 : 1);

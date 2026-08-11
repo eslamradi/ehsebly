@@ -44,6 +44,8 @@ export type ExtractionResult =
       discountRatePercent?: number;
       discountFlatPiastres?: number;
       printedTotalPiastres?: number;
+      /** The receipt's own Subtotal line, when it printed one. */
+      printedSubtotalPiastres?: number;
       // Set only when at least one item had a printed per-item discount
       // applied server-side — item prices below already reflect it; this
       // is purely a display note so a lower-than-menu price isn't a mystery.

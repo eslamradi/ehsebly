@@ -15,6 +15,7 @@ export type WorkerResponseBody =
   | {
       status: 'ok';
       items: Array<{ name: string; price_piastres: number; quantity: number }>;
+      printed_subtotal_piastres?: number;
       receipt_check?: {
         code: 'itemsDoNotMatchSubtotal';
         items_sum_piastres: number;
@@ -71,6 +72,7 @@ export function toExtractionResult(body: WorkerResponseBody): ExtractionResult {
       // base the percentage was charged on rather than assuming one.
       taxAmountPiastres: body.tax_line?.amount_piastres ?? undefined,
       serviceAmountPiastres: body.service_line?.amount_piastres ?? undefined,
+      printedSubtotalPiastres: body.printed_subtotal_piastres,
       receiptCheck: body.receipt_check
         ? {
             code: body.receipt_check.code,
