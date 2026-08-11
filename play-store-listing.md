@@ -3,26 +3,23 @@
 Paste directly into Play Console's "Main store listing" fields.
 
 ## App name (max 30 chars)
-asemly — Receipt Breakdown
+asemly: split the bill
 
 ## Short description (max 80 chars)
-Break down a restaurant bill in a few taps — Egypt's tax math done right.
+Split a restaurant bill in a few taps, with Egypt's tax math done right.
 
 ## Full description (max 4000 chars)
 
-asemly reads your receipt and tells you exactly who owes what — including the one calculation a quick mental tally always gets wrong: 14% tax compounding on top of 12% service, not the raw subtotal.
+asemly reads your receipt and tells you exactly who owes what. That includes the part people get wrong in their heads: the 14% tax lands on top of the 12% service, not on the subtotal.
 
 HOW IT WORKS
 Photograph the bill, tap through who had what, and asemly does the math. It shows you the printed total right alongside its own computed total, so you can catch a misread price before relying on it.
 
-TWO WAYS TO USE IT
+NO SIGN-UP
+There is no account and no login. Snap a receipt, assign the items, get each person's exact share. The finished breakdown is saved on your device and nowhere else.
 
-Casual Breakdown — no sign-up, no account. Snap a receipt, assign items, get each person's exact share. Nothing is saved anywhere except your own device.
-
-Groups — for a running household or an ongoing trip. Invite people by email, log expenses over time, and see a shared, synced ledger of who owes whom.
-
-WHAT EHSEBLY DOESN'T DO
-No in-app payments. asemly never moves, holds, or has access to your money — it computes a number, and you settle up however you already do (InstaPay, Vodafone Cash, cash, bank transfer). No ads, no analytics or tracking SDKs, no selling your data.
+WHAT ASEMLY DOESN'T DO
+No in-app payments. asemly never moves, holds, or has access to your money. It computes a number, and you settle up however you already do: InstaPay, Vodafone Cash, cash, bank transfer. No ads, no analytics or tracking SDKs, no selling your data.
 
 Currently in closed testing with a limited group of testers.
 
@@ -46,10 +43,10 @@ Based on what's actually in privacy.html. Fill in Play Console's Data Safety que
 
 | Data type | Collected? | Shared? | Purpose |
 |---|---|---|---|
-| Email address | Yes | No | Account management (sign-in) |
-| Name | Yes | No | App functionality (display name in groups) |
-| Photos (receipt images) | Yes, but not stored — forwarded to Anthropic for OCR only, never persisted server-side | Yes (Anthropic, for processing only) | App functionality |
-| Financial info (expense/item amounts, who-paid/who-owes) | Yes (Groups only) | No | App functionality |
+| Email address | Not in this release (Groups is disabled) | No | Account management (sign-in) |
+| Name | Not in this release (Groups is disabled) | No | App functionality (display name in groups) |
+| Photos (receipt images) | Yes, but not stored: forwarded for OCR only, never persisted server-side | Yes (Google for every receipt, Anthropic as fallback, processing only) | App functionality |
+| Financial info (expense/item amounts, who-paid/who-owes) | Not in this release (Groups is disabled) | No | App functionality |
 
 **Is data encrypted in transit?** Yes
 **Can users request data deletion?** Yes (email hi@eslamradi.com)
@@ -63,6 +60,6 @@ Based on what's actually in privacy.html. Fill in Play Console's Data Safety que
 
 # Assets ready to upload
 
-- Hi-res icon (512x512): `/Users/radi/side/asemly/play-store-icon-512.png`
-- Screenshots: `/Users/radi/side/asemly/landing/assets/*.jpg` — ⚠️ some of these (step-*.jpg, final-split.jpg at 323x700) have an aspect ratio of ~2.17:1, which is right at or past Google's stated 2:1 max for screenshots. Play Console may reject them. Let me know if it does and I'll crop/pad them.
+- Hi-res icon (512x512): `/Users/radi/side/ehsebly/play-store-icon-512.png`
+- Screenshots: `/Users/radi/side/ehsebly/landing/assets/*.jpg` — ⚠️ some of these (step-*.jpg, final-split.jpg at 323x700) have an aspect ratio of ~2.17:1, which is right at or past Google's stated 2:1 max for screenshots. Play Console may reject them. Let me know if it does and I'll crop/pad them.
 - Feature graphic (1024x500, required for production track, optional for closed testing): not yet created — say the word if/when you need it.
