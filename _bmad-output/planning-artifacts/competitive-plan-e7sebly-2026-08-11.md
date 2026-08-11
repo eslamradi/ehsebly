@@ -21,7 +21,7 @@ work; 10,000 installs is not. Any plan that only closes feature gaps loses.
 
 ## 1. Phase 0 — the name — DONE, 2026-08-11
 
-Renamed **ehsebly → asemly** (قاسملي, "split it for me").
+Renamed **ehsebly → asemly** (قسملي, "split it for me").
 
 Why the old name could not ship: `ehsebly` and `e7sebly` are the same word,
 احسبلي, transliterated two ways. Worse, the `e7seb` stem is contested by more
