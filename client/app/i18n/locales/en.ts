@@ -33,12 +33,26 @@ export const en = {
     reopenPrompt: 'Reopen asemly to finish switching to Arabic.',
   },
 
+  tabs: {
+    home: 'Home',
+    history: 'History',
+    groups: 'Groups',
+    account: 'Account',
+  },
   home: {
     tagline: 'Break down a receipt in a few taps — no calculator, no guessing the tax.',
     casualTitle: 'Casual Breakdown',
     casualSubtitle: 'No sign-up — snap a receipt and 14% tax compounds correctly on 12% service, automatically.',
     groupsTitle: 'Groups',
     groupsSubtitle: 'Households and trips — a running ledger. Settle up via InstaPay, Vodafone Cash, or cash.',
+    recent: 'Recent',
+    viewAll: 'View all breakdowns',
+    newBreakdown: 'New breakdown',
+    peopleCount: { one: '1 person', other: '{count} people' } as PluralForms,
+    a11yLogo: 'asemly logo',
+    a11yViewAll: 'View all past breakdowns',
+    a11yOpenEntry: 'Open breakdown from {date}',
+    a11yThumbnail: 'Receipt photo',
   },
 
   casual: {

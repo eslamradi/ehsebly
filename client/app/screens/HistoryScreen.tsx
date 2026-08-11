@@ -2,13 +2,17 @@ import { useCallback, useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { CompositeScreenProps } from '@react-navigation/native';
 import { formatPiastresAsEGP } from '../domain/money';
-import { calculateSplitTotals, calculateSubtotalPiastres } from '../domain/splitCalculation';
-import { loadSplitHistory, type HistoryEntry } from '../domain/history';
+import { entryTotalPiastres, loadSplitHistory, type HistoryEntry } from '../domain/history';
 import { fonts, radii, spacing, useTheme } from '../theme';
-import type { RootStackParamList } from '../navigation/types';
+import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'History'>;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<MainTabParamList, 'History'>,
+  NativeStackScreenProps<RootStackParamList>
+>;
 
 /**
  * List of past completed splits (newest first), each saved once by
@@ -69,9 +73,6 @@ export default function HistoryScreen({ navigation }: Props) {
     <ScrollView style={screenStyles.container} contentContainerStyle={screenStyles.content}>
       <View style={styles.headerRow}>
         <Text style={screenStyles.heading}>History</Text>
-        <Pressable accessibilityLabel="Back to Casual Breakdown" style={styles.backButton} onPress={() => navigation.navigate('CasualSplit')}>
-          <Text style={theme.buttonStyles.secondaryText}>Back</Text>
-        </Pressable>
       </View>
 
       {entries === null && <Text style={screenStyles.subheading}>Loading…</Text>}
@@ -103,11 +104,6 @@ export default function HistoryScreen({ navigation }: Props) {
       ))}
     </ScrollView>
   );
-}
-
-function entryTotalPiastres(entry: HistoryEntry): number {
-  const subtotalPiastres = calculateSubtotalPiastres(entry.items);
-  return calculateSplitTotals({ subtotalPiastres, ...entry.taxService }).totalPiastres;
 }
 
 function formatEntryDate(iso: string): string {

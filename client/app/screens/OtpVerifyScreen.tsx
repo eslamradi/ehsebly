@@ -57,9 +57,12 @@ export default function OtpVerifyScreen({ navigation, route }: Props) {
       // GroupList, so this person doesn't show up as their raw email
       // address in every group they're in (2026-07-30 gap).
       if (!result.account.displayName) {
-        navigation.reset({ index: 0, routes: [{ name: 'Account', params: { requireName: true } }] });
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Tabs', params: { screen: 'Account', params: { requireName: true } } }],
+        });
       } else {
-        navigation.reset({ index: 0, routes: [{ name: 'GroupList' }] });
+        navigation.reset({ index: 0, routes: [{ name: 'Tabs', params: { screen: 'GroupList' } }] });
       }
     } catch {
       // Verify already succeeded server-side at this point — a failure here

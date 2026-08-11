@@ -1,6 +1,8 @@
 import { StatusBar } from 'expo-status-bar';
 import { DarkTheme, DefaultTheme, NavigationContainer, type Theme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { useFonts, Fraunces_600SemiBold, Fraunces_700Bold } from '@expo-google-fonts/fraunces';
 import {
   Manrope_400Regular,
@@ -25,10 +27,10 @@ import { AccountProvider } from './app/domain/account';
 import { SplitSessionProvider } from './app/domain/session';
 import { I18nProvider, useI18n } from './app/i18n';
 import { useTheme } from './app/theme';
-import type { RootStackParamList } from './app/navigation/types';
+import { GROUPS_ENABLED } from './app/featureFlags';
+import type { MainTabParamList, RootStackParamList } from './app/navigation/types';
 import AccountScreen from './app/screens/AccountScreen';
 import CaptureScreen from './app/screens/CaptureScreen';
-import CasualSplitScreen from './app/screens/CasualSplitScreen';
 import CreateGroupScreen from './app/screens/CreateGroupScreen';
 import ExpenseDetailScreen from './app/screens/ExpenseDetailScreen';
 import ExpenseEditScreen from './app/screens/ExpenseEditScreen';
@@ -50,6 +52,64 @@ import SettleUpScreen from './app/screens/SettleUpScreen';
 export type { RootStackParamList };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator<MainTabParamList>();
+
+/**
+ * The persistent destinations. Everything reachable from here without losing
+ * your place: where you start a breakdown, what you have already split, your
+ * groups, and your account.
+ *
+ * The bar is deliberately absent from the split flow itself — those screens
+ * are pushed onto the stack above this navigator.
+ */
+/**
+ * Outline when idle, solid when selected — the platform convention, and it
+ * carries the selected state without relying on colour alone.
+ */
+function tabIcon(idle: keyof typeof Ionicons.glyphMap, active: keyof typeof Ionicons.glyphMap) {
+  return function TabBarIcon({ color, size, focused }: { color: string; size: number; focused: boolean }) {
+    return <Ionicons name={focused ? active : idle} size={size} color={color} />;
+  };
+}
+
+function MainTabs() {
+  const { colors } = useTheme();
+  const { t } = useI18n();
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.inkFaint,
+        tabBarStyle: { backgroundColor: colors.paperRaised, borderTopColor: colors.line },
+        tabBarLabelStyle: { fontSize: 11 },
+      }}
+    >
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{ title: t('tabs.home'), tabBarIcon: tabIcon('receipt-outline', 'receipt') }}
+      />
+      <Tab.Screen
+        name="History"
+        component={HistoryScreen}
+        options={{ title: t('tabs.history'), tabBarIcon: tabIcon('time-outline', 'time') }}
+      />
+      {GROUPS_ENABLED ? (
+        <Tab.Screen
+          name="GroupList"
+          component={GroupListScreen}
+          options={{ title: t('tabs.groups'), tabBarIcon: tabIcon('people-outline', 'people') }}
+        />
+      ) : null}
+      <Tab.Screen
+        name="Account"
+        component={AccountScreen}
+        options={{ title: t('tabs.account'), tabBarIcon: tabIcon('person-circle-outline', 'person-circle') }}
+      />
+    </Tab.Navigator>
+  );
+}
 
 /**
  * `useTheme()` calls `useSafeAreaInsets()`, which needs a `SafeAreaProvider`
@@ -118,23 +178,19 @@ function AppContent() {
       <SplitSessionProvider>
         <NavigationContainer theme={navigationTheme}>
           <Stack.Navigator
-            initialRouteName="Home"
+            initialRouteName="Tabs"
             screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.paper } }}
           >
-            <Stack.Screen name="Home" component={HomeScreen} />
-            <Stack.Screen name="CasualSplit" component={CasualSplitScreen} />
+            <Stack.Screen name="Tabs" component={MainTabs} />
             <Stack.Screen name="Capture" component={CaptureScreen} />
             <Stack.Screen name="ExtractedItems" component={ExtractedItemsScreen} />
             <Stack.Screen name="ExtractionFailed" component={ExtractionFailedScreen} />
             <Stack.Screen name="ManualEntry" component={ManualEntryScreen} />
             <Stack.Screen name="ItemAssignment" component={ItemAssignmentScreen} />
             <Stack.Screen name="FinalSplit" component={FinalSplitScreen} />
-            <Stack.Screen name="History" component={HistoryScreen} />
             <Stack.Screen name="HistoryDetail" component={HistoryDetailScreen} />
             <Stack.Screen name="EmailEntry" component={EmailEntryScreen} />
             <Stack.Screen name="OtpVerify" component={OtpVerifyScreen} />
-            <Stack.Screen name="GroupList" component={GroupListScreen} />
-            <Stack.Screen name="Account" component={AccountScreen} />
             <Stack.Screen name="CreateGroup" component={CreateGroupScreen} />
             <Stack.Screen name="GroupDetail" component={GroupDetailScreen} />
             <Stack.Screen name="ExpenseDetail" component={ExpenseDetailScreen} />

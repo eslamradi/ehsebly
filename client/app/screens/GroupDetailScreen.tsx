@@ -114,7 +114,7 @@ export default function GroupDetailScreen({ navigation, route }: Props) {
     <ScrollView style={screenStyles.container} contentContainerStyle={screenStyles.content}>
       <View style={styles.headerRow}>
         <Text style={screenStyles.heading}>{group?.name ?? 'Group'}</Text>
-        <Pressable accessibilityLabel="Back to groups" style={styles.backButton} onPress={() => navigation.navigate('GroupList')}>
+        <Pressable accessibilityLabel="Back to groups" style={styles.backButton} onPress={() => navigation.navigate('Tabs', { screen: 'GroupList' })}>
           <Text style={buttonStyles.secondaryText}>Back</Text>
         </Pressable>
       </View>

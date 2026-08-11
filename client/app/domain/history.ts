@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Directory, File, Paths } from 'expo-file-system';
+import { calculateSplitTotals, calculateSubtotalPiastres } from './splitCalculation';
 import type { ItemAssignments, Person, TaxServiceSettings } from './session';
 
 export type HistoryItem = { name: string; pricePiastres: number; quantity: number };
@@ -81,4 +82,14 @@ export async function loadSplitHistory(): Promise<HistoryEntry[]> {
 export async function loadHistoryEntry(id: string): Promise<HistoryEntry | null> {
   const entries = await loadSplitHistory();
   return entries.find((entry) => entry.id === id) ?? null;
+}
+
+/**
+ * The total a saved breakdown came to. Recomputed from the stored items and
+ * charges rather than persisted, so it always matches what the split screens
+ * would show for the same entry.
+ */
+export function entryTotalPiastres(entry: HistoryEntry): number {
+  const subtotalPiastres = calculateSubtotalPiastres(entry.items);
+  return calculateSplitTotals({ subtotalPiastres, ...entry.taxService }).totalPiastres;
 }

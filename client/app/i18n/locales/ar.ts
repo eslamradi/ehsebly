@@ -34,12 +34,26 @@ export const ar: Translations = {
     reopenPrompt: 'اقفل التطبيق وافتحه تاني علشان اللغة تتظبط.',
   },
 
+  tabs: {
+    home: 'الرئيسية',
+    history: 'السجل',
+    groups: 'المجموعات',
+    account: 'حسابي',
+  },
   home: {
     tagline: 'احسب الفاتورة في كام ضغطة — من غير آلة حاسبة ولا تخمين في الضريبة.',
     casualTitle: 'حساب سريع',
     casualSubtitle: 'من غير تسجيل — صوّر الفاتورة و 14% ضريبة هتتحسب صح على 12% خدمة، أوتوماتيك.',
     groupsTitle: 'مجموعات',
     groupsSubtitle: 'بيت أو رحلة — حساب ماشي معاك. سدّد بإنستاباي أو فودافون كاش أو كاش.',
+    recent: 'الأخيرة',
+    viewAll: 'كل الحسابات',
+    newBreakdown: 'حساب جديد',
+    peopleCount: { zero: 'مفيش حد', one: 'شخص واحد', two: 'شخصين', few: '{count} أشخاص', many: '{count} شخص', other: '{count} شخص' },
+    a11yLogo: 'شعار asemly',
+    a11yViewAll: 'اعرض كل الحسابات السابقة',
+    a11yOpenEntry: 'افتح حساب {date}',
+    a11yThumbnail: 'صورة الفاتورة',
   },
 
   casual: {

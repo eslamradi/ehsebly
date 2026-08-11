@@ -38,12 +38,26 @@ export const franco: Translations = {
     reopenPrompt: 'Ekfel el app w eftaho tany 3ashan el logha tetzabat.',
   },
 
+  tabs: {
+    home: 'El ra2isia',
+    history: 'El segel',
+    groups: 'El magmou3at',
+    account: '7esaby',
+  },
   home: {
     tagline: 'E7seb el fatoura f kam daghta — men gheer alaa 7asba wala takhmeen fel dareeba.',
     casualTitle: '7esab Saree3',
     casualSubtitle: 'Men gheer tasgeel — sawwar el fatoura w 14% dareeba hatetes7eb sa7 3ala 12% khedma, automatic.',
     groupsTitle: 'Groups',
     groupsSubtitle: 'Beit aw re7la — 7esab mashy ma3ak. Saded be InstaPay aw Vodafone Cash aw cash.',
+    recent: 'El akhira',
+    viewAll: 'Kol el 7esabat',
+    newBreakdown: '7esab gedid',
+    peopleCount: { zero: 'Mafish 7ad', one: 'Shakhs wa7ed', two: 'Shakhsein', few: '{count} ashkhas', many: '{count} shakhs', other: '{count} shakhs' },
+    a11yLogo: 'Shi3ar asemly',
+    a11yViewAll: 'E3red kol el 7esabat el sab2a',
+    a11yOpenEntry: 'Efta7 7esab {date}',
+    a11yThumbnail: 'Soret el fatura',
   },
 
   casual: {

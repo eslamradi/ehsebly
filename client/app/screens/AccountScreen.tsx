@@ -1,12 +1,17 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { CompositeScreenProps } from '@react-navigation/native';
 import { updateAccountName } from '../api/groupApi';
 import { useAccount } from '../domain/account';
 import { fonts, radii, spacing, useTheme } from '../theme';
-import type { RootStackParamList } from '../navigation/types';
+import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Account'>;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<MainTabParamList, 'Account'>,
+  NativeStackScreenProps<RootStackParamList>
+>;
 
 // Matches the Worker's MAX_DISPLAY_NAME_LENGTH (routes/account.ts).
 const MAX_NAME_LENGTH = 100;
@@ -66,7 +71,7 @@ export default function AccountScreen({ navigation, route }: Props) {
     }
     await updateDisplayName(result.data.displayName ?? trimmed);
     if (requireName) {
-      navigation.reset({ index: 0, routes: [{ name: 'GroupList' }] });
+      navigation.navigate('GroupList');
     } else {
       navigation.goBack();
     }
@@ -74,7 +79,7 @@ export default function AccountScreen({ navigation, route }: Props) {
 
   const handleSignOut = async () => {
     await signOut();
-    navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+    navigation.navigate('Home');
   };
 
   return (

@@ -27,7 +27,7 @@ export default function HistoryDetailScreen({ navigation, route }: Props) {
     };
   }, [entryId]);
 
-  const handleBack = () => navigation.navigate('History');
+  const handleBack = () => navigation.navigate('Tabs', { screen: 'History' });
 
   const handleShare = () => {
     shareRef.current?.share();

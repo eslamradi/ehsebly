@@ -2,13 +2,18 @@ import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { CompositeScreenProps } from '@react-navigation/native';
 import { acceptGroupInvite, listGroups } from '../api/groupApi';
 import { useAccount } from '../domain/account';
 import type { Group } from '../domain/group';
 import { fonts, radii, spacing, useTheme } from '../theme';
-import type { RootStackParamList } from '../navigation/types';
+import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'GroupList'>;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<MainTabParamList, 'GroupList'>,
+  NativeStackScreenProps<RootStackParamList>
+>;
 
 export default function GroupListScreen({ navigation }: Props) {
   const theme = useTheme();
@@ -88,7 +93,7 @@ export default function GroupListScreen({ navigation }: Props) {
       // name ever set) as well as a fresh sign-in falling through here —
       // OtpVerifyScreen only catches the fresh-sign-in case.
       if (account && !account.displayName) {
-        navigation.replace('Account', { requireName: true });
+        navigation.navigate('Account', { requireName: true });
         return;
       }
       listGroups(token).then((result) => {
