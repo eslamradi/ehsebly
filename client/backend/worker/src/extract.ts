@@ -219,6 +219,8 @@ const RECEIPT_RULES = `Rules:
 - For a tax or service line, transcribe BOTH the percentage and the amount whenever both are printed, e.g. "VAT (14%): 63.00" → rate_percent 14 and amount_egp_text "63.00". Never compute the amount from the rate: restaurants disagree about what the rate is charged on. Some charge tax and service both on the subtotal, others charge tax on the subtotal plus service, and only the printed amount says which happened here.
 - Also set included_in_prices true when the arithmetic says so even if no wording does: if the item lines add up to MORE than the printed Subtotal, and dividing that item sum by (1 + the tax rate) lands on the printed Subtotal, then the item prices already contain the tax. Delivery-app order screens do this routinely — the item cards show what you pay, the Subtotal line is the same figure with tax stripped out.
 - Set included_in_prices true when the receipt states the charge is already inside the item prices rather than added on top — wording like "prices include VAT", "inclusive of service", "الأسعار شاملة الضريبة", "شامل الخدمة". Such a line is informational: the printed total will already contain it, and the subtotal plus the items will already reflect it. Set it false for the ordinary case of a charge added underneath the subtotal.
+- A line showing how the bill was PAID is not a discount, however it is formatted. Payment lines name a method — "Insta Online", "Visa", "Mastercard", "Cash", "Card", "InstaPay", "Vodafone Cash", "فيزا", "كاش", "دفع" — and carry the amount tendered, very often as a negative that cancels the total exactly. Settling a bill does not reduce it. Never report a payment line in discount_line and never treat it as an item.
+- printed_total_text is the receipt's grand total line — "Total", "NET TOTAL", "Amount Due", "الإجمالي", "المجموع". It is never a figure taken from a tax-summary table at the foot of the receipt, where columns of net, tax and rate are listed and a rate of 0 is common. If the only "0" you can see sits in such a table, the printed total is elsewhere on the receipt, or absent.
 - Check line by line for a "Discount", "Coupon", or "Promo" line near Subtotal / fees / Total — these are easy to skim past but change the total. Report it in discount_line whenever one is printed, even faintly or in a different color/highlight than the surrounding text.
 - But a discount only counts if the printed total actually reflects it. "You saved 4", "You save 20%", loyalty-points messaging, and struck-through list prices are promotional badges measuring against a list price that the item prices already account for — they are NOT discount lines, however prominently or colourfully they are displayed. Test before reporting one: if items + fees + printed taxes already equals the printed total on its own, there is no discount to report and discount_line must be null. Only report a discount when subtracting it is what makes the arithmetic reach the printed total.
 - Sanity-check: items + fees + printed taxes − discounts should equal the printed total (allow ±0.05 rounding). If it doesn't, re-examine the image for misread digits (1/7, 0/8, 5/6) and fix only what the image visibly supports. If it still doesn't reconcile, keep every value exactly as printed — never adjust numbers just to force the math to work.
@@ -452,7 +454,18 @@ function buildExtractionResponse(toolInput: ExtractReceiptToolInput, sourceLabel
     // TaxServiceScreen if it's ever wrong or missing.
     if (toolInput.discount_line.amount_egp_text !== null) {
       const discountPiastres = parsePrintedPriceToPiastres(toolInput.discount_line.amount_egp_text);
-      if (discountPiastres !== null) {
+      const itemsSumPiastres = items.reduce((sum, item) => sum + item.price_piastres, 0);
+      if (discountPiastres !== null && discountPiastres >= itemsSumPiastres && itemsSumPiastres > 0) {
+        // A "discount" that cancels the whole bill is a payment line, not a
+        // discount. Spinneys (IMG_8733) prints "Insta Online  -347.22" under a
+        // net total of 347.22, and the model reads the tender as a giveaway,
+        // producing a bill of zero that reconciles perfectly against itself.
+        // Prompt wording alone did not stop it: 2 runs in 5 still did this.
+        // Nobody discounts a grocery basket by 100%.
+        console.error(
+          `${sourceLabel}: discount ${discountPiastres} cancels the ${itemsSumPiastres} subtotal — treating as a payment line, omitting`,
+        );
+      } else if (discountPiastres !== null) {
         result.discount_line = { amount_piastres: discountPiastres };
       } else {
         console.error(`${sourceLabel}: unparseable discount_line amount, omitting`, toolInput.discount_line.amount_egp_text);
@@ -485,7 +498,14 @@ function buildExtractionResponse(toolInput: ExtractReceiptToolInput, sourceLabel
     // not a required field. Same deterministic parser as item prices
     // (no model arithmetic), just a softer failure mode.
     const printedTotalPiastres = parsePrintedPriceToPiastres(toolInput.printed_total_text);
-    if (printedTotalPiastres !== null) {
+    const itemsSumPiastres = items.reduce((sum, item) => sum + item.price_piastres, 0);
+    if (printedTotalPiastres === 0 && itemsSumPiastres > 0) {
+      // A total of zero under non-zero items is not a total. On IMG_8733 it
+      // comes from the tax-summary table at the foot of the receipt, where a
+      // rate column legitimately reads 0. Dropping it costs a reconciliation
+      // check; keeping it asserts the bill was free.
+      console.error(`${sourceLabel}: printed total of 0 under ${itemsSumPiastres} of items, omitting`);
+    } else if (printedTotalPiastres !== null) {
       result.printed_total_piastres = printedTotalPiastres;
     } else {
       console.error(`${sourceLabel}: unparseable printed total text, omitting from response`, toolInput.printed_total_text);
