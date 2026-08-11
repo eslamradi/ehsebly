@@ -14,6 +14,25 @@ client's own arithmetic, so each figure below is what the app would show.
 **No receipt produces a silently wrong number.** Every one either matches, is
 flagged, or is declined.
 
+### 16/27 is the wrong denominator
+
+Four of the 27 are not receipts. IMG_2441 and IMG_3538 are body-composition
+printouts — a pharmacy scale slip and a DIXY "Check All Program" slip, listing
+height, weight, BMI and body fat with no items and no prices. IMG_2442 and
+IMG_3539 are their pairs. Declining them is the correct answer, not a miss.
+
+Of the 23 real receipts:
+
+| | |
+|---|---|
+| Itemised, self-consistent, legible | **16 — all 16 reconcile** |
+| Part of the bill never itemised by the receipt | 3 |
+| Receipt's own arithmetic does not add up (flagged) | 3 |
+| Receipt's own rounding, 10 piastres | 1 |
+
+So the app reconciles **every receipt that can be reconciled**, and reports
+the rest rather than inventing a number for them.
+
 ---
 
 ## Per receipt
@@ -115,10 +134,11 @@ receipt's own rounding.
 
 ### Declined
 
-**IMG_2441, IMG_2442, IMG_3538, IMG_3539** return `no_items_found`. Declining
-is the correct behaviour when a photo is not legible, but four out of 27 is
-worth a look — if they are readable to a person, that is an extraction gap
-rather than a bad photo.
+**IMG_2441, IMG_2442, IMG_3538, IMG_3539** return `no_items_found`, and all
+four are correct. They are body-composition printouts, not receipts: a Delmar
+& Attalla pharmacy scale slip and a DIXY "Check All Program" slip, both
+listing height, weight, BMI, body fat and BMR, with no line items, no prices
+and no total. The app refusing them is the right behaviour.
 
 ---
 
@@ -129,8 +149,9 @@ rather than a bad photo.
    two receipts in 27.
 2. **Capture un-itemised category totals** (`Drink`, `Food`) as shared lines
    so tabs like IMG_1450 reconcile.
-3. **Look at the four declined photos** and decide whether they are genuinely
-   illegible.
+3. Nothing needed for the declined photos — they are not receipts.
 
-With 1 and 2, reconciliation would move from 14/27 to about 19/27 without any
-change to the underlying money model.
+Item 1 is done: Drinkies now derives 14% from the printed amounts and treats
+its item prices as tax-inclusive, taking the corpus to 16. Item 2 would add
+the three handwritten tabs, which is every remaining receipt that is not
+either self-contradictory or 10 piastres out from its own rounding.
