@@ -68,27 +68,49 @@ const EXTRACT_RECEIPT_TOOL = {
       tax_line: {
         type: ['object', 'null'],
         description:
-          'The receipt\'s explicit tax line and rate, ONLY if a percentage is actually printed next to it (e.g. "Tax 14%"). Null if no tax line is visible, or if a tax-like line exists but only shows a flat amount with no percentage printed — never compute or infer a percentage from a flat amount yourself; use flat_fees for that case instead.',
+          'The receipt\'s explicit tax line, if one is printed. Report it whenever a tax line appears, whether it shows a percentage, an amount, or both. Null only if no tax line is visible at all.',
         properties: {
           rate_percent: {
-            type: 'number',
-            description: 'The printed tax rate as a percentage, e.g. 14 for 14%.',
+            type: ['number', 'null'],
+            description:
+              'The printed rate as a percentage, e.g. 14 for "Tax 14%". Null if the line shows an amount with no percentage next to it — never infer a percentage from an amount.',
+          },
+          amount_egp_text: {
+            type: ['string', 'null'],
+            description:
+              'The amount printed on this line, exactly as printed, digits only — e.g. "63.00". Transcribe it whenever it is shown; do not compute it from the rate. Null only if the line shows a percentage with no amount beside it.',
+          },
+          included_in_prices: {
+            type: 'boolean',
+            description:
+              'True when the receipt says this charge is ALREADY inside the item prices rather than added on top — e.g. "prices include VAT", "inclusive of service", "الأسعار شاملة الضريبة", "شامل الخدمة". In that case the line is informational and adding it again would double-charge. False when the line is a charge added to the subtotal, which is the usual case.',
           },
         },
-        required: ['rate_percent'],
+        required: ['rate_percent', 'amount_egp_text', 'included_in_prices'],
         additionalProperties: false,
       },
       service_line: {
         type: ['object', 'null'],
         description:
-          'The receipt\'s explicit service charge line and rate, ONLY if a percentage is actually printed next to it (e.g. "Service 12%"). Null if no service line is visible, or if a "Service fee" line exists but only shows a flat amount with no percentage printed (very common on delivery-app screenshots) — never compute or infer a percentage from a flat amount yourself; use flat_fees for that case instead.',
+          'The receipt\'s explicit service line, if one is printed. Report it whenever a service line appears, whether it shows a percentage, an amount, or both. Null only if no service line is visible at all.',
         properties: {
           rate_percent: {
-            type: 'number',
-            description: 'The printed service rate as a percentage, e.g. 12 for 12%.',
+            type: ['number', 'null'],
+            description:
+              'The printed rate as a percentage, e.g. 12 for "Service 12%". Null if the line shows an amount with no percentage next to it — never infer a percentage from an amount.',
+          },
+          amount_egp_text: {
+            type: ['string', 'null'],
+            description:
+              'The amount printed on this line, exactly as printed, digits only — e.g. "63.00". Transcribe it whenever it is shown; do not compute it from the rate. Null only if the line shows a percentage with no amount beside it.',
+          },
+          included_in_prices: {
+            type: 'boolean',
+            description:
+              'True when the receipt says this charge is ALREADY inside the item prices rather than added on top — e.g. "prices include VAT", "inclusive of service", "الأسعار شاملة الضريبة", "شامل الخدمة". In that case the line is informational and adding it again would double-charge. False when the line is a charge added to the subtotal, which is the usual case.',
           },
         },
-        required: ['rate_percent'],
+        required: ['rate_percent', 'amount_egp_text', 'included_in_prices'],
         additionalProperties: false,
       },
       discount_line: {
@@ -167,8 +189,8 @@ type ExtractReceiptToolInput = {
     discount_percent: number | null;
     discount_flat_egp_text: string | null;
   }>;
-  tax_line: { rate_percent: number } | null;
-  service_line: { rate_percent: number } | null;
+  tax_line: { rate_percent: number | null; amount_egp_text: string | null; included_in_prices: boolean } | null;
+  service_line: { rate_percent: number | null; amount_egp_text: string | null; included_in_prices: boolean } | null;
   discount_line: { amount_egp_text: string | null; rate_percent: number | null } | null;
   flat_fees: Array<{ name: string; amount_egp_text: string }>;
   printed_total_text: string | null;
@@ -187,6 +209,8 @@ const RECEIPT_RULES = `Rules:
 - Fold priced add-ons/modifiers (e.g. "+ Extra cheese 15.00") into their parent item's line total and append them to the item name.
 - Capture explicit tax or service-charge percentage lines, and every flat named fee line (delivery fee, service fee, preparation fee, tip, donation/round-up, etc.).
 - Only report tax lines that are literally printed as separate charges. Egyptian delivery apps usually show VAT-inclusive prices — never infer or compute a tax line that is not printed.
+- For a tax or service line, transcribe BOTH the percentage and the amount whenever both are printed, e.g. "VAT (14%): 63.00" → rate_percent 14 and amount_egp_text "63.00". Never compute the amount from the rate: restaurants disagree about what the rate is charged on. Some charge tax and service both on the subtotal, others charge tax on the subtotal plus service, and only the printed amount says which happened here.
+- Set included_in_prices true when the receipt states the charge is already inside the item prices rather than added on top — wording like "prices include VAT", "inclusive of service", "الأسعار شاملة الضريبة", "شامل الخدمة". Such a line is informational: the printed total will already contain it, and the subtotal plus the items will already reflect it. Set it false for the ordinary case of a charge added underneath the subtotal.
 - Check line by line for a "Discount", "Coupon", or "Promo" line near Subtotal / fees / Total — these are easy to skim past but change the total. Report it in discount_line whenever one is printed, even faintly or in a different color/highlight than the surrounding text.
 - But a discount only counts if the printed total actually reflects it. "You saved 4", "You save 20%", loyalty-points messaging, and struck-through list prices are promotional badges measuring against a list price that the item prices already account for — they are NOT discount lines, however prominently or colourfully they are displayed. Test before reporting one: if items + fees + printed taxes already equals the printed total on its own, there is no discount to report and discount_line must be null. Only report a discount when subtracting it is what makes the arithmetic reach the printed total.
 - Sanity-check: items + fees + printed taxes − discounts should equal the printed total (allow ±0.05 rounding). If it doesn't, re-examine the image for misread digits (1/7, 0/8, 5/6) and fix only what the image visibly supports. If it still doesn't reconcile, keep every value exactly as printed — never adjust numbers just to force the math to work.
@@ -400,10 +424,18 @@ function buildExtractionResponse(toolInput: ExtractReceiptToolInput, sourceLabel
     result.discount_note = `Discount applied to ${discountedItemCount} item${discountedItemCount === 1 ? '' : 's'} — the price${discountedItemCount === 1 ? '' : 's'} below already reflect it.`;
   }
   if (toolInput.tax_line) {
-    result.tax_line = { rate_percent: toolInput.tax_line.rate_percent };
+    result.tax_line = {
+      rate_percent: toolInput.tax_line.rate_percent,
+      amount_piastres: parsePrintedPriceToPiastres(toolInput.tax_line.amount_egp_text ?? ''),
+      included_in_prices: toolInput.tax_line.included_in_prices,
+    };
   }
   if (toolInput.service_line) {
-    result.service_line = { rate_percent: toolInput.service_line.rate_percent };
+    result.service_line = {
+      rate_percent: toolInput.service_line.rate_percent,
+      amount_piastres: parsePrintedPriceToPiastres(toolInput.service_line.amount_egp_text ?? ''),
+      included_in_prices: toolInput.service_line.included_in_prices,
+    };
   }
   if (toolInput.discount_line) {
     // Same soft-failure treatment as flat_fees/printed_total below — an
@@ -502,11 +534,35 @@ function computeReconciledTotalPiastres(toolInput: GeminiExtractToolInput, items
   }
   const discountedSubtotalPiastres = subtotalPiastres - discountPiastres;
 
-  const servicePiastres = toolInput.service_line
-    ? roundHalfUp((discountedSubtotalPiastres * toolInput.service_line.rate_percent) / 100)
-    : 0;
+  // Printed amount wins over the rate. Restaurants disagree about the base:
+  // FALAK (IMG_8715) charges 14% tax and 12% service both on the raw subtotal,
+  // while others compound tax on top of service. Re-deriving from the rate
+  // means picking one convention and being wrong on the other; the amount the
+  // receipt printed is not a guess. A charge marked as already inside the item
+  // prices adds nothing at all.
+  const chargePiastres = (
+    line: GeminiExtractToolInput['tax_line'],
+    basePiastres: number,
+  ): number | null => {
+    if (!line || line.included_in_prices) {
+      return 0;
+    }
+    if (line.amount_egp_text !== null) {
+      return parsePrintedPriceToPiastres(line.amount_egp_text);
+    }
+    return line.rate_percent === null ? 0 : roundHalfUp((basePiastres * line.rate_percent) / 100);
+  };
+
+  const servicePiastres = chargePiastres(toolInput.service_line, discountedSubtotalPiastres);
+  if (servicePiastres === null) {
+    return null;
+  }
+  // Only used when a rate has to be applied because no amount was printed.
   const taxBasePiastres = discountedSubtotalPiastres + servicePiastres;
-  const taxPiastres = toolInput.tax_line ? roundHalfUp((taxBasePiastres * toolInput.tax_line.rate_percent) / 100) : 0;
+  const taxPiastres = chargePiastres(toolInput.tax_line, taxBasePiastres);
+  if (taxPiastres === null) {
+    return null;
+  }
 
   // flat_fees (a flat delivery/service-fee line with no percentage) never
   // goes through the discount/service/tax compounding — the client folds
@@ -524,7 +580,7 @@ function computeReconciledTotalPiastres(toolInput: GeminiExtractToolInput, items
     flatFeesPiastres += parsedFee;
   }
 
-  return taxBasePiastres + taxPiastres + flatFeesPiastres;
+  return discountedSubtotalPiastres + servicePiastres + taxPiastres + flatFeesPiastres;
 }
 
 type GateDecision =

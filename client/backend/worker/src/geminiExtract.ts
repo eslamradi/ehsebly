@@ -69,22 +69,44 @@ const GEMINI_RECEIPT_SCHEMA = {
     tax_line: {
       type: ['object', 'null'],
       description:
-        'The receipt\'s explicit tax line and rate, ONLY if a percentage is actually printed next to it (e.g. "Tax 14%"). Null if no tax line is visible, or if it only shows a flat amount with no percentage — never compute or infer a percentage yourself.',
+        'The receipt\'s explicit tax line, if one is printed. Report it whenever a tax line appears, whether it shows a percentage, an amount, or both. Null only if no tax line is visible.',
       properties: {
-        rate_percent: { type: 'number', description: 'The printed tax rate as a percentage, e.g. 14 for 14%.' },
+        rate_percent: {
+          type: ['number', 'null'],
+          description: 'The printed rate as a percentage, e.g. 14 for "Tax 14%". Null if only an amount is shown — never infer a percentage from an amount.',
+        },
+        amount_egp_text: {
+          type: ['string', 'null'],
+          description: 'The amount printed on this line, exactly as printed, digits only — e.g. "63.00". Transcribe it whenever shown; never compute it from the rate. Null only if no amount is printed beside the percentage.',
+        },
+        included_in_prices: {
+          type: 'boolean',
+          description: 'True when the receipt states this charge is ALREADY inside the item prices rather than added on top (e.g. "prices include VAT", "الأسعار شاملة الضريبة"). False for the usual case of a charge added to the subtotal.',
+        },
         confidence: CONFIDENCE_FIELD,
       },
-      required: ['rate_percent', 'confidence'],
+      required: ['rate_percent', 'amount_egp_text', 'included_in_prices', 'confidence'],
     },
     service_line: {
       type: ['object', 'null'],
       description:
-        'The receipt\'s explicit service charge line and rate, ONLY if a percentage is actually printed next to it (e.g. "Service 12%"). Null if no service line is visible, or if it only shows a flat amount with no percentage (very common on delivery-app screenshots).',
+        'The receipt\'s explicit service line, if one is printed. Report it whenever a service line appears, whether it shows a percentage, an amount, or both. Null only if no service line is visible.',
       properties: {
-        rate_percent: { type: 'number', description: 'The printed service rate as a percentage, e.g. 12 for 12%.' },
+        rate_percent: {
+          type: ['number', 'null'],
+          description: 'The printed rate as a percentage, e.g. 12 for "Service 12%". Null if only an amount is shown — never infer a percentage from an amount.',
+        },
+        amount_egp_text: {
+          type: ['string', 'null'],
+          description: 'The amount printed on this line, exactly as printed, digits only — e.g. "63.00". Transcribe it whenever shown; never compute it from the rate. Null only if no amount is printed beside the percentage.',
+        },
+        included_in_prices: {
+          type: 'boolean',
+          description: 'True when the receipt states this charge is ALREADY inside the item prices rather than added on top (e.g. "prices include VAT", "الأسعار شاملة الضريبة"). False for the usual case of a charge added to the subtotal.',
+        },
         confidence: CONFIDENCE_FIELD,
       },
-      required: ['rate_percent', 'confidence'],
+      required: ['rate_percent', 'amount_egp_text', 'included_in_prices', 'confidence'],
     },
     discount_line: {
       type: ['object', 'null'],
@@ -156,8 +178,18 @@ export type GeminiExtractToolInput = {
     discount_flat_egp_text: string | null;
     confidence: number;
   }>;
-  tax_line: { rate_percent: number; confidence: number } | null;
-  service_line: { rate_percent: number; confidence: number } | null;
+  tax_line: {
+    rate_percent: number | null;
+    amount_egp_text: string | null;
+    included_in_prices: boolean;
+    confidence: number;
+  } | null;
+  service_line: {
+    rate_percent: number | null;
+    amount_egp_text: string | null;
+    included_in_prices: boolean;
+    confidence: number;
+  } | null;
   discount_line: { amount_egp_text: string | null; rate_percent: number | null; confidence: number } | null;
   flat_fees: Array<{ name: string; amount_egp_text: string }>;
   printed_total_text: string | null;

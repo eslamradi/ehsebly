@@ -5,7 +5,22 @@ export type ExtractedItem = {
 };
 
 export type TaxOrServiceLine = {
-  rate_percent: number;
+  /** The printed percentage, or null when the line shows only an amount. */
+  rate_percent: number | null;
+  /**
+   * The amount printed on the line, in piastres, or null when only a rate is
+   * shown. Preferred over recomputing from the rate: the receipt already
+   * states what it charged, and restaurants disagree about what the rate is
+   * charged on — some apply tax and service both to the raw subtotal, others
+   * compound tax on top of service.
+   */
+  amount_piastres: number | null;
+  /**
+   * True when the receipt says this charge is already inside the item prices
+   * ("prices include VAT", "الأسعار شاملة الضريبة"). The line is then
+   * informational, and adding it again would double-charge.
+   */
+  included_in_prices: boolean;
 };
 
 /**
