@@ -1,6 +1,5 @@
 export type RootStackParamList = {
   Home: undefined;
-  CasualSplit: undefined;
   Capture: { openGalleryOnMount?: boolean } | undefined;
   ExtractedItems: undefined;
   ExtractionFailed: undefined;

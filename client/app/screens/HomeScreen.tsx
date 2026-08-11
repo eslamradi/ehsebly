@@ -11,30 +11,23 @@ import { GROUPS_ENABLED } from '../featureFlags';
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 /**
- * The app's true landing page — a chooser between two clearly separate
- * sections, each with its own data and screens (2026-07-30):
- * - Casual Splitting: the solo, no-account, single-receipt flow (Epic 1),
- *   saved to on-device History only. See CasualSplitScreen.
- * - Groups: signed-in, multi-person groups with a synced server-side
- *   ledger (Epic 2). See GroupListScreen (routes through EmailEntry first
- *   if not yet signed in).
- * Neither reads the other's data — a solo split never touches a group's
- * ledger and vice versa; FinalSplitScreen's `session.group` branch is the
- * only place that distinction is made.
+ * The app's landing page and the Casual Splitting hub in one screen.
  *
- * No separate "why asemly" pitch block (removed 2026-07-30, UI review) —
- * this screen is seen on every app open, not just once, so permanent
- * marketing copy above the actual choices was pure friction for a
- * returning user. Its most concrete claims (Egyptian tax-on-service
- * compounding, no sign-up, settle outside the app) now live in the two
- * button subtitles instead, where they're read once, in context, right
- * where the decision happens — not restated twice on the same screen.
- * Grounded in the PRFAQ's validated competitive positioning
- * (prfaq-hasebly.md, 2026-07-16), not invented copy.
+ * These were two screens until 2026-08-11. Home offered a choice between
+ * Casual Splitting and Groups; CasualSplitScreen then offered camera,
+ * gallery and History. Hiding Groups left Home with a single card, so every
+ * session paid a tap to pass through a chooser with nothing to choose. The
+ * actions that were one screen down now live here.
+ *
+ * The Groups card returns alongside them when GROUPS_ENABLED flips, which is
+ * the arrangement Home originally had — minus the interstitial.
+ *
+ * Actions sit at the bottom rather than centred: they are pressed on every
+ * open, and that is where a thumb already is.
  */
 export default function HomeScreen({ navigation }: Props) {
   const theme = useTheme();
-  const { colors, cardShadow, insets } = theme;
+  const { colors, cardShadow, insets, buttonStyles } = theme;
   const { t } = useI18n();
   const { account } = useAccount();
   const styles = useMemo(
@@ -43,17 +36,19 @@ export default function HomeScreen({ navigation }: Props) {
         container: {
           flex: 1,
           backgroundColor: colors.paper,
-          justifyContent: 'center',
+          justifyContent: 'space-between',
           paddingHorizontal: spacing.xl,
-          paddingTop: insets.top,
-          paddingBottom: insets.bottom,
-          gap: spacing.xxl,
+          paddingTop: 72 + insets.top,
+          paddingBottom: 32 + insets.bottom,
         },
+        bottom: { gap: spacing.lg },
         brand: { alignItems: 'center', gap: 10 },
         logo: { width: 64, height: 64, borderRadius: 14 },
         title: { fontFamily: theme.fonts.headingSemiBold, fontSize: 26, color: colors.ink, letterSpacing: -0.2 },
         subtitle: { fontFamily: theme.fonts.sansRegular, fontSize: 13.5, color: colors.inkSoft, textAlign: 'center' },
-        actions: { gap: spacing.md },
+        actions: { gap: 10 },
+        ghostButton: { paddingVertical: 14, alignItems: 'center' },
+        ghostButtonText: { fontFamily: theme.fonts.sansMedium, color: colors.inkSoft, fontSize: 15 },
         sectionButton: {
           borderRadius: radii.lg,
           paddingVertical: spacing.xl,
@@ -79,15 +74,31 @@ export default function HomeScreen({ navigation }: Props) {
         <Text style={styles.subtitle}>{t('home.tagline')}</Text>
       </View>
 
-      <View style={styles.actions}>
-        <Pressable
-          accessibilityLabel={t('home.casualTitle')}
-          style={[styles.sectionButton, styles.sectionButtonCasual]}
-          onPress={() => navigation.navigate('CasualSplit')}
-        >
-          <Text style={styles.sectionTitleCasual}>{t('home.casualTitle')}</Text>
-          <Text style={styles.sectionSubtitleCasual}>{t('home.casualSubtitle')}</Text>
-        </Pressable>
+      <View style={styles.bottom}>
+        <View style={styles.actions}>
+          <Pressable
+            accessibilityLabel={t('casual.a11yTakePhoto')}
+            style={buttonStyles.primary}
+            onPress={() => navigation.navigate('Capture', undefined)}
+          >
+            <Text style={buttonStyles.primaryText}>{t('casual.takePhoto')}</Text>
+          </Pressable>
+          <Pressable
+            accessibilityLabel={t('casual.a11yChooseFromGallery')}
+            style={buttonStyles.secondary}
+            onPress={() => navigation.navigate('Capture', { openGalleryOnMount: true })}
+          >
+            <Text style={buttonStyles.secondaryText}>{t('casual.chooseFromGallery')}</Text>
+          </Pressable>
+          <Pressable
+            accessibilityLabel={t('casual.a11yHistory')}
+            style={styles.ghostButton}
+            onPress={() => navigation.navigate('History')}
+          >
+            <Text style={styles.ghostButtonText}>{t('casual.history')}</Text>
+          </Pressable>
+        </View>
+
         {GROUPS_ENABLED ? (
           <Pressable
             accessibilityLabel={t('home.groupsTitle')}
@@ -98,9 +109,9 @@ export default function HomeScreen({ navigation }: Props) {
             <Text style={styles.sectionSubtitleGroups}>{t('home.groupsSubtitle')}</Text>
           </Pressable>
         ) : null}
-      </View>
 
-      <LanguagePicker />
+        <LanguagePicker />
+      </View>
     </View>
   );
 }

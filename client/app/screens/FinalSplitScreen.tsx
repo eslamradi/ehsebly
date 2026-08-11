@@ -177,7 +177,7 @@ export default function FinalSplitScreen({ navigation }: Props) {
     if (groupId) {
       navigation.reset({ index: 0, routes: [{ name: 'GroupDetail', params: { groupId } }] });
     } else {
-      navigation.reset({ index: 0, routes: [{ name: 'CasualSplit' }] });
+      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
     }
   };
 

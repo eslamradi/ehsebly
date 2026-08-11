@@ -40,22 +40,17 @@ export const franco: Translations = {
 
   home: {
     tagline: 'E7seb el fatoura f kam daghta — men gheer alaa 7asba wala takhmeen fel dareeba.',
-    casualTitle: '7esab Saree3',
-    casualSubtitle: 'Men gheer tasgeel — sawwar el fatoura w 14% dareeba hatetes7eb sa7 3ala 12% khedma, automatic.',
     groupsTitle: 'Groups',
     groupsSubtitle: 'Beit aw re7la — 7esab mashy ma3ak. Saded be InstaPay aw Vodafone Cash aw cash.',
   },
 
   casual: {
-    title: '7esab Saree3',
-    subtitle: 'E7seb fatoura wa7da f kam daghta — men gheer tasgeel.',
     takePhoto: 'Sawwar',
     chooseFromGallery: 'Ekhtar men el soar',
     history: 'El segel',
     a11yTakePhoto: 'Sawwar el fatoura',
     a11yChooseFromGallery: 'Ekhtar soura men el studio',
     a11yHistory: 'E3red segel el 7esabat',
-    a11yBackHome: 'Rago3 lel ra2eesiya',
   },
 
   capture: {
