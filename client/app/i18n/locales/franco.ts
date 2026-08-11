@@ -143,6 +143,8 @@ export const franco: Translations = {
     a11yContinueAssignment: 'Kammel lel tawzee3',
     a11yReceiptPhoto: 'Soret el fatura {index}',
     a11yBackToCamera: 'Rago3 lel kamera',
+    receiptCheckTitle: 'Raga3 el as3ar',
+    receiptCheckBody: 'El fatura mesh metabka ma3 nafsaha: el asnaf magmou3ha {items} EGP bas el egmaly el maktoub feeha {subtotal} EGP, be far2 {difference} EGP. Yemken el as3ar shamla el dariba, w yemken el fatura ghalat. 2aren bel wara2a abl ma te2sem.',
   },
 
   taxService: {

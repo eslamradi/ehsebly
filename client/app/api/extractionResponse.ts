@@ -15,6 +15,12 @@ export type WorkerResponseBody =
   | {
       status: 'ok';
       items: Array<{ name: string; price_piastres: number; quantity: number }>;
+      receipt_check?: {
+        code: 'itemsDoNotMatchSubtotal';
+        items_sum_piastres: number;
+        printed_subtotal_piastres: number;
+        difference_piastres: number;
+      };
       tax_line?: { rate_percent: number | null; amount_piastres?: number | null; included_in_prices?: boolean };
       service_line?: { rate_percent: number | null; amount_piastres?: number | null; included_in_prices?: boolean };
       discount_line?: { amount_piastres?: number; rate_percent?: number };
@@ -65,6 +71,14 @@ export function toExtractionResult(body: WorkerResponseBody): ExtractionResult {
       // base the percentage was charged on rather than assuming one.
       taxAmountPiastres: body.tax_line?.amount_piastres ?? undefined,
       serviceAmountPiastres: body.service_line?.amount_piastres ?? undefined,
+      receiptCheck: body.receipt_check
+        ? {
+            code: body.receipt_check.code,
+            itemsSumPiastres: body.receipt_check.items_sum_piastres,
+            printedSubtotalPiastres: body.receipt_check.printed_subtotal_piastres,
+            differencePiastres: body.receipt_check.difference_piastres,
+          }
+        : undefined,
       taxIncludedInPrices: body.tax_line?.included_in_prices ?? false,
       serviceIncludedInPrices: body.service_line?.included_in_prices ?? false,
       discountRatePercent: body.discount_line?.rate_percent,

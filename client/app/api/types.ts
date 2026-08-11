@@ -26,6 +26,17 @@ export type ExtractionResult =
       /** True when the receipt says the charge is already inside item prices. */
       taxIncludedInPrices?: boolean;
       serviceIncludedInPrices?: boolean;
+      /**
+       * Set when the receipt disagrees with itself: its item lines do not add
+       * up to its own printed subtotal. Shown to the fronter rather than
+       * quietly reconciled, because only they can see the paper.
+       */
+      receiptCheck?: {
+        code: 'itemsDoNotMatchSubtotal';
+        itemsSumPiastres: number;
+        printedSubtotalPiastres: number;
+        differencePiastres: number;
+      };
       // A whole-order discount (e.g. a delivery-app "Discount" line) —
       // exactly one of these two is ever set, mirroring whichever form
       // (percentage vs flat amount) was actually printed. Distinct from

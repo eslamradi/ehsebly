@@ -139,6 +139,8 @@ export const ar: Translations = {
     a11yContinueAssignment: 'كمّل للتوزيع',
     a11yReceiptPhoto: 'صورة الفاتورة {index}',
     a11yBackToCamera: 'رجوع للكاميرا',
+    receiptCheckTitle: 'راجع الأسعار',
+    receiptCheckBody: 'الفاتورة مش متطابقة مع نفسها: الأصناف مجموعها {items} ج.م لكن الإجمالي المكتوب فيها {subtotal} ج.م، بفرق {difference} ج.م. يمكن الأسعار شاملة الضريبة، ويمكن الفاتورة نفسها غلط. قارن بالورقة قبل ما تقسم.',
   },
 
   taxService: {

@@ -65,6 +65,25 @@ export type ExtractionResponse =
       // reflects the discounted amount; this is purely a display note so
       // the fronter isn't confused by a price lower than the menu price.
       discount_note?: string;
+      /**
+       * Present only when the receipt disagrees with itself — its own item
+       * lines do not add up to its own printed subtotal.
+       *
+       * ec846673 (Buffalo Burger) prints item cards of 95.00 and 675.00 but a
+       * Subtotal of 675.45. Sometimes that is a tax-inclusive display, and
+       * sometimes it is simply an error on the restaurant's side. Either way
+       * the fronter should be told rather than handed a confident number
+       * built on figures the paper itself does not agree with.
+       *
+       * `code` is a stable identifier the client localises; the piastre
+       * figures let it say which numbers disagreed and by how much.
+       */
+      receipt_check?: {
+        code: 'itemsDoNotMatchSubtotal';
+        items_sum_piastres: number;
+        printed_subtotal_piastres: number;
+        difference_piastres: number;
+      };
       // Present only when multiple photos were submitted as one order but
       // don't actually look like the same order — items/totals above still
       // come from whichever single image was judged coherent; this is a

@@ -120,6 +120,8 @@ export const en = {
     a11yContinueAssignment: 'Continue to assignment',
     a11yReceiptPhoto: 'Receipt photo {index}',
     a11yBackToCamera: 'Back to camera',
+    receiptCheckTitle: 'Check the prices',
+    receiptCheckBody: 'The receipt disagrees with itself: the items add up to {items} EGP but its own subtotal says {subtotal} EGP, a difference of {difference} EGP. Prices may already include tax, or the receipt may be wrong. Compare with the paper before splitting.',
   },
 
   taxService: {

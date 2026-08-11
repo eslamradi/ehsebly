@@ -150,6 +150,11 @@ const EXTRACT_RECEIPT_TOOL = {
           additionalProperties: false,
         },
       },
+      printed_subtotal_text: {
+        type: ['string', 'null'],
+        description:
+          "The receipt's printed Subtotal line, exactly as printed, digits only — e.g. \"675.45\". Transcribe only. Null if no subtotal line is shown. This is what reveals whether the item prices already include tax: on a delivery app the item cards often show tax-inclusive prices while the Subtotal line is the tax-exclusive figure.",
+      },
       printed_total_text: {
         type: ['string', 'null'],
         description:
@@ -172,6 +177,7 @@ const EXTRACT_RECEIPT_TOOL = {
       'service_line',
       'discount_line',
       'flat_fees',
+      'printed_subtotal_text',
       'printed_total_text',
       'image_mismatch',
       'image_mismatch_note',
@@ -193,6 +199,7 @@ type ExtractReceiptToolInput = {
   service_line: { rate_percent: number | null; amount_egp_text: string | null; included_in_prices: boolean } | null;
   discount_line: { amount_egp_text: string | null; rate_percent: number | null } | null;
   flat_fees: Array<{ name: string; amount_egp_text: string }>;
+  printed_subtotal_text: string | null;
   printed_total_text: string | null;
   image_mismatch: boolean;
   image_mismatch_note: string | null;
@@ -210,6 +217,7 @@ const RECEIPT_RULES = `Rules:
 - Capture explicit tax or service-charge percentage lines, and every flat named fee line (delivery fee, service fee, preparation fee, tip, donation/round-up, etc.).
 - Only report tax lines that are literally printed as separate charges. Egyptian delivery apps usually show VAT-inclusive prices — never infer or compute a tax line that is not printed.
 - For a tax or service line, transcribe BOTH the percentage and the amount whenever both are printed, e.g. "VAT (14%): 63.00" → rate_percent 14 and amount_egp_text "63.00". Never compute the amount from the rate: restaurants disagree about what the rate is charged on. Some charge tax and service both on the subtotal, others charge tax on the subtotal plus service, and only the printed amount says which happened here.
+- Also set included_in_prices true when the arithmetic says so even if no wording does: if the item lines add up to MORE than the printed Subtotal, and dividing that item sum by (1 + the tax rate) lands on the printed Subtotal, then the item prices already contain the tax. Delivery-app order screens do this routinely — the item cards show what you pay, the Subtotal line is the same figure with tax stripped out.
 - Set included_in_prices true when the receipt states the charge is already inside the item prices rather than added on top — wording like "prices include VAT", "inclusive of service", "الأسعار شاملة الضريبة", "شامل الخدمة". Such a line is informational: the printed total will already contain it, and the subtotal plus the items will already reflect it. Set it false for the ordinary case of a charge added underneath the subtotal.
 - Check line by line for a "Discount", "Coupon", or "Promo" line near Subtotal / fees / Total — these are easy to skim past but change the total. Report it in discount_line whenever one is printed, even faintly or in a different color/highlight than the surrounding text.
 - But a discount only counts if the printed total actually reflects it. "You saved 4", "You save 20%", loyalty-points messaging, and struck-through list prices are promotional badges measuring against a list price that the item prices already account for — they are NOT discount lines, however prominently or colourfully they are displayed. Test before reporting one: if items + fees + printed taxes already equals the printed total on its own, there is no discount to report and discount_line must be null. Only report a discount when subtracting it is what makes the arithmetic reach the printed total.
@@ -483,6 +491,27 @@ function buildExtractionResponse(toolInput: ExtractReceiptToolInput, sourceLabel
       console.error(`${sourceLabel}: unparseable printed total text, omitting from response`, toolInput.printed_total_text);
     }
   }
+  // A receipt that contradicts itself: its item lines and its own printed
+  // subtotal disagree. Reported rather than silently reconciled, because we
+  // cannot tell from the numbers alone whether the item prices include tax or
+  // the restaurant's till got it wrong — and the fronter can see the paper.
+  if (toolInput.printed_subtotal_text !== null) {
+    const printedSubtotalPiastres = parsePrintedPriceToPiastres(toolInput.printed_subtotal_text);
+    if (printedSubtotalPiastres !== null) {
+      const itemsSumPiastres = items.reduce((sum, item) => sum + item.price_piastres, 0);
+      const differencePiastres = itemsSumPiastres - printedSubtotalPiastres;
+      // A piastre either way is the receipt's own rounding, not a discrepancy.
+      if (Math.abs(differencePiastres) > 1) {
+        result.receipt_check = {
+          code: 'itemsDoNotMatchSubtotal',
+          items_sum_piastres: itemsSumPiastres,
+          printed_subtotal_piastres: printedSubtotalPiastres,
+          difference_piastres: differencePiastres,
+        };
+      }
+    }
+  }
+
   if (toolInput.image_mismatch && toolInput.image_mismatch_note) {
     // Multiple images were submitted as one order but the model determined
     // they're actually unrelated (verified against real mismatched
@@ -883,20 +912,42 @@ function isValidNullableString(value: unknown): value is string | null {
 // number directly (code review finding, Story 1.6 review).
 const MAX_RATE_PERCENT = 100;
 
-function isValidRateLine(value: unknown): value is { rate_percent: number } | null {
+function isValidRateLine(
+  value: unknown,
+): value is { rate_percent: number | null; amount_egp_text: string | null; included_in_prices: boolean } | null {
   if (value === null) {
     return true;
   }
   if (typeof value !== 'object') {
     return false;
   }
-  const ratePercent = (value as { rate_percent?: unknown }).rate_percent;
-  return (
-    typeof ratePercent === 'number' &&
-    Number.isFinite(ratePercent) &&
-    ratePercent >= 0 &&
-    ratePercent <= MAX_RATE_PERCENT
-  );
+  const candidate = value as {
+    rate_percent?: unknown;
+    amount_egp_text?: unknown;
+    included_in_prices?: unknown;
+  };
+
+  const ratePercent = candidate.rate_percent;
+  const rateOk =
+    ratePercent === null ||
+    (typeof ratePercent === 'number' &&
+      Number.isFinite(ratePercent) &&
+      ratePercent >= 0 &&
+      ratePercent <= MAX_RATE_PERCENT);
+
+  const amount = candidate.amount_egp_text;
+  const amountOk = amount === null || amount === undefined || typeof amount === 'string';
+
+  // included_in_prices is newer than some deployed prompts, so treat a missing
+  // one as false rather than rejecting an otherwise good extraction.
+  const includedOk =
+    candidate.included_in_prices === undefined || typeof candidate.included_in_prices === 'boolean';
+
+  // A line with neither a rate nor an amount says nothing, and would be
+  // silently dropped downstream — reject it rather than carry an empty charge.
+  const hasSomething = ratePercent !== null || (typeof amount === 'string' && amount.length > 0);
+
+  return rateOk && amountOk && includedOk && hasSomething;
 }
 
 // A discount can be printed as either a flat amount or a percentage — unlike

@@ -246,6 +246,22 @@ export default function ExtractedItemsScreen({ navigation }: Props) {
           ))}
         </ScrollView>
       )}
+      {/* The receipt contradicting itself is worth more prominence than a
+          misread price: every number below is built on figures the paper does
+          not agree with. */}
+      {result.receiptCheck && (
+        <View style={styles.mismatchBanner}>
+          <Text style={styles.mismatchBannerTitle}>{t('extracted.receiptCheckTitle')}</Text>
+          <Text style={styles.mismatchBannerText}>
+            {t('extracted.receiptCheckBody', {
+              items: formatPiastresAsEGP(result.receiptCheck.itemsSumPiastres),
+              subtotal: formatPiastresAsEGP(result.receiptCheck.printedSubtotalPiastres),
+              difference: formatPiastresAsEGP(Math.abs(result.receiptCheck.differencePiastres)),
+            })}
+          </Text>
+        </View>
+      )}
+
       {result.imageMismatchWarning && (
         <View style={styles.mismatchBanner}>
           <Text style={styles.mismatchBannerTitle}>{t('extracted.checkYourPhotos')}</Text>

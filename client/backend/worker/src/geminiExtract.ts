@@ -138,6 +138,11 @@ const GEMINI_RECEIPT_SCHEMA = {
         required: ['name', 'amount_egp_text'],
       },
     },
+    printed_subtotal_text: {
+      type: ['string', 'null'],
+      description:
+        "The receipt's printed Subtotal line, exactly as printed, digits only. Null if none is shown. Reveals whether item prices already include tax: item cards often show tax-inclusive prices while the Subtotal line is tax-exclusive.",
+    },
     printed_total_text: {
       type: ['string', 'null'],
       description: "The receipt's printed final total, exactly as printed, digits only. Null if no total line is visible or legible.",
@@ -162,6 +167,7 @@ const GEMINI_RECEIPT_SCHEMA = {
     'service_line',
     'discount_line',
     'flat_fees',
+    'printed_subtotal_text',
     'printed_total_text',
     'printed_total_confidence',
     'image_mismatch',
@@ -192,6 +198,7 @@ export type GeminiExtractToolInput = {
   } | null;
   discount_line: { amount_egp_text: string | null; rate_percent: number | null; confidence: number } | null;
   flat_fees: Array<{ name: string; amount_egp_text: string }>;
+  printed_subtotal_text: string | null;
   printed_total_text: string | null;
   printed_total_confidence: number | null;
   image_mismatch: boolean;
