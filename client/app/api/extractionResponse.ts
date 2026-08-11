@@ -15,8 +15,8 @@ export type WorkerResponseBody =
   | {
       status: 'ok';
       items: Array<{ name: string; price_piastres: number; quantity: number }>;
-      tax_line?: { rate_percent: number };
-      service_line?: { rate_percent: number };
+      tax_line?: { rate_percent: number | null; amount_piastres?: number | null; included_in_prices?: boolean };
+      service_line?: { rate_percent: number | null; amount_piastres?: number | null; included_in_prices?: boolean };
       discount_line?: { amount_piastres?: number; rate_percent?: number };
       flat_fees?: Array<{ name: string; amount_piastres: number }>;
       printed_total_piastres?: number;
@@ -59,8 +59,14 @@ export function toExtractionResult(body: WorkerResponseBody): ExtractionResult {
         })),
         ...flatFeeItems,
       ],
-      taxRatePercent: body.tax_line?.rate_percent,
-      serviceRatePercent: body.service_line?.rate_percent,
+      taxRatePercent: body.tax_line?.rate_percent ?? undefined,
+      serviceRatePercent: body.service_line?.rate_percent ?? undefined,
+      // The amount the receipt printed, kept so the split can work out which
+      // base the percentage was charged on rather than assuming one.
+      taxAmountPiastres: body.tax_line?.amount_piastres ?? undefined,
+      serviceAmountPiastres: body.service_line?.amount_piastres ?? undefined,
+      taxIncludedInPrices: body.tax_line?.included_in_prices ?? false,
+      serviceIncludedInPrices: body.service_line?.included_in_prices ?? false,
       discountRatePercent: body.discount_line?.rate_percent,
       discountFlatPiastres: body.discount_line?.amount_piastres,
       printedTotalPiastres: body.printed_total_piastres,

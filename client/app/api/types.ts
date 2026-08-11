@@ -20,6 +20,12 @@ export type ExtractionResult =
       items: ExtractedItem[];
       taxRatePercent?: number;
       serviceRatePercent?: number;
+      /** Amounts exactly as the receipt printed them, when it printed them. */
+      taxAmountPiastres?: number;
+      serviceAmountPiastres?: number;
+      /** True when the receipt says the charge is already inside item prices. */
+      taxIncludedInPrices?: boolean;
+      serviceIncludedInPrices?: boolean;
       // A whole-order discount (e.g. a delivery-app "Discount" line) —
       // exactly one of these two is ever set, mirroring whichever form
       // (percentage vs flat amount) was actually printed. Distinct from

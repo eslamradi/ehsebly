@@ -23,7 +23,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { extractReceipt } from '../api/extractReceipt';
 import { useSplitSession } from '../domain/session';
-import { computeInitialTaxServiceSettings } from '../domain/splitCalculation';
+import { calculateSubtotalPiastres, computeInitialTaxServiceSettings } from '../domain/splitCalculation';
 import { fonts, radii, spacing, useTheme } from '../theme';
 import { useI18n } from '../i18n';
 import { MAX_PHOTOS } from '../api/limits';
@@ -300,7 +300,15 @@ export default function CaptureScreen({ navigation, route }: Props) {
         // before it opens. The guard is what stops a retake-and-return from
         // clobbering rates the fronter has already hand-edited.
         if (!session.taxService) {
-          setTaxService(computeInitialTaxServiceSettings(result));
+          // The subtotal is needed to tell the two tax conventions apart:
+          // whether the printed tax amount is the rate applied to the subtotal
+          // or to the subtotal plus service.
+          setTaxService(
+            computeInitialTaxServiceSettings({
+              ...result,
+              subtotalPiastres: calculateSubtotalPiastres(result.items),
+            }),
+          );
         }
         navigation.navigate('ExtractedItems');
       } else {

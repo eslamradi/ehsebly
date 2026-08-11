@@ -13,6 +13,27 @@ export type SplitCalculationInput = {
   serviceRatePercent: number;
   otherServiceEnabled: boolean;
   otherServiceRatePercent: number;
+  /**
+   * What the tax percentage is charged on.
+   *
+   * Both conventions are real. FALAK (IMG_8715) prints VAT 14% and service
+   * 12% each computed on the raw subtotal; other receipts charge tax on the
+   * subtotal plus service. Assuming either one silently overcharges or
+   * undercharges on the other, so the receipt decides — see
+   * `computeInitialTaxServiceSettings`, which infers this from the amounts
+   * the receipt actually printed.
+   *
+   * Kept as a basis rather than a fixed amount so that correcting a misread
+   * item price still recomputes the charges correctly.
+   */
+  taxBasis?: 'subtotal' | 'subtotalPlusService';
+  /**
+   * True when the receipt says the charge is already inside the item prices
+   * ("prices include VAT"). The line is then informational and must not be
+   * added again.
+   */
+  taxIncludedInPrices?: boolean;
+  serviceIncludedInPrices?: boolean;
 };
 
 export type SplitCalculationResult = {
@@ -74,6 +95,9 @@ export function calculateSplitTotals(input: SplitCalculationInput): SplitCalcula
     serviceRatePercent,
     otherServiceEnabled,
     otherServiceRatePercent,
+    taxBasis = 'subtotalPlusService',
+    taxIncludedInPrices = false,
+    serviceIncludedInPrices = false,
   } = input;
 
   const discountPiastres = discountEnabled
@@ -84,18 +108,25 @@ export function calculateSplitTotals(input: SplitCalculationInput): SplitCalcula
 
   const discountedSubtotalPiastres = subtotalPiastres - discountPiastres;
 
-  const servicePiastres = serviceEnabled
-    ? roundHalfUp((discountedSubtotalPiastres * serviceRatePercent) / 100)
-    : 0;
+  const servicePiastres =
+    serviceEnabled && !serviceIncludedInPrices
+      ? roundHalfUp((discountedSubtotalPiastres * serviceRatePercent) / 100)
+      : 0;
 
   const otherServicePiastres = otherServiceEnabled
     ? roundHalfUp((discountedSubtotalPiastres * otherServiceRatePercent) / 100)
     : 0;
 
-  const taxBasePiastres = discountedSubtotalPiastres + servicePiastres + otherServicePiastres;
-  const taxPiastres = taxEnabled ? roundHalfUp((taxBasePiastres * taxRatePercent) / 100) : 0;
+  // What tax is charged on, per the receipt's own convention.
+  const taxBasePiastres =
+    taxBasis === 'subtotal'
+      ? discountedSubtotalPiastres
+      : discountedSubtotalPiastres + servicePiastres + otherServicePiastres;
+  const taxPiastres =
+    taxEnabled && !taxIncludedInPrices ? roundHalfUp((taxBasePiastres * taxRatePercent) / 100) : 0;
 
-  const totalPiastres = taxBasePiastres + taxPiastres;
+  // Always the full stack, whatever tax happened to be charged on.
+  const totalPiastres = discountedSubtotalPiastres + servicePiastres + otherServicePiastres + taxPiastres;
 
   return {
     subtotalPiastres,
@@ -123,6 +154,11 @@ export type TaxServiceSettings = {
   serviceRatePercent: number;
   otherServiceEnabled: boolean;
   otherServiceRatePercent: number;
+  /** See SplitCalculationInput — what the tax percentage is charged on. */
+  taxBasis?: 'subtotal' | 'subtotalPlusService';
+  /** True when the receipt says the charge is already inside item prices. */
+  taxIncludedInPrices?: boolean;
+  serviceIncludedInPrices?: boolean;
 };
 
 const DEFAULT_TAX_RATE_PERCENT = 14;
@@ -139,11 +175,53 @@ const DEFAULT_SERVICE_RATE_PERCENT = 12;
  * takes priority over a percentage if somehow both were detected, since a
  * flat amount is the more literal transcription of what's printed).
  */
+/**
+ * Works out what the tax percentage was charged on, by checking the amount
+ * the receipt printed against both conventions.
+ *
+ * FALAK (IMG_8715) prints subtotal 450.00, VAT 14% = 63.00, service 12% =
+ * 54.00. 14% of the raw subtotal is 63.00, while 14% of subtotal-plus-service
+ * is 70.56 — so that receipt charges tax on the subtotal, and the printed
+ * amount is what says so. Receipts that compound give the opposite answer.
+ *
+ * Returns the previous default when there is nothing to go on: no printed
+ * amount, or an amount that neither convention explains (a fixed cover charge
+ * dressed as a percentage, or a misread digit).
+ */
+function inferTaxBasis(detected: {
+  taxRatePercent?: number;
+  serviceRatePercent?: number;
+  taxAmountPiastres?: number;
+  subtotalPiastres?: number;
+}): 'subtotal' | 'subtotalPlusService' {
+  const { taxRatePercent, serviceRatePercent, taxAmountPiastres, subtotalPiastres } = detected;
+  if (taxRatePercent === undefined || taxAmountPiastres === undefined || subtotalPiastres === undefined) {
+    return 'subtotalPlusService';
+  }
+  const onSubtotal = roundHalfUp((subtotalPiastres * taxRatePercent) / 100);
+  const servicePiastres =
+    serviceRatePercent === undefined ? 0 : roundHalfUp((subtotalPiastres * serviceRatePercent) / 100);
+  const onSubtotalPlusService = roundHalfUp(((subtotalPiastres + servicePiastres) * taxRatePercent) / 100);
+
+  // A piastre of slack for the receipt's own rounding.
+  if (Math.abs(taxAmountPiastres - onSubtotal) <= 1) {
+    return 'subtotal';
+  }
+  if (Math.abs(taxAmountPiastres - onSubtotalPlusService) <= 1) {
+    return 'subtotalPlusService';
+  }
+  return 'subtotalPlusService';
+}
+
 export function computeInitialTaxServiceSettings(detected: {
   taxRatePercent?: number;
   serviceRatePercent?: number;
   discountFlatPiastres?: number;
   discountRatePercent?: number;
+  taxAmountPiastres?: number;
+  subtotalPiastres?: number;
+  taxIncludedInPrices?: boolean;
+  serviceIncludedInPrices?: boolean;
 }): TaxServiceSettings {
   const discountMode: 'flat' | 'percent' = detected.discountFlatPiastres !== undefined ? 'flat' : 'percent';
   return {
@@ -157,5 +235,8 @@ export function computeInitialTaxServiceSettings(detected: {
     serviceRatePercent: detected.serviceRatePercent ?? DEFAULT_SERVICE_RATE_PERCENT,
     otherServiceEnabled: false,
     otherServiceRatePercent: 0,
+    taxBasis: inferTaxBasis(detected),
+    taxIncludedInPrices: detected.taxIncludedInPrices ?? false,
+    serviceIncludedInPrices: detected.serviceIncludedInPrices ?? false,
   };
 }
