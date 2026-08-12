@@ -1,8 +1,9 @@
-import { Pressable, Text, View } from 'react-native';
+import { useMemo } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ExtractionResult } from '../api/types';
 import { useSplitSession } from '../domain/session';
-import { useTheme } from '../theme';
+import { radii, useTheme } from '../theme';
 import { useI18n } from '../i18n';
 import type { Translate } from '../domain/share';
 import { errorMessageForCode } from '../i18n/errorCode';
@@ -25,7 +26,50 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ExtractionFailed'>;
  */
 export default function ExtractionFailedScreen({ navigation }: Props) {
   const theme = useTheme();
-  const { buttonStyles, screenStyles } = theme;
+  const { colors } = theme;
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        screen: {
+          flex: 1,
+          backgroundColor: colors.paper,
+          justifyContent: 'center',
+          gap: 14,
+          paddingHorizontal: 30,
+          paddingBottom: 40,
+        },
+        mark: {
+          width: 64,
+          height: 64,
+          borderRadius: 32,
+          backgroundColor: colors.accentSoft,
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 3,
+        },
+        markStem: { width: 3.5, height: 17, borderRadius: 2, backgroundColor: colors.accent },
+        markDot: { width: 3.5, height: 3.5, borderRadius: 2, backgroundColor: colors.accent },
+        title: { fontFamily: theme.fonts.headingSemiBold, fontSize: 27, color: colors.ink },
+        body: { fontFamily: theme.fonts.sansRegular, fontSize: 14, lineHeight: 22, color: colors.inkSoft },
+        primary: {
+          backgroundColor: colors.accent,
+          borderRadius: radii.pill,
+          paddingVertical: 15,
+          alignItems: 'center',
+          marginTop: 8,
+        },
+        primaryText: { fontFamily: theme.fonts.headingSemiBold, fontSize: 16, color: colors.accentInk },
+        secondary: {
+          borderWidth: 1,
+          borderColor: colors.line,
+          borderRadius: radii.pill,
+          paddingVertical: 15,
+          alignItems: 'center',
+        },
+        secondaryText: { fontFamily: theme.fonts.headingSemiBold, fontSize: 16, color: colors.ink },
+      }),
+    [theme, colors],
+  );
   const { t } = useI18n();
   const { session, clearPhoto } = useSplitSession();
 
@@ -40,19 +84,27 @@ export default function ExtractionFailedScreen({ navigation }: Props) {
     navigation.navigate('Capture');
   };
 
+  // Laid out per the redesign: left-aligned and vertically centred, opening
+  // with a soft accent disc rather than a bare heading. The mark is drawn
+  // with views rather than an icon font — one glyph does not justify a
+  // dependency, and it scales with the theme.
   return (
-    <View style={screenStyles.center}>
-      <Text style={screenStyles.heading}>{t('extractionFailed.title')}</Text>
-      <Text style={screenStyles.message}>{detail}</Text>
-      <Pressable accessibilityLabel={t('extractionFailed.a11yRetry')} style={buttonStyles.primary} onPress={handleRetry}>
-        <Text style={buttonStyles.primaryText}>{t('extractionFailed.retry')}</Text>
+    <View style={styles.screen}>
+      <View style={styles.mark}>
+        <View style={styles.markStem} />
+        <View style={styles.markDot} />
+      </View>
+      <Text style={styles.title}>{t('extractionFailed.title')}</Text>
+      <Text style={styles.body}>{detail}</Text>
+      <Pressable accessibilityLabel={t('extractionFailed.a11yRetry')} style={styles.primary} onPress={handleRetry}>
+        <Text style={styles.primaryText}>{t('extractionFailed.retry')}</Text>
       </Pressable>
       <Pressable
         accessibilityLabel={t('extractionFailed.a11yEnterManually')}
-        style={buttonStyles.secondary}
+        style={styles.secondary}
         onPress={() => navigation.navigate('ManualEntry')}
       >
-        <Text style={buttonStyles.secondaryText}>{t('extractionFailed.enterManually')}</Text>
+        <Text style={styles.secondaryText}>{t('extractionFailed.enterManually')}</Text>
       </Pressable>
     </View>
   );
