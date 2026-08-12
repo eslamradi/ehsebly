@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   AppState,
@@ -27,6 +27,7 @@ import { calculateSubtotalPiastres, computeInitialTaxServiceSettings } from '../
 import { fonts, radii, spacing, useTheme } from '../theme';
 import { useI18n } from '../i18n';
 import { MAX_PHOTOS } from '../api/limits';
+import { ScanningViewfinder } from '../components/ScanningViewfinder';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Capture'>;
@@ -97,6 +98,30 @@ export default function CaptureScreen({ navigation, route }: Props) {
   // render timing (code review finding, Story 1.2).
   const confirmingRef = useRef(false);
   const { session, setPhotos, clearPhoto, setExtractionResult, setTaxService } = useSplitSession();
+
+  // The reading screen is app surface rather than camera chrome, so unlike
+  // the module-level sheet below it follows the theme.
+  const scanStyles = useMemo(
+    () =>
+      StyleSheet.create({
+        screen: {
+          flex: 1,
+          backgroundColor: theme.colors.paper,
+          paddingHorizontal: 26,
+          paddingTop: 10 + theme.insets.top,
+          paddingBottom: 26 + theme.insets.bottom,
+        },
+        heading: {
+          fontFamily: theme.fonts.headingSemiBold,
+          fontSize: 29,
+          color: theme.colors.ink,
+          marginTop: 10,
+          marginBottom: 14,
+        },
+        actions: { paddingTop: 18 },
+      }),
+    [theme],
+  );
 
   useEffect(() => {
     setFreshPermission(permission);
@@ -358,29 +383,32 @@ export default function CaptureScreen({ navigation, route }: Props) {
   }
 
   if (confirmedUris.length > 0) {
+    // The redesign's reading state: the receipt in a dark viewfinder with a
+    // band of light sweeping down it, and the status inside the frame rather
+    // than as a caption underneath a spinner.
     return (
-      <View style={screenStyles.center}>
-        <PhotoPreview uris={confirmedUris} styles={styles} />
-        {extracting ? (
-          <>
-            <ActivityIndicator accessibilityLabel={t('capture.a11yReadingReceipt')} color={colors.accent} />
-            <Text style={screenStyles.message}>
-              {t('capture.reading', { count: confirmedUris.length })}
-            </Text>
-          </>
-        ) : (
-          <Text style={screenStyles.message}>
-            {t('capture.captured', { count: confirmedUris.length })}
-          </Text>
-        )}
-        <Pressable
-          accessibilityLabel={t('capture.a11yRetakePhotos')}
-          style={[buttonStyles.secondary, extracting && buttonStyles.disabled]}
-          disabled={extracting}
-          onPress={handleRetakeAll}
-        >
-          <Text style={buttonStyles.secondaryText}>{t('capture.retake')}</Text>
-        </Pressable>
+      <View style={scanStyles.screen}>
+        <Text style={scanStyles.heading}>{t('capture.snapTitle')}</Text>
+        <ScanningViewfinder
+          uri={confirmedUris[0]}
+          scanning={extracting}
+          a11yLabel={t('capture.a11yPhotoPreview')}
+          caption={
+            extracting
+              ? t('capture.reading', { count: confirmedUris.length })
+              : t('capture.captured', { count: confirmedUris.length })
+          }
+        />
+        <View style={scanStyles.actions}>
+          <Pressable
+            accessibilityLabel={t('capture.a11yRetakePhotos')}
+            style={[buttonStyles.secondary, extracting && buttonStyles.disabled]}
+            disabled={extracting}
+            onPress={handleRetakeAll}
+          >
+            <Text style={buttonStyles.secondaryText}>{t('capture.retake')}</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }

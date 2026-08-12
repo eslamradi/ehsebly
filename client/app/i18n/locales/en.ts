@@ -95,6 +95,8 @@ export const en = {
     a11yRetakeAll: 'Retake all photos',
     a11yCapturePhoto: 'Capture receipt photo',
     a11yCapturedPhoto: 'Captured receipt photo',
+    snapTitle: 'Snap the receipt',
+    a11yPhotoPreview: 'The receipt you photographed',
   },
 
   extracted: {

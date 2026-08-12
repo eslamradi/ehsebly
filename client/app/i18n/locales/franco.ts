@@ -118,6 +118,8 @@ export const franco: Translations = {
     a11yRetakeAll: 'Sawwar kol el soar men el awel',
     a11yCapturePhoto: 'Sawwar el fatoura',
     a11yCapturedPhoto: 'Sooret el fatoura',
+    snapTitle: 'Sawwar el fatura',
+    a11yPhotoPreview: 'El fatura elli sawwartaha',
   },
 
   extracted: {

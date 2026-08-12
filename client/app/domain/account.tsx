@@ -39,6 +39,39 @@ const AccountContext = createContext<AccountContextValue | undefined>(undefined)
  * fields are cached in AsyncStorage purely so the UI can render signed-in
  * state immediately on boot rather than waiting on a SecureStore read.
  */
+
+/**
+ * SecureStore has no web implementation of these methods, and it throws a
+ * TypeError synchronously rather than rejecting. Thrown from inside an effect
+ * that runs during commit, that aborts every remaining passive effect in the
+ * same pass — which is how a missing keychain silently stopped an animation
+ * on an unrelated screen. Contained here so a platform without a keychain
+ * degrades to "not signed in" instead of breaking the render pass.
+ */
+async function secureRead(key: string): Promise<string | null> {
+  try {
+    return await SecureStore.getItemAsync(key);
+  } catch {
+    return null;
+  }
+}
+
+async function secureWrite(key: string, value: string): Promise<void> {
+  try {
+    await SecureStore.setItemAsync(key, value);
+  } catch {
+    // No keychain here — the session simply will not survive a reload.
+  }
+}
+
+async function secureDelete(key: string): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(key);
+  } catch {
+    // Nothing stored, nothing to remove.
+  }
+}
+
 export function AccountProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<Account | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -49,7 +82,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     (async () => {
       const [storedAccountJson, storedToken] = await Promise.all([
         AsyncStorage.getItem(ACCOUNT_STORAGE_KEY),
-        SecureStore.getItemAsync(TOKEN_SECURE_STORE_KEY),
+        secureRead(TOKEN_SECURE_STORE_KEY),
       ]);
       if (cancelled) {
         return;
@@ -74,14 +107,14 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     setToken(nextToken);
     await Promise.all([
       AsyncStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(nextAccount)),
-      SecureStore.setItemAsync(TOKEN_SECURE_STORE_KEY, nextToken),
+      secureWrite(TOKEN_SECURE_STORE_KEY, nextToken),
     ]);
   };
 
   const signOut = async () => {
     setAccount(null);
     setToken(null);
-    await Promise.all([AsyncStorage.removeItem(ACCOUNT_STORAGE_KEY), SecureStore.deleteItemAsync(TOKEN_SECURE_STORE_KEY)]);
+    await Promise.all([AsyncStorage.removeItem(ACCOUNT_STORAGE_KEY), secureDelete(TOKEN_SECURE_STORE_KEY)]);
   };
 
   const updateDisplayName = async (displayName: string) => {

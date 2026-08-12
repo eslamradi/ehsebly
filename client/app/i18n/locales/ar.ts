@@ -114,6 +114,8 @@ export const ar: Translations = {
     a11yRetakeAll: 'صوّر كل الصور من الأول',
     a11yCapturePhoto: 'صوّر الفاتورة',
     a11yCapturedPhoto: 'صورة الفاتورة',
+    snapTitle: 'صوّر الفاتورة',
+    a11yPhotoPreview: 'الفاتورة اللي صورتها',
   },
 
   extracted: {
