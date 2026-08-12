@@ -3,13 +3,14 @@ import { DarkTheme, DefaultTheme, NavigationContainer, type Theme } from '@react
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { useFonts, Fraunces_600SemiBold, Fraunces_700Bold } from '@expo-google-fonts/fraunces';
+import { useFonts } from 'expo-font';
+import { Caprasimo_400Regular } from '@expo-google-fonts/caprasimo';
 import {
-  Manrope_400Regular,
-  Manrope_500Medium,
-  Manrope_600SemiBold,
-  Manrope_700Bold,
-} from '@expo-google-fonts/manrope';
+  Figtree_400Regular,
+  Figtree_500Medium,
+  Figtree_600SemiBold,
+  Figtree_700Bold,
+} from '@expo-google-fonts/figtree';
 import {
   IBMPlexMono_400Regular,
   IBMPlexMono_600SemiBold,
@@ -131,12 +132,11 @@ function AppContent() {
   const { colors, isDark } = useTheme();
   const { ready: localeReady } = useI18n();
   const [fontsLoaded] = useFonts({
-    Fraunces_600SemiBold,
-    Fraunces_700Bold,
-    Manrope_400Regular,
-    Manrope_500Medium,
-    Manrope_600SemiBold,
-    Manrope_700Bold,
+    Caprasimo_400Regular,
+    Figtree_400Regular,
+    Figtree_500Medium,
+    Figtree_600SemiBold,
+    Figtree_700Bold,
     IBMPlexMono_400Regular,
     IBMPlexMono_600SemiBold,
     IBMPlexMono_700Bold,

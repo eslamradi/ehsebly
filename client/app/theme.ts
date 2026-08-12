@@ -29,52 +29,66 @@ export type ThemeColors = {
   positiveSoft: string;
 };
 
+// Organic — the design system from the redesign doc. Warm cream ground,
+// terracotta accent, olive for the positive state. Sampled from the rendered
+// prototype rather than transcribed, so these are the values that actually
+// shipped in it.
 const lightColors: ThemeColors = {
-  paper: '#FAF6EE',
-  paperRaised: '#FFFFFF',
-  ink: '#1C1B19',
-  inkSoft: '#6B6558',
-  inkFaint: '#A49C8A',
-  accent: '#0E6B5C',
-  accentSoft: '#DCEEE9',
-  accentInk: '#FFFFFF',
-  line: '#E4DCC8',
-  critical: '#B23A2E',
-  criticalSoft: '#F6E3E0',
-  positive: '#3F8F5F',
-  positiveSoft: '#E2F0E6',
+  paper: '#F5EAD8',
+  paperRaised: '#F9F4ED',
+  ink: '#201E1D',
+  inkSoft: '#645C50',
+  inkFaint: '#A19786',
+  accent: '#C67139',
+  accentSoft: '#FFE1D0',
+  // The accent is mid-toned, so its foreground is the cream ground rather
+  // than white — white on terracotta is the weaker contrast of the two.
+  accentInk: '#F5EAD8',
+  line: '#D9CFBC',
+  critical: '#A33C22',
+  criticalSoft: '#FFE1D0',
+  positive: '#56633F',
+  positiveSoft: '#E1EECC',
 };
 
+// Organic is a light-only system, so the dark values are derived from its
+// own ramps rather than invented: the neutral ramp read from the dark end,
+// and the lighter accent steps, which are the ones that hold up on ink.
 const darkColors: ThemeColors = {
-  paper: '#17181A',
-  paperRaised: '#201F1C',
-  ink: '#F3EFE4',
-  inkSoft: '#9C9686',
-  inkFaint: '#6B6558',
-  accent: '#4FBFA6',
-  accentSoft: '#1E3330',
-  accentInk: '#0D201C',
-  line: '#34322C',
-  critical: '#E2685C',
-  criticalSoft: '#3A2220',
-  positive: '#5FC98A',
-  positiveSoft: '#1C2E22',
+  paper: '#201E1D',
+  paperRaised: '#2E2B25',
+  ink: '#F5EAD8',
+  inkSoft: '#C0B6A5',
+  inkFaint: '#82796A',
+  accent: '#F6A06B',
+  accentSoft: '#402310',
+  accentInk: '#201E1D',
+  line: '#474238',
+  critical: '#F6A06B',
+  criticalSoft: '#402310',
+  positive: '#AEBF92',
+  positiveSoft: '#272E1B',
 };
 
 // Bundled via expo-font (see App.tsx's useFonts call) rather than system
 // font names — Georgia/system-serif looks wildly different (and not
 // particularly "premium") between iOS and Android, whereas these render
-// identically everywhere. Fraunces for headings (a display serif with real
-// character, the receipt-banner voice), Manrope for everything else read as
-// UI (body/labels/buttons — a clean, modern grotesk), IBM Plex Mono for
-// every money figure (genuine tabular figures, a proper ledger feel).
+// identically everywhere. Caprasimo for headings, Figtree for UI text, and
+// IBM Plex Mono for every money figure.
+// Organic pairs Caprasimo — a single-weight display face — with Figtree for
+// everything else. Caprasimo has one weight, so both heading slots point at
+// it; the distinction the old Fraunces pair carried is gone by design.
+//
+// Money keeps IBM Plex Mono. The prototype set amounts in Figtree, but a
+// proportional face makes a column of figures fail to line up, and a
+// per-person breakdown is read as a column. Tabular figures win here.
 export const fonts = {
-  headingSemiBold: 'Fraunces_600SemiBold',
-  headingBold: 'Fraunces_700Bold',
-  sansRegular: 'Manrope_400Regular',
-  sansMedium: 'Manrope_500Medium',
-  sansSemiBold: 'Manrope_600SemiBold',
-  sansBold: 'Manrope_700Bold',
+  headingSemiBold: 'Caprasimo_400Regular',
+  headingBold: 'Caprasimo_400Regular',
+  sansRegular: 'Figtree_400Regular',
+  sansMedium: 'Figtree_500Medium',
+  sansSemiBold: 'Figtree_600SemiBold',
+  sansBold: 'Figtree_700Bold',
   monoRegular: 'IBMPlexMono_400Regular',
   monoSemiBold: 'IBMPlexMono_600SemiBold',
   monoBold: 'IBMPlexMono_700Bold',
@@ -146,11 +160,12 @@ export const spacing = {
   xxl: 32,
 } as const;
 
+// Organic rounds hard: cards at 26, and every small control a full pill.
 export const radii = {
-  sm: 8,
-  md: 14,
-  lg: 16,
-  pill: 100,
+  sm: 12,
+  md: 26,
+  lg: 32,
+  pill: 999,
 } as const;
 
 /**
@@ -223,7 +238,7 @@ function makeButtonStyles(colors: ThemeColors, f: FontSet) {
       shadowRadius: 16,
       elevation: 4,
     } as ViewStyle,
-    primaryText: { fontFamily: f.sansBold, color: colors.accentInk, fontSize: 15 } as TextStyle,
+    primaryText: { fontFamily: f.headingSemiBold, color: colors.accentInk, fontSize: 15 } as TextStyle,
     secondary: {
       backgroundColor: colors.paperRaised,
       borderWidth: 1,
@@ -233,7 +248,7 @@ function makeButtonStyles(colors: ThemeColors, f: FontSet) {
       borderRadius: radii.md,
       alignItems: 'center',
     } as ViewStyle,
-    secondaryText: { fontFamily: f.sansSemiBold, color: colors.ink, fontSize: 15 } as TextStyle,
+    secondaryText: { fontFamily: f.headingSemiBold, color: colors.ink, fontSize: 15 } as TextStyle,
     disabled: { opacity: 0.45 } as ViewStyle,
   };
 }
