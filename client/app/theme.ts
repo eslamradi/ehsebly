@@ -292,11 +292,14 @@ export type Theme = {
  * `SafeAreaProvider` up the tree (wired in App.tsx).
  */
 export function useTheme(): Theme {
-  const scheme = useColorScheme();
   const insets = useSafeAreaInsets();
   const { locale } = useI18n();
-  const isDark = scheme === 'dark';
-  const colors = isDark ? darkColors : lightColors;
+  // Organic is a light system. Following the OS scheme meant anyone on a dark
+  // phone saw a derived palette nobody designed — cream and terracotta became
+  // brown on near-black, which is not the app the design describes. Until
+  // there is a dark palette drawn on purpose, the app is light.
+  const isDark = false;
+  const colors = lightColors;
   // Franco is Latin script, so only Arabic swaps the typeface.
   const activeFonts = locale === 'ar' ? arabicFonts : fonts;
   return useMemo(

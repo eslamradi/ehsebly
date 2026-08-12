@@ -4,7 +4,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
-import { LanguagePicker } from '../components/LanguagePicker';
 import { formatPiastresAsEGP } from '../domain/money';
 import { entryTotalPiastres, loadSplitHistory, type HistoryEntry } from '../domain/history';
 import { useI18n } from '../i18n';
@@ -155,7 +154,6 @@ export default function HomeScreen({ navigation }: Props) {
               </Pressable>
             </View>
 
-            <LanguagePicker />
           </>
         ) : (
           <>

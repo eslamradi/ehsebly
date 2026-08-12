@@ -1,10 +1,12 @@
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import { updateAccountName } from '../api/groupApi';
 import { useAccount } from '../domain/account';
+import { useI18n } from '../i18n';
+import { LOCALE_ORDER } from '../i18n';
 import { fonts, radii, spacing, useTheme } from '../theme';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 
@@ -47,6 +49,74 @@ export default function AccountScreen({ navigation, route }: Props) {
   });
 
   const { account, token, updateDisplayName, signOut } = useAccount();
+  const { locale, setLocale, t } = useI18n();
+
+  const design = useMemo(
+    () =>
+      StyleSheet.create({
+        title: { fontFamily: theme.fonts.headingSemiBold, fontSize: 32, color: colors.ink, marginBottom: 18 },
+        // Profile card: the avatar carries the accent so the screen has one
+        // warm anchor rather than a wall of rows.
+        profile: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 14,
+          backgroundColor: colors.paperRaised,
+          borderRadius: 26,
+          padding: 16,
+        },
+        avatar: {
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          backgroundColor: colors.accentSoft,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        avatarText: { fontFamily: theme.fonts.headingSemiBold, fontSize: 22, color: colors.accent },
+        profileName: { fontFamily: theme.fonts.sansBold, fontSize: 16, color: colors.ink },
+        profileSub: { fontFamily: theme.fonts.sansRegular, fontSize: 12.5, color: colors.inkSoft, marginTop: 2 },
+        sectionLabel: {
+          fontFamily: theme.fonts.sansSemiBold,
+          fontSize: 11,
+          letterSpacing: 0.9,
+          color: colors.accent,
+          marginTop: 18,
+          marginBottom: 8,
+        },
+        localeRow: { flexDirection: 'row', gap: 8 },
+        localePill: {
+          paddingVertical: 9,
+          paddingHorizontal: 18,
+          borderRadius: radii.pill,
+          borderWidth: 1,
+          borderColor: colors.line,
+        },
+        localePillOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+        localeText: { fontFamily: theme.fonts.sansSemiBold, fontSize: 13, color: colors.ink },
+        localeTextOn: { color: colors.accentInk },
+        menuRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+          paddingVertical: 14,
+          paddingHorizontal: 4,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.line,
+        },
+        menuLabel: { flex: 1, fontFamily: theme.fonts.sansSemiBold, fontSize: 14, color: colors.ink },
+        menuChevron: { fontFamily: theme.fonts.sansRegular, fontSize: 16, color: colors.inkFaint },
+        signOut: {
+          textAlign: 'center',
+          fontFamily: theme.fonts.sansBold,
+          fontSize: 14,
+          color: colors.accent,
+          paddingTop: 24,
+          paddingBottom: 18,
+        },
+      }),
+    [theme, colors],
+  );
   const [name, setName] = useState(account?.displayName ?? '');
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -82,43 +152,88 @@ export default function AccountScreen({ navigation, route }: Props) {
     navigation.navigate('Home');
   };
 
+  const initial = (account?.displayName || account?.email || '?').trim().charAt(0).toUpperCase();
+
+  // The name form is only the first-sign-in moment; the settled screen is a
+  // profile card, a language choice and a way out. Payment and notification
+  // rows from the design are left out on purpose — neither exists, and a row
+  // that opens nothing is worse than an absent one.
+  if (requireName) {
+    return (
+      <ScrollView style={screenStyles.container} contentContainerStyle={screenStyles.content}>
+        <Text style={design.title}>{t('account.nameTitle')}</Text>
+        <Text style={design.profileSub}>{t('account.nameSub')}</Text>
+        <TextInput
+          accessibilityLabel={t('account.a11yName')}
+          style={styles.input}
+          placeholder={t('account.namePlaceholder')}
+          placeholderTextColor={colors.inkFaint}
+          value={name}
+          onChangeText={(text) => {
+            setName(text);
+            setError(null);
+          }}
+          maxLength={MAX_NAME_LENGTH}
+        />
+        {error && <Text style={styles.errorText}>{error}</Text>}
+        <Pressable
+          accessibilityLabel={t('common.continue')}
+          style={[buttonStyles.primary, isSaving && buttonStyles.disabled]}
+          disabled={isSaving}
+          onPress={handleSave}
+        >
+          <Text style={buttonStyles.primaryText}>{isSaving ? t('account.saving') : t('common.continue')}</Text>
+        </Pressable>
+      </ScrollView>
+    );
+  }
+
   return (
     <ScrollView style={screenStyles.container} contentContainerStyle={screenStyles.content}>
-      <Text style={screenStyles.heading}>{requireName ? "What's your name?" : 'Account'}</Text>
-      {requireName && (
-        <Text style={screenStyles.subheading}>So the people in your groups see your name instead of your email address.</Text>
-      )}
-      {account && <Text style={screenStyles.subheading}>{account.email}</Text>}
-      <TextInput
-        accessibilityLabel="Your name"
-        style={styles.input}
-        placeholder="Name"
-        placeholderTextColor={colors.inkFaint}
-        value={name}
-        onChangeText={(text) => {
-          setName(text);
-          setError(null);
-        }}
-        maxLength={MAX_NAME_LENGTH}
-      />
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      <Text style={design.title}>{t('account.title')}</Text>
+
+      <View style={design.profile}>
+        <View style={design.avatar}>
+          <Text style={design.avatarText}>{initial}</Text>
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={design.profileName}>{account?.displayName || t('account.signedOutName')}</Text>
+          <Text style={design.profileSub}>{account?.email || t('account.signedOutSub')}</Text>
+        </View>
+      </View>
+
+      <Text style={design.sectionLabel}>{t('account.language')}</Text>
+      <View style={design.localeRow}>
+        {LOCALE_ORDER.map((code) => {
+          const on = locale === code;
+          return (
+            <Pressable
+              key={code}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              accessibilityLabel={t(`language.${code}`)}
+              style={[design.localePill, on && design.localePillOn]}
+              onPress={() => void setLocale(code)}
+            >
+              <Text style={[design.localeText, on && design.localeTextOn]}>{code.toUpperCase()}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
       <Pressable
-        accessibilityLabel={requireName ? 'Continue' : 'Save'}
-        style={[buttonStyles.primary, isSaving && buttonStyles.disabled]}
-        disabled={isSaving}
-        onPress={handleSave}
+        accessibilityLabel={t('account.help')}
+        style={design.menuRow}
+        onPress={() => void Linking.openURL('mailto:hi@eslamradi.com')}
       >
-        <Text style={buttonStyles.primaryText}>{isSaving ? 'Saving…' : requireName ? 'Continue' : 'Save'}</Text>
+        <Text style={design.menuLabel}>{t('account.help')}</Text>
+        <Text style={design.menuChevron}>›</Text>
       </Pressable>
-      {!requireName && (
-        <>
-          <Pressable accessibilityLabel="Back" style={buttonStyles.secondary} onPress={() => navigation.goBack()}>
-            <Text style={buttonStyles.secondaryText}>Back</Text>
-          </Pressable>
-          <Pressable accessibilityLabel="Sign out" style={buttonStyles.secondary} onPress={handleSignOut}>
-            <Text style={buttonStyles.secondaryText}>Sign Out</Text>
-          </Pressable>
-        </>
+
+      {account && (
+        <Pressable accessibilityLabel={t('account.signOut')} onPress={handleSignOut}>
+          <Text style={design.signOut}>{t('account.signOut')}</Text>
+        </Pressable>
       )}
     </ScrollView>
   );
